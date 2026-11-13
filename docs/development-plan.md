@@ -18,6 +18,10 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 
 Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururken etkileşime gir.
 
+0. **Evde deneme (simülasyon):** Harita ayarları → Test → **Sürüş simülasyonu**'nu aç. Bundan sonra rota kartında **Simüle et** düğmesi çıkar:
+   - Konum, GPS yerine rota boyunca ilerler. Hız, Valhalla'nın o rota için varsaydığı ortalama hızdır.
+   - Talimat bandını, sesli uyarıları ve kamerayı araç kullanmadan görür ve duyarsın.
+   - Ekranda her zaman **Simülasyon** etiketi durur.
 1. **Arama:** "Ara" alanına bir yer, adres ya da koordinat yaz (örneğin "Kartal Adliyesi", "40.889, 29.19"). Sonuçlar mesafeli ve Türkçe adlı mı?
 2. **Haritadan seçme:** haritada bir noktaya uzun bas. Kartta adres çıkıyor mu? "…" menüsünden **Ev olarak kaydet**'e dokun. Sonra "Ara" sayfasında **Kısayollar → Ev**'e tek dokunuş doğrudan rota açmalı.
 3. **Rota:** kartta süre, mesafe, varış saati, ana yollar ve varsa alternatifler (16/19/18 dk gibi) görünmeli. Süreler **trafiksiz**; kartta bu açıkça yazıyor.

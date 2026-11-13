@@ -11,7 +11,7 @@ final class HomeScreenshotTests: XCTestCase {
         // One launch only: on relaunch the simulator fell back to its default location (Apple Park).
         XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 40.8890, longitude: 29.1905))
         let app = XCUIApplication()
-        app.launchArguments += ["-atlas.appearance", "day"]
+        app.launchArguments += ["-atlas.appearance", "day", "-atlas.simulation", "YES"]
         app.launch()
         allowLocationIfAsked()
 
@@ -49,6 +49,27 @@ final class HomeScreenshotTests: XCTestCase {
         capture("3c-navigation")
         app.buttons["nav.end"].tap()
         XCTAssertTrue(app.buttons["search.open"].waitForExistence(timeout: 5), "home screen did not return")
+
+        // Simulated drive: the simulator's position stays put, so only the simulated fixes can move guidance on.
+        app.buttons["search.open"].tap()
+        let again = app.buttons.matching(identifier: "search.result").firstMatch
+        XCTAssertTrue(again.waitForExistence(timeout: 20), "previous place not offered again")
+        again.tap()
+        XCTAssertTrue(app.buttons["place.route"].waitForExistence(timeout: 5), "place card missing")
+        app.buttons["place.route"].tap()
+        let simulate = app.buttons["route.simulate"]
+        XCTAssertTrue(simulate.waitForExistence(timeout: 30), "simulate button missing")
+        simulate.tap()
+        let banner = app.descendants(matching: .any)["nav.banner"]
+        XCTAssertTrue(banner.waitForExistence(timeout: 15), "simulated guidance did not start")
+        XCTAssertTrue(app.descendants(matching: .any)["nav.simulation"].exists, "simulation badge missing")
+        settle(3)
+        let before = banner.label
+        settle(20)
+        capture("3d-simulation")
+        XCTAssertNotEqual(banner.label, before, "guidance did not advance during the simulated drive")
+        app.buttons["nav.end"].tap()
+        XCTAssertTrue(app.buttons["search.open"].waitForExistence(timeout: 5), "home screen did not return after simulation")
 
         app.buttons["Üç boyutlu görünüm"].tap()
         settle(6)

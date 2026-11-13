@@ -15,13 +15,16 @@ public struct AtlasMapView: View {
     private let route: [CLLocationCoordinate2D]
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
+    private let puckSource: StaticLocationManager?
 
+    /// `puckSource` replaces CoreLocation for the user puck (simulated drive); nil = real GPS.
     public init(
         camera: Binding<MapViewCamera>,
         appearance: MapAppearance,
         showsBuildings3D: Bool,
         destination: CLLocationCoordinate2D? = nil,
         route: [CLLocationCoordinate2D] = [],
+        puckSource: StaticLocationManager? = nil,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
     ) {
@@ -30,13 +33,14 @@ public struct AtlasMapView: View {
         self.showsBuildings3D = showsBuildings3D
         self.destination = destination
         self.route = route
+        self.puckSource = puckSource
         self.onLongPress = onLongPress
         self.onViewport = onViewport
     }
 
     public var body: some View {
         let show3D = showsBuildings3D
-        MapView(styleURL: appearance.styleURL, camera: $camera) {
+        MapView(styleURL: appearance.styleURL, camera: $camera, locationManager: puckSource) {
             if route.count > 1 {
                 let line = ShapeSource(identifier: "atlas-route") {
                     MLNPolylineFeature(coordinates: route)

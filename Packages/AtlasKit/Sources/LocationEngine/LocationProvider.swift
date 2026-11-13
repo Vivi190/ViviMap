@@ -3,8 +3,8 @@ import Observation
 
 /// The app's single CLLocationManager owner: latest fix, smoothed speed and authorization state.
 ///
-/// MapLibre keeps its own manager for the user puck in Phase 1; Phase 2 feeds the puck from here so the
-/// map, speedometer and navigation all see the same (snapped) position.
+/// MapLibre keeps its own manager for the user puck, except during a simulated drive (the app then feeds
+/// the puck itself); a later phase may feed it the route-snapped position from here.
 @MainActor
 @Observable
 public final class LocationProvider: NSObject {
@@ -20,6 +20,8 @@ public final class LocationProvider: NSObject {
     /// Called with every accepted fix (navigation feeds Ferrostar from here: one GPS stream for the app).
     @ObservationIgnored public var onFix: (@MainActor (CLLocation) -> Void)?
     public private(set) var isNavigating = false
+    /// While a test drive runs, real GPS fixes are dropped so guidance never mixes the two positions.
+    @ObservationIgnored public private(set) var isSimulating = false
 
     @ObservationIgnored private let manager = CLLocationManager()
     @ObservationIgnored private var backgroundSession: CLBackgroundActivitySession?
@@ -75,6 +77,16 @@ public final class LocationProvider: NSObject {
         }
     }
 
+    /// A simulated fix, handled exactly like a GPS fix (speedometer, navigation).
+    public func simulate(_ location: CLLocation) {
+        isSimulating = true
+        ingest(location)
+    }
+
+    public func endSimulation() {
+        isSimulating = false
+    }
+
     /// Speed as of `date`; goes stale when fixes stop arriving (tunnel, lost signal).
     public func speedReading(at date: Date) -> SpeedEstimator.Reading {
         estimator.reading(at: date)
@@ -118,6 +130,7 @@ extension LocationProvider: @preconcurrency CLLocationManagerDelegate {
     }
 
     public func locationManager(_: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard !isSimulating else { return }
         for location in locations {
             ingest(location)
         }

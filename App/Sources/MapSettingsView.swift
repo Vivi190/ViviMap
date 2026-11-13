@@ -24,8 +24,11 @@ struct MapSettingsView: View {
 
             Section {
                 Button("GPS tanılama", systemImage: "antenna.radiowaves.left.and.right", action: showDiagnostics)
+                Toggle("Sürüş simülasyonu", isOn: $settings.showsDriveSimulation)
+            } header: {
+                Text("Test")
             } footer: {
-                Text("Rota ve sesli yönlendirme sonraki adımda eklenecek.")
+                Text("Rota kartına \"Simüle et\" ekler: konum, GPS yerine rota boyunca ilerler. Sesli yönlendirmeyi araç kullanmadan denemek için.")
             }
         }
         .navigationTitle("Harita")

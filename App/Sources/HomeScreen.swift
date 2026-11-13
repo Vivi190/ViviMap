@@ -53,6 +53,9 @@ struct HomeScreen: View {
     @State private var routeSelection = 0
     @State private var isPlanning = false
     @State private var routeError: String?
+    @State private var simulator = DriveSimulator()
+    /// Feeds the user puck during a simulated drive; nil = real GPS.
+    @State private var simulatedPuck: StaticLocationManager?
 
     private let planner: RoutePlanner?
     private let navigation: NavigationSession?
@@ -81,7 +84,12 @@ struct HomeScreen: View {
 
     private var startHandler: (() -> Void)? {
         if navigation == nil { return nil }
-        return { startNavigation() }
+        return { startNavigation(simulated: false) }
+    }
+
+    private var simulateHandler: (() -> Void)? {
+        if navigation == nil || !settings.showsDriveSimulation { return nil }
+        return { startNavigation(simulated: true) }
     }
 
     /// During guidance the session's geometry wins: it changes after a reroute.
@@ -98,6 +106,7 @@ struct HomeScreen: View {
                 showsBuildings3D: is3D,
                 destination: selectedPlace?.point.coordinate,
                 route: displayedRoute,
+                puckSource: simulatedPuck,
                 onLongPress: longPressHandler
             ) { proxy in
                 viewport.update(from: proxy)
@@ -294,6 +303,7 @@ struct HomeScreen: View {
             routes: routes,
             selection: $routeSelection,
             onStart: startHandler,
+            onSimulate: simulateHandler,
             onClose: {
                 routes = []
                 camera = .center(place.point.coordinate, zoom: 16, pitch: is3D ? Self.pitch3D : 0)
@@ -317,6 +327,20 @@ struct HomeScreen: View {
             HStack(alignment: .bottom) {
                 SpeedOverlay()
                 Spacer(minLength: 0)
+                if simulatedPuck != nil {
+                    // Always visible: a simulated drive must never pass for real guidance.
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "play.circle.fill")
+                            .foregroundStyle(Color.atlasWarning)
+                        Text("Simülasyon")
+                    }
+                        .font(.footnote.weight(.semibold))
+                        .padding(.horizontal, Spacing.m)
+                        .padding(.vertical, Spacing.s)
+                        .atlasFloatingSurface(in: Capsule())
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("nav.simulation")
+                }
             }
             NavigationBottomBar(navigation: navigation, onEnd: { endNavigation() })
         }
@@ -324,14 +348,20 @@ struct HomeScreen: View {
         .padding(.vertical, Spacing.s)
     }
 
-    private func startNavigation() {
-        guard let navigation, let route = activeRoute, let here = location.lastLocation else {
+    private func startNavigation(simulated: Bool) {
+        guard let navigation, let route = activeRoute else { return }
+        // A simulated drive starts on the route itself; real guidance starts from the GPS fix.
+        let start = simulated
+            ? route.coordinates.first.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }
+            : location.lastLocation
+        guard let start else {
             routeError = "Konumun henüz bilinmiyor."
             return
         }
         do {
-            try navigation.start(route, from: here)
+            try navigation.start(route, from: start)
             location.setNavigating(true)
+            if simulated { simulate(route, from: start) }
             is3D = true
             camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
         } catch {
@@ -339,7 +369,23 @@ struct HomeScreen: View {
         }
     }
 
+    /// Drives the route at the average speed Valhalla assumed, so the simulated arrival matches the estimate.
+    /// Fixes go to the puck and through LocationProvider, i.e. the same path as GPS (speedometer, guidance).
+    private func simulate(_ route: RouteOption, from start: CLLocation) {
+        let puck = StaticLocationManager(initialLocation: start)
+        simulatedPuck = puck
+        simulator.start(along: route.coordinates, speed: route.distance / max(route.duration, 1)) { [location] fix in
+            puck.lastLocation = fix
+            location.simulate(fix)
+        }
+    }
+
     private func endNavigation() {
+        simulator.stop()
+        if simulatedPuck != nil {
+            simulatedPuck = nil
+            location.endSimulation()
+        }
         navigation?.stop()
         location.setNavigating(false)
         clearPlace()

@@ -35,14 +35,21 @@ public final class AppSettings {
         didSet { defaults.set(appearanceMode.rawValue, forKey: Keys.appearance) }
     }
 
+    /// Adds "Simüle et" to the route card: a test drive along the route without moving.
+    public var showsDriveSimulation: Bool {
+        didSet { defaults.set(showsDriveSimulation, forKey: Keys.simulation) }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         appearanceMode = defaults.string(forKey: Keys.appearance).flatMap(AppearanceMode.init(rawValue:)) ?? .automatic
+        showsDriveSimulation = defaults.bool(forKey: Keys.simulation)
     }
 
     private enum Keys {
         static let appearance = "atlas.appearance"
+        static let simulation = "atlas.simulation"
     }
 }

@@ -260,6 +260,8 @@ struct RouteCard: View {
     @Binding var selection: Int
     /// nil when navigation could not be set up; the button is hidden rather than shown broken.
     let onStart: (() -> Void)?
+    /// Test drive; nil unless enabled in the map settings.
+    let onSimulate: (() -> Void)?
     let onClose: () -> Void
 
     var body: some View {
@@ -315,15 +317,28 @@ struct RouteCard: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             if let onStart {
-                Button(action: onStart) {
-                    Label("Başlat", systemImage: "location.north.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                HStack(spacing: Spacing.s) {
+                    Button(action: onStart) {
+                        Label("Başlat", systemImage: "location.north.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+                    .accessibilityIdentifier("route.start")
+                    if let onSimulate {
+                        Button(action: onSimulate) {
+                            Label("Simüle et", systemImage: "play.fill")
+                                .font(.headline)
+                                .padding(.horizontal, Spacing.s)
+                                .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .accessibilityIdentifier("route.simulate")
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
                 .padding(.top, Spacing.xs)
-                .accessibilityIdentifier("route.start")
             }
         }
         .padding(Spacing.l)
