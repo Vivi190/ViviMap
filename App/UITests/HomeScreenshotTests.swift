@@ -4,37 +4,42 @@ import XCTest
 /// Launches the app on the simulator at a fixed Istanbul position and keeps screenshots as test attachments;
 /// CI exports them so design changes can be reviewed without a device.
 final class HomeScreenshotTests: XCTestCase {
-    // Kartal coast: the D-100 side roads, the coastal road and dense streets in one frame.
-    private let kartal = CLLocation(latitude: 40.8890, longitude: 29.1905)
-
     @MainActor
-    func testHomeScreenDayAndNight() throws {
+    func testHomeScreenDayNightAnd3D() throws {
         continueAfterFailure = false
+        // Kartal coast: the D-100 side roads, the coastal road and dense streets in one frame.
+        // One launch only: on relaunch the simulator fell back to its default location (Apple Park).
+        XCUIDevice.shared.location = XCUILocation(location: CLLocation(latitude: 40.8890, longitude: 29.1905))
+        let app = XCUIApplication()
+        app.launchArguments += ["-atlas.appearance", "day"]
+        app.launch()
+        allowLocationIfAsked()
 
-        for appearance in ["day", "night"] {
-            // Set before every launch: on relaunch the simulator fell back to its default location.
-            XCUIDevice.shared.location = XCUILocation(location: kartal)
-            let app = XCUIApplication()
-            app.launchArguments += ["-atlas.appearance", appearance]
-            app.launch()
-            allowLocationIfAsked()
+        XCTAssertTrue(app.buttons["Konumumu göster"].waitForExistence(timeout: 20), "map controls did not appear")
+        // MapLibre exposes no "tiles loaded" signal to XCUITest; give the network a fixed window.
+        settle(10)
+        capture("1-home-day")
 
-            XCTAssertTrue(app.buttons["Konumumu göster"].waitForExistence(timeout: 20), "map controls did not appear")
-            // MapLibre exposes no "tiles loaded" signal to XCUITest; give the network a fixed window.
-            Thread.sleep(forTimeInterval: 10)
-            capture("home-\(appearance)")
+        app.buttons["Üç boyutlu görünüm"].tap()
+        settle(6)
+        capture("2-home-day-3d")
 
-            if appearance == "day" {
-                app.buttons["Üç boyutlu görünüm"].tap()
-                Thread.sleep(forTimeInterval: 6)
-                capture("home-day-3d")
+        // Switch to night at runtime: exercises the style reload and the 3D layer re-applied after it.
+        app.buttons["Harita ayarları"].tap()
+        XCTAssertTrue(app.navigationBars["Harita"].waitForExistence(timeout: 5), "map settings sheet did not open")
+        capture("3-map-settings")
+        app.buttons["Gece"].tap()
+        app.navigationBars["Harita"].swipeDown(velocity: .fast)
+        settle(6)
+        capture("4-home-night-3d")
 
-                app.buttons["Harita ayarları"].tap()
-                XCTAssertTrue(app.navigationBars["Harita"].waitForExistence(timeout: 5), "map settings sheet did not open")
-                capture("map-settings")
-            }
-            app.terminate()
-        }
+        app.buttons["Üç boyutlu görünüm"].tap()
+        settle(5)
+        capture("5-home-night")
+    }
+
+    private func settle(_ seconds: TimeInterval) {
+        Thread.sleep(forTimeInterval: seconds)
     }
 
     @MainActor
