@@ -16,6 +16,8 @@ jobs:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+      # Optional: without it the build simply has no live traffic.
+      HERE_API_KEY: ${{ secrets.HERE_API_KEY }}
     steps:
       - name: Check secrets
         run: |
@@ -29,6 +31,7 @@ jobs:
           fp DIST_P12_BASE64 "$DIST_P12_BASE64"
           fp PROFILE_BASE64 "$PROFILE_BASE64"
           fp ASC_KEY_P8_BASE64 "$ASC_KEY_P8_BASE64"
+          if [ -n "$HERE_API_KEY" ]; then fp HERE_API_KEY "$HERE_API_KEY"; else echo "HERE_API_KEY not set: build without live traffic"; fi
           exit $missing
 
       - uses: actions/checkout@v5
@@ -100,6 +103,7 @@ jobs:
             ATLAS_BUNDLE_ID="$BUNDLE_ID" \
             ATLAS_TEAM_ID="$TEAM_ID" \
             ATLAS_PROFILE_NAME="$PROFILE_NAME" \
+            HERE_API_KEY="$HERE_API_KEY" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             | xcbeautify --renderer github-actions
 

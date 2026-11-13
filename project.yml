@@ -16,6 +16,8 @@ settings:
     ATLAS_BUNDLE_ID: com.vivimap.atlas
     ATLAS_TEAM_ID: ""
     ATLAS_PROFILE_NAME: ""
+    # Set from the HERE_API_KEY secret by the TestFlight workflow; empty = live traffic hidden.
+    HERE_API_KEY: ""
 
 packages:
   AtlasKit:
@@ -50,6 +52,8 @@ targets:
         UIBackgroundModes:
           - location
           - audio
+        # Read by TrafficEngine.HEREKey; ships inside the app (personal TestFlight use, ADR-7).
+        HEREAPIKey: $(HERE_API_KEY)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(ATLAS_BUNDLE_ID)
@@ -93,6 +97,7 @@ schemes:
         - package: AtlasKit/SearchEngineTests
         - package: AtlasKit/RoutingEngineTests
         - package: AtlasKit/NavigationEngineTests
+        - package: AtlasKit/TrafficEngineTests
         - AtlasUITests
     archive:
       config: Release

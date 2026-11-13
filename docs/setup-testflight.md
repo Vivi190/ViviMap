@@ -41,6 +41,16 @@ Apple'ın web arayüzünde yalnızca iki şey elle yapıldı; geri kalan her şe
    - `PROFILE_BASE64`
    - `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`
 
+## Canlı trafik anahtarı (isteğe bağlı)
+
+HERE anahtarı yoksa build trafiksiz çıkar ve rota kartı "Trafik dahil değil" der. Anahtarı eklemek için:
+
+1. https://platform.here.com → **Access Manager → Apps → Register new app** → **Credentials → API Keys → Create API key**.
+2. Anahtarı GitHub Secret olarak kaydet: `gh secret set HERE_API_KEY -R Vivi190/ViviMap` (komut değeri sorar; koda ve depoya yazılmaz).
+3. Yeni bir TestFlight build'i gönder. Anahtar derlemede Info.plist'e girer.
+
+Kota: uygulama her cihazda ayda en fazla 1.200 rota içe aktarma ve 2.400 trafik akışı isteği yapar (HERE'in ücretsiz kotasının yarısından az).
+
 ## Yıllık yenileme (sertifika süresi dolunca)
 
 3. adımı ve 6. adımı tekrarla. Yeni bir CSR gerekmez; aynı `dist.csr` kullanılabilir.

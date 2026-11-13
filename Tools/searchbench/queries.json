@@ -1,0 +1,61 @@
+[
+  {"query": "pendik devlet hastanesi", "osm": "[\"amenity\"=\"hospital\"][\"name\"~\"Pendik Devlet Hastanesi\"]"},
+  {"query": "lütfi kırdar şehir hastanesi", "osm": "[\"amenity\"=\"hospital\"][\"name\"~\"Lütfi Kırdar\"]"},
+  {"query": "kartal koşuyolu hastanesi", "osm": "[\"amenity\"=\"hospital\"][\"name\"~\"Kartal Koşuyolu\"]"},
+  {"query": "tuzla devlet hastanesi", "osm": "[\"amenity\"=\"hospital\"][\"name\"~\"Tuzla Devlet\"]"},
+  {"query": "marmara üniversitesi pendik hastanesi", "osm": "[\"amenity\"=\"hospital\"][\"name\"~\"Marmara Üniversitesi\"]"},
+  {"query": "siyami ersek hastanesi", "osm": "[\"amenity\"=\"hospital\"][\"name\"~\"Siyami Ersek\"]"},
+
+  {"query": "sabiha gökçen havalimanı", "osm": "[\"aeroway\"=\"aerodrome\"][\"name\"~\"Sabiha Gökçen\"]", "radius": 500},
+  {"query": "istanbul havalimanı", "osm": "[\"aeroway\"=\"aerodrome\"][\"name\"~\"^İstanbul Havalimanı\"]", "radius": 500},
+  {"query": "pendik tren garı", "osm": "[\"railway\"=\"station\"][\"name\"~\"^Pendik\"]", "radius": 300},
+  {"query": "kartal metro istasyonu", "osm": "[\"railway\"=\"station\"][\"name\"~\"^Kartal\"]", "radius": 300},
+  {"query": "tavşantepe metro", "osm": "[\"railway\"=\"station\"][\"name\"~\"Tavşantepe\"]", "radius": 300},
+  {"query": "bostancı iskelesi", "osm": "[\"amenity\"=\"ferry_terminal\"][\"name\"~\"Bostancı\"]", "radius": 300},
+  {"query": "kadıköy iskelesi", "osm": "[\"amenity\"=\"ferry_terminal\"][\"name\"~\"Kadıköy\"]", "radius": 300},
+  {"query": "harem otogarı", "osm": "[\"amenity\"=\"bus_station\"][\"name\"~\"Harem\"]", "radius": 300},
+
+  {"query": "kartal belediyesi", "osm": "[\"amenity\"=\"townhall\"][\"name\"~\"Kartal Belediye\"]"},
+  {"query": "pendik belediyesi", "osm": "[\"amenity\"=\"townhall\"][\"name\"~\"Pendik Belediye\"]"},
+  {"query": "tuzla belediyesi", "osm": "[\"amenity\"=\"townhall\"][\"name\"~\"Tuzla Belediye\"]"},
+  {"query": "maltepe belediyesi", "osm": "[\"amenity\"=\"townhall\"][\"name\"~\"Maltepe Belediye\"]"},
+  {"query": "kartal adliyesi", "osm": "[\"amenity\"=\"courthouse\"][\"name\"~\"Anadolu Adalet Sarayı\"]"},
+
+  {"query": "viaport", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Viaport\",i]", "radius": 300},
+  {"query": "hilltown avm", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Hilltown\",i]", "radius": 300},
+  {"query": "pendorya avm", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Pendorya\",i]", "radius": 300},
+  {"query": "neomarin avm", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Neomarin\",i]", "radius": 300},
+  {"query": "akasya avm", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Akasya\",i]", "radius": 300},
+  {"query": "emaar square", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Emaar\",i]", "radius": 300},
+
+  {"query": "sabancı üniversitesi", "osm": "[\"amenity\"=\"university\"][\"name\"~\"Sabancı Üniversitesi\"]", "radius": 500},
+  {"query": "yeditepe üniversitesi", "osm": "[\"amenity\"=\"university\"][\"name\"~\"Yeditepe\"]", "radius": 500},
+  {"query": "boğaziçi üniversitesi", "osm": "[\"amenity\"=\"university\"][\"name\"~\"Boğaziçi Üniversitesi\"]", "radius": 500},
+
+  {"query": "ankara caddesi kartal", "osm": "[\"highway\"][\"name\"=\"Ankara Caddesi\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "bağdat caddesi", "osm": "[\"highway\"][\"name\"=\"Bağdat Caddesi\"]", "radius": 50},
+  {"query": "çanakkale caddesi kartal", "osm": "[\"highway\"][\"name\"~\"^[ÇC]anakkale Caddesi$\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "turgut özal bulvarı kartal", "osm": "[\"highway\"][\"name\"=\"Turgut Özal Bulvarı\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "ihlas sokağı kartal", "osm": "[\"highway\"][\"name\"=\"İhlas Sokağı\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "şehzade caddesi kartal", "osm": "[\"highway\"][\"name\"=\"Şehzade Caddesi\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "meşeli ayazma caddesi", "osm": "[\"highway\"][\"name\"=\"Meşeli Ayazma Caddesi\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "hürriyet caddesi kartal", "osm": "[\"highway\"][\"name\"=\"Hürriyet Caddesi\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "atatürk caddesi pendik", "osm": "[\"highway\"][\"name\"=\"Atatürk Caddesi\"]", "bbox": "(40.85,29.20,40.95,29.36)", "radius": 50},
+  {"query": "istasyon caddesi tuzla", "osm": "[\"highway\"][\"name\"=\"İstasyon Caddesi\"]", "bbox": "(40.79,29.26,40.90,29.40)", "radius": 50},
+
+  {"query": "esentepe kartal", "osm": "[\"place\"][\"name\"=\"Esentepe\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 1000},
+  {"query": "soğanlık", "osm": "[\"place\"][\"name\"~\"Soğanlık\"]", "radius": 1500},
+  {"query": "yakacık", "osm": "[\"place\"][\"name\"~\"Yakacık\"]", "radius": 1500},
+  {"query": "kurtköy", "osm": "[\"place\"][\"name\"=\"Kurtköy\"]", "radius": 1500},
+  {"query": "aydınlı tuzla", "osm": "[\"place\"][\"name\"=\"Aydınlı\"]", "bbox": "(40.79,29.26,40.90,29.40)", "radius": 1500},
+  {"query": "velibaba pendik", "osm": "[\"place\"][\"name\"=\"Velibaba\"]", "bbox": "(40.85,29.20,40.95,29.36)", "radius": 1500},
+  {"query": "gümüşpınar kartal", "osm": "[\"place\"][\"name\"=\"Gümüşpınar\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 1500},
+
+  {"query": "taksim meydanı", "osm": "[\"name\"=\"Taksim Meydanı\"]", "radius": 300},
+  {"query": "galata kulesi", "osm": "[\"name\"=\"Galata Kulesi\"]"},
+  {"query": "ayasofya", "osm": "[\"name\"~\"^Ayasofya\"]", "radius": 300},
+  {"query": "kız kulesi", "osm": "[\"name\"=\"Kız Kulesi\"]"},
+  {"query": "çamlıca camii", "osm": "[\"amenity\"=\"place_of_worship\"][\"name\"~\"Çamlıca Camii\"]", "radius": 300},
+
+  {"query": "kartal metro durağı", "osm": "[\"highway\"=\"bus_stop\"][\"name\"~\"Kartal Metro\"]", "radius": 100}
+]

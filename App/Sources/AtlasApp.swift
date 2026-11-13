@@ -3,6 +3,7 @@ import LocationEngine
 import NavigationEngine
 import RoutingEngine
 import SwiftUI
+import TrafficEngine
 
 @main
 struct AtlasApp: App {
@@ -13,6 +14,8 @@ struct AtlasApp: App {
     private let initiallyNight: Bool
     private let planner = try? RoutePlanner()
     private let navigation = try? NavigationSession()
+    /// nil without a HERE key in the build: routes then stay labelled "Trafik dahil değil".
+    private let traffic = HERETrafficProvider()
 
     init() {
         let settings = AppSettings()
@@ -29,7 +32,13 @@ struct AtlasApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeScreen(startsTracking: startsTracking, initiallyNight: initiallyNight, planner: planner, navigation: navigation)
+            HomeScreen(
+                startsTracking: startsTracking,
+                initiallyNight: initiallyNight,
+                planner: planner,
+                navigation: navigation,
+                traffic: traffic
+            )
                 .environment(settings)
                 .environment(location)
         }

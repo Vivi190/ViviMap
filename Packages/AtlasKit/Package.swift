@@ -11,7 +11,7 @@ let package = Package(
             name: "AtlasKit",
             targets: [
                 "AppCore", "DesignSystem", "LocationEngine", "MapEngine", "Diagnostics",
-                "SearchEngine", "RoutingEngine", "NavigationEngine",
+                "SearchEngine", "RoutingEngine", "NavigationEngine", "TrafficEngine",
             ]
         ),
     ],
@@ -47,10 +47,12 @@ let package = Package(
             name: "NavigationEngine",
             dependencies: ["RoutingEngine", .product(name: "FerrostarCore", package: "ferrostar")]
         ),
+        .target(name: "TrafficEngine"),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),
         .testTarget(name: "LocationEngineTests", dependencies: ["LocationEngine"]),
         .testTarget(name: "SearchEngineTests", dependencies: ["SearchEngine"], resources: [.copy("Fixtures")]),
         .testTarget(name: "RoutingEngineTests", dependencies: ["RoutingEngine"]),
+        .testTarget(name: "TrafficEngineTests", dependencies: ["TrafficEngine"]),
         .testTarget(
             name: "NavigationEngineTests",
             dependencies: ["NavigationEngine", "RoutingEngine", "SearchEngine", .product(name: "FerrostarCore", package: "ferrostar")]

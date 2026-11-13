@@ -8,6 +8,7 @@ import NavigationEngine
 import RoutingEngine
 import SearchEngine
 import SwiftUI
+import TrafficEngine
 
 enum Defaults {
     static var istanbul: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: 41.0082, longitude: 28.9784) }
@@ -56,17 +57,29 @@ struct HomeScreen: View {
     @State private var simulator = DriveSimulator()
     /// Feeds the user puck during a simulated drive; nil = real GPS.
     @State private var simulatedPuck: StaticLocationManager?
+    @State private var trafficEstimates: [Int: TrafficEstimate] = [:]
+    @State private var trafficStatus = RouteCard.TrafficStatus.unavailable
+    /// Bumped per route request so a late traffic answer never lands on newer routes.
+    @State private var planGeneration = 0
 
     private let planner: RoutePlanner?
     private let navigation: NavigationSession?
+    private let traffic: (any TrafficProvider)?
     private static let pitch3D: Double = 55
 
-    init(startsTracking: Bool, initiallyNight: Bool, planner: RoutePlanner?, navigation: NavigationSession?) {
+    init(
+        startsTracking: Bool,
+        initiallyNight: Bool,
+        planner: RoutePlanner?,
+        navigation: NavigationSession?,
+        traffic: (any TrafficProvider)?
+    ) {
         _camera = State(initialValue: startsTracking ? .trackUserLocation(zoom: 15.5) : .center(Defaults.istanbul, zoom: 10))
         _awaitingFirstFix = State(initialValue: !startsTracking)
         _isNight = State(initialValue: initiallyNight)
         self.planner = planner
         self.navigation = navigation
+        self.traffic = traffic
     }
 
     private var activeRoute: RouteOption? {
@@ -302,6 +315,8 @@ struct HomeScreen: View {
         RouteCard(
             place: place,
             routes: routes,
+            traffic: trafficEstimates,
+            trafficStatus: trafficStatus,
             selection: $routeSelection,
             onStart: startHandler,
             onSimulate: simulateHandler,
@@ -414,11 +429,15 @@ struct HomeScreen: View {
         }
         isPlanning = true
         routeError = nil
+        planGeneration += 1
+        let generation = planGeneration
         Task {
             do {
                 let found = try await planner.routes(from: here, to: place.point)
+                guard generation == planGeneration else { return }
                 routeSelection = 0
                 routes = found
+                scoreTraffic(found, generation: generation)
                 if let first = found.first {
                     camera = .fitting(
                         southWest: first.southWest,
@@ -430,6 +449,40 @@ struct HomeScreen: View {
                 routeError = error.localizedDescription
             }
             isPlanning = false
+        }
+    }
+
+    /// Measures every candidate with the one traffic provider (ADR-5) and preselects the fastest. Shown only
+    /// when all of them were measured: mixing traffic and free-flow times would compare different scales.
+    private func scoreTraffic(_ options: [RouteOption], generation: Int) {
+        trafficEstimates = [:]
+        guard let traffic else {
+            trafficStatus = .unavailable
+            return
+        }
+        trafficStatus = .loading
+        let geometries = options.map { ($0.index, $0.coordinates) }
+        Task {
+            let measured = await withTaskGroup(of: (Int, TrafficEstimate?).self) { group in
+                for (index, coordinates) in geometries {
+                    group.addTask { (index, try? await traffic.estimate(coordinates)) }
+                }
+                var found: [Int: TrafficEstimate] = [:]
+                for await (index, estimate) in group {
+                    if let estimate { found[index] = estimate }
+                }
+                return found
+            }
+            guard generation == planGeneration else { return }
+            guard measured.count == geometries.count else {
+                trafficStatus = .failed
+                return
+            }
+            trafficEstimates = measured
+            trafficStatus = .ready
+            if routeSelection == 0, let fastest = measured.min(by: { $0.value.duration < $1.value.duration })?.key {
+                routeSelection = fastest
+            }
         }
     }
 

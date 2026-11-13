@@ -4,6 +4,7 @@ import LocationEngine
 import RoutingEngine
 import SearchEngine
 import SwiftUI
+import TrafficEngine
 
 /// The search pill at the top of the map; opens the search screen.
 struct SearchBarButton: View {
@@ -255,8 +256,19 @@ struct PlaceCard: View {
 
 /// Route preview: time first (what a driver decides on), then distance, arrival, main roads, alternatives.
 struct RouteCard: View {
+    enum TrafficStatus {
+        /// No HERE key in this build.
+        case unavailable
+        case loading
+        /// Every alternative measured with live traffic.
+        case ready
+        case failed
+    }
+
     let place: Place
     let routes: [RouteOption]
+    let traffic: [Int: TrafficEstimate]
+    let trafficStatus: TrafficStatus
     @Binding var selection: Int
     /// nil when navigation could not be set up; the button is hidden rather than shown broken.
     let onStart: (() -> Void)?
@@ -264,11 +276,17 @@ struct RouteCard: View {
     let onSimulate: (() -> Void)?
     let onClose: () -> Void
 
+    /// Live-traffic time when every alternative was measured, otherwise Valhalla's free-flow estimate.
+    private func duration(_ option: RouteOption) -> TimeInterval {
+        trafficStatus == .ready ? traffic[option.index]?.duration ?? option.duration : option.duration
+    }
+
     var body: some View {
         let route = routes[min(selection, routes.count - 1)]
+        let estimate = trafficStatus == .ready ? traffic[route.index] : nil
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
-                Text(Formatting.duration(seconds: route.duration))
+                Text(Formatting.duration(seconds: duration(route)))
                     .font(.system(.largeTitle, weight: .bold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
@@ -286,9 +304,12 @@ struct RouteCard: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Rotayı kapat"))
             }
-            Text("Varış \(Date.now.addingTimeInterval(route.duration).formatted(date: .omitted, time: .shortened)) · \(place.name)")
+            Text("Varış \(Date.now.addingTimeInterval(duration(route)).formatted(date: .omitted, time: .shortened)) · \(place.name)")
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
+            if let estimate {
+                TrafficDelayLabel(estimate: estimate)
+            }
             if !route.mainRoads.isEmpty {
                 Label(route.mainRoads.joined(separator: " → "), systemImage: "road.lanes")
                     .font(.subheadline)
@@ -299,7 +320,7 @@ struct RouteCard: View {
                 HStack(spacing: Spacing.s) {
                     ForEach(routes) { option in
                         Button { selection = option.index } label: {
-                            Text(Formatting.duration(seconds: option.duration))
+                            Text(Formatting.duration(seconds: duration(option)))
                                 .font(.subheadline.weight(.semibold))
                                 .monospacedDigit()
                                 .padding(.horizontal, Spacing.m)
@@ -308,14 +329,11 @@ struct RouteCard: View {
                         .buttonStyle(.bordered)
                         .buttonBorderShape(.capsule)
                         .tint(option.index == selection ? Color.atlasAccent : Color.secondary)
-                        .accessibilityLabel(Text("Alternatif \(option.index + 1): \(Formatting.duration(seconds: option.duration))"))
+                        .accessibilityLabel(Text("Alternatif \(option.index + 1): \(Formatting.duration(seconds: duration(option)))"))
                     }
                 }
             }
-            // Honest about the source: the public Valhalla has no live traffic (Phase 3 adds HERE).
-            Label("Trafik dahil değil — trafiksiz tahmini süre", systemImage: "info.circle")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            trafficSource
             if let onStart {
                 HStack(spacing: Spacing.s) {
                     Button(action: onStart) {
@@ -347,6 +365,45 @@ struct RouteCard: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("route.card")
         .animation(.snappy(duration: 0.25), value: selection)
+        .animation(.snappy(duration: 0.25), value: trafficStatus)
+    }
+
+    /// Always says where the time comes from; HERE's terms require the attribution where its data shows.
+    @ViewBuilder private var trafficSource: some View {
+        switch trafficStatus {
+        case .unavailable:
+            Label("Trafik dahil değil — trafiksiz tahmini süre", systemImage: "info.circle")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        case .loading:
+            HStack(spacing: Spacing.s) {
+                ProgressView().controlSize(.small)
+                Text("Canlı trafik alınıyor…")
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        case .failed:
+            Label("Trafik alınamadı — trafiksiz tahmini süre", systemImage: "exclamationmark.triangle")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        case .ready:
+            Label("Canlı trafikle · © HERE", systemImage: "dot.radiowaves.up.forward")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// "Trafik 6 dk ekliyor", coloured by how much slower than free flow (HERE's own baseline, same scale).
+struct TrafficDelayLabel: View {
+    let estimate: TrafficEstimate
+
+    var body: some View {
+        let share = estimate.baseDuration > 0 ? estimate.delay / estimate.baseDuration : 0
+        let text = estimate.delay >= 60 ? "Trafik \(Formatting.duration(seconds: estimate.delay)) ekliyor" : "Trafik akıcı"
+        Label(text, systemImage: "car.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(share >= 0.25 ? Color.atlasCritical : share >= 0.1 ? Color.atlasWarning : Color.green)
     }
 }
 

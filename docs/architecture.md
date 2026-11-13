@@ -107,8 +107,9 @@ Gerekçelerin ve kaynakların ayrıntısı: [research/2026-11-13-faz0-arastirma.
 
 - Konum geçmişi ve kişisel istatistikler yalnızca cihazda tutulur. Analytics ya da üçüncü taraf takip SDK'sı yok.
 - API anahtarları (HERE, Stadia) koda yazılmaz.
-  - Derleme sırasında yapılandırmaya eklenir, cihazda Keychain'de tutulur.
-  - Mümkün olan yerlerde kendi küçük vekil sunucumuz kullanılır.
+  - Derleme sırasında yapılandırmaya eklenir: `HERE_API_KEY` GitHub Secret'ı → derleme ayarı → Info.plist (`HEREAPIKey`).
+  - Anahtar uygulama paketinin içinde düz metin olarak durur ve paketi açan biri okuyabilir. Kişisel TestFlight kullanımı için kabul edildi. Uygulama yaygınlaşırsa küçük bir vekil sunucuya taşınır; Keychain bu durumu değiştirmez.
+  - Ücretli API'ler için aylık kota bekçisi (`RequestBudget`): her cihazda ücretsiz kotanın yarısının altında durur. Böylece iki telefon aynı anahtarı kullansa bile fatura çıkmaz.
 - İmzalama malzemesi yalnızca GitHub Secrets'ta durur ve iş akışı sonunda runner'dan silinir. `.gitignore` bu dosyaları kesin olarak dışarıda tutar.
 - Offline paketler (Faz 4) SHA-256 ile doğrulanır.
 
@@ -144,7 +145,7 @@ Her modül `Packages/AtlasKit` içinde bir hedef olarak yaşar. Sağlayıcıya b
 | RoutingEngine | `RouteProvider`: Valhalla online/offline, aday üretimi | 2 / 3 / 4 | — |
 | NavigationEngine | Ferrostar sarmalayıcı, rota takibi, rota değiştirme kararı | 2 / 3 | — |
 | VoiceGuidance | Türkçe talimat üretimi, AVSpeech, ses oturumu | 2 | — |
-| TrafficEngine | `TrafficProvider`: HERE, trafik katmanı | 3 | — |
+| TrafficEngine | `TrafficProvider`: HERE, trafik katmanı | 3 | 🟡 HERE route import puanlama + kota bekçisi; anahtar bekliyor |
 | OfflineEngine | Bölge paketleri, indirme/devam ettirme, bütünlük | 4 | — |
 | RoadHazards | Kasis/kamera/tehlike verisi, kullanıcı işaretleri, uyarı zamanlaması | 5 | — |
 | TripHistory | Sürüş kayıtları, süre kalibrasyonu | 6 / 7 | — |
