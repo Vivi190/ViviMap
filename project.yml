@@ -86,6 +86,7 @@ schemes:
       targets:
         - package: AtlasKit/AppCoreTests
         - package: AtlasKit/LocationEngineTests
+        - package: AtlasKit/SearchEngineTests
         - AtlasUITests
     archive:
       config: Release
