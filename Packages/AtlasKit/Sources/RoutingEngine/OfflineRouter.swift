@@ -1,5 +1,6 @@
 import Foundation
 import Valhalla
+import ValhallaConfigModels
 
 /// On-device routing over the Istanbul tiles shipped with the app (Rallista/valhalla-mobile, Valhalla 3.9.0,
 /// MIT). It answers the very request body Ferrostar builds for the server, so its OSRM-format reply goes

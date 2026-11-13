@@ -24,6 +24,8 @@ let package = Package(
         .package(url: "https://github.com/stadiamaps/ferrostar", exact: "0.59.0"),
         // On-device Valhalla 3.9.0 for offline routing (MIT); its tiles come from .github/workflows/offline-data.yml.
         .package(url: "https://github.com/Rallista/valhalla-mobile.git", exact: "0.6.4"),
+        // ValhallaConfig lives here; same range valhalla-mobile 0.6.4 asks for.
+        .package(url: "https://github.com/Rallista/valhalla-openapi-models-swift.git", .upToNextMinor(from: "0.6.0")),
     ],
     targets: [
         .target(name: "AppCore"),
@@ -47,6 +49,7 @@ let package = Package(
                 "SearchEngine",
                 .product(name: "FerrostarCore", package: "ferrostar"),
                 .product(name: "Valhalla", package: "valhalla-mobile"),
+                .product(name: "ValhallaConfigModels", package: "valhalla-openapi-models-swift"),
             ]
         ),
         .target(
