@@ -1,6 +1,76 @@
 import AppCore
+import DesignSystem
 import RoadHazards
 import SwiftUI
+import TripHistory
+
+/// Guided drives with predicted vs actual time, and how far off the estimates run for this driver.
+struct TripsView: View {
+    @Environment(TripLog.self) private var log
+
+    var body: some View {
+        List {
+            calibration(withTraffic: true, title: "Trafikli tahminler")
+            calibration(withTraffic: false, title: "Trafiksiz tahminler")
+            Section {
+                ForEach(log.trips) { trip in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(trip.destination).font(.headline).lineLimit(1)
+                            Spacer(minLength: Spacing.s)
+                            Text(trip.startedAt.formatted(.dateTime.day().month(.abbreviated).hour().minute()))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        HStack(spacing: Spacing.s) {
+                            Text("Tahmin \(Formatting.duration(seconds: trip.predicted)) · Gerçek \(Formatting.duration(seconds: trip.actual))")
+                                .monospacedDigit()
+                            if trip.arrived {
+                                let difference = trip.actual - trip.predicted
+                                Text("\(difference >= 0 ? "+" : "−")\(Formatting.duration(seconds: abs(difference)))")
+                                    .monospacedDigit()
+                                    .foregroundStyle(difference > 120 ? Color.atlasWarning : Color.secondary)
+                            } else {
+                                Text("yarıda bitti").foregroundStyle(.secondary)
+                            }
+                        }
+                        .font(.subheadline)
+                        Text("\(Formatting.distance(meters: trip.distance)) · \(trip.predictedWithTraffic ? "trafikli tahmin" : "trafiksiz tahmin")")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .onDelete { log.remove(atOffsets: $0) }
+            } footer: {
+                if !log.trips.isEmpty { Text("Sürüşler yalnızca bu telefonda tutulur.") }
+            }
+        }
+        .overlay {
+            if log.trips.isEmpty {
+                ContentUnavailableView(
+                    "Henüz sürüş yok",
+                    systemImage: "car",
+                    description: Text("Navigasyonla yaptığın her sürüşte, başta söylenen süre ile gerçekleşen süre burada karşılaştırılır. Simülasyonlar kaydedilmez.")
+                )
+            }
+        }
+        .navigationTitle("Sürüşlerim")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder private func calibration(withTraffic: Bool, title: String) -> some View {
+        if let result = log.calibration(withTraffic: withTraffic) {
+            let percent = Int((abs(result.ratio - 1) * 100).rounded())
+            Section {
+                Text(percent == 0
+                    ? "\(title) senin sürüşlerinde tuttu."
+                    : "\(title) senin sürüşlerinde ortalama %\(percent) \(result.ratio > 1 ? "daha uzun" : "daha kısa") sürdü.")
+            } footer: {
+                Text("\(result.drives) tamamlanmış sürüşün ortancası; 5 dakikadan kısa sürüşler sayılmaz.")
+            }
+        }
+    }
+}
 
 /// Age of the shipped camera/bump data, read once.
 enum HazardData {
@@ -47,6 +117,7 @@ struct MarkedHazardsView: View {
 struct MapSettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(UserHazardStore.self) private var userHazards
+    @Environment(TripLog.self) private var trips
     @Environment(\.dismiss) private var dismiss
     let showDiagnostics: () -> Void
 
@@ -78,6 +149,16 @@ struct MapSettingsView: View {
                 Text("Uyarılar")
             } footer: {
                 Text("Veri: OpenStreetMap, \(HazardData.fetched). Her kamera ve kasis haritada işli değil; Pendik, Kartal ve Tuzla'da kamera verisi çok az.")
+            }
+
+            Section {
+                NavigationLink {
+                    TripsView()
+                } label: {
+                    LabeledContent("Sürüşlerim", value: "\(trips.trips.count)")
+                }
+            } footer: {
+                Text("Varış tahminlerinin senin sürüşlerinde ne kadar tuttuğu.")
             }
 
             Section {

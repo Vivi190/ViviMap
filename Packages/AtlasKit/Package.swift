@@ -11,7 +11,7 @@ let package = Package(
             name: "AtlasKit",
             targets: [
                 "AppCore", "DesignSystem", "LocationEngine", "MapEngine", "Diagnostics",
-                "SearchEngine", "RoutingEngine", "NavigationEngine", "TrafficEngine", "RoadHazards",
+                "SearchEngine", "RoutingEngine", "NavigationEngine", "TrafficEngine", "RoadHazards", "TripHistory",
             ]
         ),
     ],
@@ -50,11 +50,13 @@ let package = Package(
         .target(name: "TrafficEngine"),
         // Cameras and bumps from OSM, refreshed with Tools/hazards/fetch_hazards.py.
         .target(name: "RoadHazards", resources: [.copy("Resources/hazards-istanbul.json")]),
+        .target(name: "TripHistory"),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),
         .testTarget(name: "LocationEngineTests", dependencies: ["LocationEngine"]),
         .testTarget(name: "SearchEngineTests", dependencies: ["SearchEngine"], resources: [.copy("Fixtures")]),
         .testTarget(name: "RoutingEngineTests", dependencies: ["RoutingEngine"]),
         .testTarget(name: "TrafficEngineTests", dependencies: ["TrafficEngine"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "TripHistoryTests", dependencies: ["TripHistory"]),
         .testTarget(
             name: "NavigationEngineTests",
             dependencies: ["NavigationEngine", "RoutingEngine", "SearchEngine", "RoadHazards", .product(name: "FerrostarCore", package: "ferrostar")]

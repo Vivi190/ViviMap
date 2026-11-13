@@ -98,6 +98,7 @@ schemes:
         - package: AtlasKit/RoutingEngineTests
         - package: AtlasKit/NavigationEngineTests
         - package: AtlasKit/TrafficEngineTests
+        - package: AtlasKit/TripHistoryTests
         - AtlasUITests
     archive:
       config: Release

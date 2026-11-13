@@ -10,6 +10,7 @@ import RoutingEngine
 import SearchEngine
 import SwiftUI
 import TrafficEngine
+import TripHistory
 
 enum Defaults {
     static var istanbul: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: 41.0082, longitude: 28.9784) }
@@ -42,6 +43,7 @@ struct HomeScreen: View {
     @Environment(AppSettings.self) private var settings
     @Environment(LocationProvider.self) private var location
     @Environment(UserHazardStore.self) private var userHazards
+    @Environment(TripLog.self) private var trips
     @Environment(\.openURL) private var openURL
 
     @State private var camera: MapViewCamera
@@ -66,6 +68,16 @@ struct HomeScreen: View {
     /// Bumped per route request so a late traffic answer never lands on newer routes.
     @State private var planGeneration = 0
     @State private var trafficWatch = TrafficWatch()
+    /// What the driver was told when a real (not simulated) drive started, for the trip log.
+    @State private var tripStart: TripStart?
+
+    struct TripStart {
+        let date: Date
+        let destination: String
+        let distance: Double
+        let predicted: TimeInterval
+        let withTraffic: Bool
+    }
 
     private let planner: RoutePlanner?
     private let navigation: NavigationSession?
@@ -166,6 +178,7 @@ struct HomeScreen: View {
                 .environment(settings)
                 .environment(location)
                 .environment(userHazards)
+                .environment(trips)
                 .preferredColorScheme(isNight ? .dark : .light)
         }
         .task(id: settings.appearanceMode) {
@@ -182,6 +195,9 @@ struct HomeScreen: View {
         }
         .task(id: isNavigating) { await watchTraffic() }
         .onChange(of: hazardKinds) { _, kinds in navigation?.hazardKinds = kinds }
+        .onChange(of: navigation?.hasArrived) { _, arrived in
+            if arrived == true { recordTrip(arrived: true) }
+        }
         .onChange(of: navigation?.guidanceZoom) { _, zoom in
             // Only while the camera follows the car; a driver who panned the map keeps their view.
             if let zoom, isNavigating, camera.trackingMode == .followDirection { followCourse(zoom: zoom) }
@@ -455,7 +471,15 @@ struct HomeScreen: View {
             location.setNavigating(true)
             // The screen stays on while guiding (it can still be locked by hand; guidance continues).
             UIApplication.shared.isIdleTimerDisabled = true
-            if simulated { simulate(route, from: start) }
+            if simulated {
+                simulate(route, from: start)
+            } else if let place = selectedPlace {
+                let estimate = trafficStatus == .ready ? trafficEstimates[route.index] : nil
+                tripStart = TripStart(
+                    date: .now, destination: place.name, distance: route.distance,
+                    predicted: estimate?.duration ?? route.duration, withTraffic: estimate != nil
+                )
+            }
             is3D = true
             followCourse(zoom: navigation.guidanceZoom)
         } catch {
@@ -490,7 +514,18 @@ struct HomeScreen: View {
         }
     }
 
+    /// Logged at arrival (so a late tap on "Bitir" does not lengthen the drive) or when ended on the way.
+    private func recordTrip(arrived: Bool) {
+        guard let start = tripStart else { return }
+        tripStart = nil
+        trips.record(Trip(
+            startedAt: start.date, endedAt: .now, destination: start.destination, distance: start.distance,
+            predicted: start.predicted, predictedWithTraffic: start.withTraffic, arrived: arrived
+        ))
+    }
+
     private func endNavigation() {
+        recordTrip(arrived: false)
         simulator.stop()
         trafficWatch.reset()
         if simulatedPuck != nil {
