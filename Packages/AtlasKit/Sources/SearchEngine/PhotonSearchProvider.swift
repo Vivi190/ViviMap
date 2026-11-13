@@ -117,13 +117,14 @@ enum PlaceRanking {
         let text = query.lowercased(with: Locale(identifier: "tr"))
         let boosted = boosts.filter { rule in rule.words.contains { text.contains($0) } }
             .reduce(into: Set<String>()) { $0.formUnion($1.categories) }
-        let wantsStops = text.contains("durak")
+        // Turkish softens k → ğ before a vowel suffix: "durak" but "durağı".
+        let wantsStops = text.contains("durak") || text.contains("durağ")
 
         func bucket(_ place: Place) -> Int {
             guard let category = place.category else { return 1 }
+            if wantsStops { return stops.contains(category) ? 0 : 1 }
             if boosted.contains(category) { return 0 }
-            if !wantsStops, stops.contains(category) { return 2 }
-            return 1
+            return stops.contains(category) ? 2 : 1
         }
         // Stable: equal buckets keep Photon's relevance order.
         return places.enumerated()
