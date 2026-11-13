@@ -65,7 +65,8 @@ struct RoutePlannerOfflineTests {
             Issue.record("a 'no path' answer must not fall back to the device")
             return Data()
         }
-        await #expect(throws: RoutePlanner.PlanningError.self) { try await planner.routes(from: kartal, to: destination) }
+        // The result is dropped inside: routes are main-actor values and may not leave as the closure's result.
+        await #expect(throws: RoutePlanner.PlanningError.self) { _ = try await planner.routes(from: kartal, to: destination) }
     }
 
     @Test func deviceFailureSaysWhy() async throws {
