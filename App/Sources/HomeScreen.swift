@@ -61,6 +61,7 @@ struct HomeScreen: View {
     @State private var trafficStatus = RouteCard.TrafficStatus.unavailable
     /// Bumped per route request so a late traffic answer never lands on newer routes.
     @State private var planGeneration = 0
+    @State private var trafficWatch = TrafficWatch()
 
     private let planner: RoutePlanner?
     private let navigation: NavigationSession?
@@ -153,6 +154,7 @@ struct HomeScreen: View {
         .onAppear {
             search.origin = { [location] in location.lastLocation.map { GeoPoint($0.coordinate) } }
         }
+        .task(id: isNavigating) { await watchTraffic() }
         .onChange(of: location.hasFix) { _, hasFix in
             // First fix after a cold start: jump to the user unless they already moved the map.
             guard hasFix, awaitingFirstFix else { return }
@@ -331,6 +333,10 @@ struct HomeScreen: View {
     private func navigationOverlay(_ navigation: NavigationSession) -> some View {
         VStack(spacing: Spacing.s) {
             NavigationBanner(navigation: navigation)
+            if let suggestion = trafficWatch.suggestion {
+                RouteSuggestionBanner(suggestion: suggestion, onAccept: acceptSuggestion) { trafficWatch.dismiss() }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
             HStack {
                 Spacer(minLength: 0)
                 MapControlGroup {
@@ -358,10 +364,31 @@ struct HomeScreen: View {
                         .accessibilityIdentifier("nav.simulation")
                 }
             }
-            NavigationBottomBar(navigation: navigation, onEnd: { endNavigation() })
+            NavigationBottomBar(navigation: navigation, trafficArrival: trafficWatch.arrival, onEnd: { endNavigation() })
         }
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)
+        .animation(.snappy(duration: 0.3), value: trafficWatch.suggestion?.option.id)
+    }
+
+    /// Traffic rounds while guiding; the task is cancelled when navigation ends (its id changes).
+    private func watchTraffic() async {
+        guard isNavigating, let traffic, let planner, let navigation, let destination = selectedPlace?.point else { return }
+        trafficWatch.reset()
+        var wait: Duration = .seconds(20) // first look soon after the start, then every few minutes
+        while !Task.isCancelled {
+            try? await Task.sleep(for: wait)
+            wait = TrafficWatch.interval
+            guard !Task.isCancelled, let position = location.lastLocation else { continue }
+            await trafficWatch.check(navigation: navigation, planner: planner, traffic: traffic, position: position, destination: destination)
+        }
+    }
+
+    private func acceptSuggestion() {
+        guard let navigation, let position = location.lastLocation,
+              let option = trafficWatch.accept(navigation: navigation, from: position) else { return }
+        // A simulated drive continues along the new route from here.
+        if simulatedPuck != nil { simulate(option, from: position) }
     }
 
     private func startNavigation(simulated: Bool) {
@@ -390,7 +417,7 @@ struct HomeScreen: View {
     /// Drives the route at the average speed Valhalla assumed, so the simulated arrival matches the estimate.
     /// Fixes go to the puck and through LocationProvider, i.e. the same path as GPS (speedometer, guidance).
     private func simulate(_ route: RouteOption, from start: CLLocation) {
-        let puck = StaticLocationManager(initialLocation: start)
+        let puck = simulatedPuck ?? StaticLocationManager(initialLocation: start)
         simulatedPuck = puck
         simulator.start(along: route.coordinates, speed: route.distance / max(route.duration, 1)) { [location] fix in
             puck.lastLocation = fix
@@ -400,6 +427,7 @@ struct HomeScreen: View {
 
     private func endNavigation() {
         simulator.stop()
+        trafficWatch.reset()
         if simulatedPuck != nil {
             simulatedPuck = nil
             location.endSimulation()

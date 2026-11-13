@@ -84,6 +84,20 @@ public final class NavigationSession {
         voice.speak("Rota başladı. \(Formatted.duration(option.duration)) sürecek.")
     }
 
+    /// Moves guidance to another route (an accepted traffic suggestion) without ending the session.
+    public func switchRoute(to option: RouteOption, from location: CLLocation) throws {
+        planner = AnnouncementPlanner()
+        try core.startNavigation(route: option.route, userLocation: UserLocation(clLocation: location))
+        voice.speak("Daha hızlı rotaya geçildi.")
+    }
+
+    /// The rest of the route from the current position, for re-measuring traffic on what is left.
+    public func remainingRoute() -> [CLLocationCoordinate2D] {
+        guard let remaining = distanceRemaining, routeCoordinates.count > 1 else { return [] }
+        let path = RoutePath(routeCoordinates)
+        return path.remainder(after: max(0, path.length - remaining))
+    }
+
     public func stop() {
         core.stopNavigation()
         subscription = nil

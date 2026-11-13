@@ -45,6 +45,16 @@ struct RoutePathTests {
         #expect(fix.horizontalAccuracy == 5)
     }
 
+    @Test func remainderStartsWhereTheDriverIs() {
+        let path = RoutePath([start, corner, end])
+        let rest = path.remainder(after: 40)
+        #expect(rest.count == 3)
+        #expect(abs(rest[0].longitude - (29.0 + 0.001 * 40 / path.offsets[1])) < 1e-9)
+        #expect(rest[1].longitude == corner.longitude && rest[2].latitude == end.latitude)
+        // Past the corner only the last leg is left.
+        #expect(path.remainder(after: path.offsets[1] + 10).count == 2)
+    }
+
     @Test func degenerateInputs() {
         #expect(RoutePath([]).length == 0)
         #expect(RoutePath([start]).length == 0)

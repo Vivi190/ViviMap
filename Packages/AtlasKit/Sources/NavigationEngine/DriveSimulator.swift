@@ -70,6 +70,12 @@ struct RoutePath {
         return (coordinate, Self.bearing(from: a, to: b))
     }
 
+    /// The line after `distance` metres, starting exactly there (what is left of a route).
+    func remainder(after distance: CLLocationDistance) -> [CLLocationCoordinate2D] {
+        guard coordinates.count > 1 else { return coordinates }
+        return [point(at: distance).coordinate] + zip(coordinates, offsets).filter { $0.1 > distance }.map(\.0)
+    }
+
     func fix(at distance: CLLocationDistance, speed: CLLocationSpeed, timestamp: Date) -> CLLocation {
         let (coordinate, course) = point(at: distance)
         return CLLocation(

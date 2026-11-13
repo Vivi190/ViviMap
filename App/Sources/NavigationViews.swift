@@ -1,6 +1,7 @@
 import AppCore
 import DesignSystem
 import NavigationEngine
+import RoutingEngine
 import SwiftUI
 
 /// Turn banner: maneuver arrow, distance, Turkish action and the road to take. Solid and high-contrast so
@@ -76,6 +77,8 @@ struct NavigationBanner: View {
 /// Arrival time first (what the driver plans around), then remaining time and distance; mute and end.
 struct NavigationBottomBar: View {
     let navigation: NavigationSession
+    /// From the last live-traffic round; nil = free-flow estimate, labelled as such.
+    let trafficArrival: Date?
     let onEnd: () -> Void
     @State private var isMuted = false
 
@@ -83,16 +86,18 @@ struct NavigationBottomBar: View {
         HStack(spacing: Spacing.m) {
             VStack(alignment: .leading, spacing: 2) {
                 if let remaining = navigation.durationRemaining {
-                    Text(Date.now.addingTimeInterval(remaining).formatted(date: .omitted, time: .shortened))
+                    let arrival = trafficArrival ?? Date.now.addingTimeInterval(remaining)
+                    let left = trafficArrival.map { max(0, $0.timeIntervalSinceNow) } ?? remaining
+                    Text(arrival.formatted(date: .omitted, time: .shortened))
                         .font(.title2.weight(.bold))
                         .monospacedDigit()
-                    Text("\(Formatting.duration(seconds: remaining)) · \(Formatting.distance(meters: navigation.distanceRemaining ?? 0))")
+                    Text("\(Formatting.duration(seconds: left)) · \(Formatting.distance(meters: navigation.distanceRemaining ?? 0))")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                         .lineLimit(1)
-                    // Kept visible on its own line: the estimate has no live traffic yet (Phase 3).
-                    Text("Trafik hariç")
+                    // Always says where the time comes from.
+                    Text(trafficArrival == nil ? "Trafik hariç" : "Canlı trafikle · © HERE")
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
                 } else {
@@ -125,5 +130,43 @@ struct NavigationBottomBar: View {
         }
         .padding(Spacing.l)
         .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+}
+
+/// "Daha hızlı rota · 5 dk kazanç": one tap to switch; left alone, the current route stays.
+struct RouteSuggestionBanner: View {
+    let suggestion: TrafficWatch.Suggestion
+    let onAccept: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: Spacing.m) {
+            Image(systemName: "arrow.triangle.branch")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(Color.atlasAccent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Daha hızlı rota")
+                    .font(.headline)
+                Text("\(Formatting.duration(seconds: suggestion.gain)) kazanç" + (suggestion.option.mainRoads.first.map { " · \($0)" } ?? ""))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Button("Kalsın", action: onDismiss)
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+            Button("Geç", action: onAccept)
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .accessibilityIdentifier("nav.suggestion.accept")
+        }
+        .font(.headline)
+        .padding(Spacing.m)
+        .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .task {
+            // Unanswered while driving means "keep my route"; a tap cancels this first.
+            if (try? await Task.sleep(for: .seconds(20))) != nil { onDismiss() }
+        }
     }
 }
