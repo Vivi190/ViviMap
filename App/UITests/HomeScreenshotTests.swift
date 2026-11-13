@@ -41,7 +41,8 @@ final class HomeScreenshotTests: XCTestCase {
 
         // Guidance: banner with the first Turkish instruction, then end it.
         app.buttons["route.start"].tap()
-        XCTAssertTrue(app.otherElements["nav.banner"].waitForExistence(timeout: 15), "navigation banner missing")
+        // The banner combines its children for VoiceOver, so it surfaces as a static text, not "other".
+        XCTAssertTrue(app.descendants(matching: .any)["nav.banner"].waitForExistence(timeout: 15), "navigation banner missing")
         settle(6)
         capture("3c-navigation")
         app.buttons["nav.end"].tap()
