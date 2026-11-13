@@ -38,7 +38,7 @@ public final class RoutePlanner {
 
     public init(
         session: URLSession = .shared,
-        offline: (@Sendable (Data) async throws -> Data)? = OfflineRouter.bundled.map { router in { try await router.route($0) } }
+        offline: (@Sendable (Data) async throws -> Data)? = OfflineRouter.bundledRoute
     ) throws {
         provider = try Self.valhallaProvider()
         adapter = try RouteAdapter.fromWellKnownRouteProvider(wellKnownRouteProvider: provider)

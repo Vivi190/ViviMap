@@ -21,6 +21,13 @@ public final class OfflineRouter: @unchecked Sendable {
         return OfflineRouter(tiles: tiles)
     }()
 
+    /// The bundled router as RoutePlanner's offline hook (nil without the packages). Spelled out with its type:
+    /// inferring it inline in a default argument crashed the type checker.
+    public static var bundledRoute: (@Sendable (Data) async throws -> Data)? {
+        guard let router = bundled else { return nil }
+        return { body in try await router.route(body) }
+    }
+
     /// Valhalla's OSRM-format answer for a /route request body. Runs off the main thread; the engine is built
     /// on first use (it maps the tile extract) and then reused.
     public func route(_ body: Data) async throws -> Data {
