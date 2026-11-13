@@ -39,6 +39,8 @@ public final class NavigationSession {
     /// Speed limit of the road being driven, km/h, only when the map data has one (OSM `maxspeed` via
     /// Valhalla); nil means unknown, and no sign is shown rather than a guessed one.
     public private(set) var speedLimit: Int?
+    /// Camera zoom for the speed and the next turn (GuidanceZoom); changes only in steps.
+    public private(set) var guidanceZoom = GuidanceZoom.levels[2]
 
     public let voice = VoiceGuide()
     /// Which hazards to warn about (settings); takes effect from the next fix.
@@ -189,6 +191,8 @@ public final class NavigationSession {
         durationRemaining = progress.durationRemaining
         let limit = Self.speedLimit(fromAnnotation: state.currentAnnotationJSON)
         if limit != speedLimit { speedLimit = limit }
+        let zoom = GuidanceZoom.level(speed: lastSpeed, distanceToManeuver: progress.distanceToNextManeuver, current: guidanceZoom)
+        if zoom != guidanceZoom { guidanceZoom = zoom }
 
         if let path = routePath {
             let (alert, sentence) = hazardWatch.update(travelled: max(0, path.length - progress.distanceRemaining), speed: lastSpeed)

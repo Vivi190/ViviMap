@@ -182,6 +182,10 @@ struct HomeScreen: View {
         }
         .task(id: isNavigating) { await watchTraffic() }
         .onChange(of: hazardKinds) { _, kinds in navigation?.hazardKinds = kinds }
+        .onChange(of: navigation?.guidanceZoom) { _, zoom in
+            // Only while the camera follows the car; a driver who panned the map keeps their view.
+            if let zoom, isNavigating, camera.trackingMode == .followDirection { followCourse(zoom: zoom) }
+        }
         .onChange(of: routeSelection) { _, index in
             if let option = routes.first(where: { $0.index == index }) { loadFlow(for: option, generation: planGeneration) }
         }
@@ -375,9 +379,17 @@ struct HomeScreen: View {
                 }
                 Spacer(minLength: 0)
                 MapControlGroup {
-                    MapControlButton(systemImage: "location.north.line.fill", label: "Konumumu göster", isActive: true) {
-                        camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
-                    }
+                    MapControlButton(
+                        systemImage: "point.topleft.down.to.point.bottomright.curvepath",
+                        label: "Rotanın tamamı",
+                        isActive: camera.trackingMode == .none
+                    ) { showRouteOverview(navigation) }
+                    MapControlDivider()
+                    MapControlButton(
+                        systemImage: "location.north.line.fill",
+                        label: "Konumumu göster",
+                        isActive: camera.trackingMode == .followDirection
+                    ) { followCourse(zoom: navigation.guidanceZoom) }
                 }
             }
             Spacer(minLength: 0)
@@ -445,10 +457,26 @@ struct HomeScreen: View {
             UIApplication.shared.isIdleTimerDisabled = true
             if simulated { simulate(route, from: start) }
             is3D = true
-            camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
+            followCourse(zoom: navigation.guidanceZoom)
         } catch {
             routeError = "Navigasyon başlatılamadı."
         }
+    }
+
+    private func followCourse(zoom: Double) {
+        camera = .trackUserLocationWithCourse(zoom: zoom, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
+    }
+
+    /// The whole rest of the route, framed between the banner and the bottom bar; "Konumumu göster" returns.
+    private func showRouteOverview(_ navigation: NavigationSession) {
+        let rest = navigation.remainingRoute()
+        guard rest.count > 1 else { return }
+        let lats = rest.map(\.latitude), lons = rest.map(\.longitude)
+        camera = .fitting(
+            southWest: CLLocationCoordinate2D(latitude: lats.min()!, longitude: lons.min()!),
+            northEast: CLLocationCoordinate2D(latitude: lats.max()!, longitude: lons.max()!),
+            padding: UIEdgeInsets(top: 230, left: 50, bottom: 230, right: 80)
+        )
     }
 
     /// Drives the route at the average speed Valhalla assumed, so the simulated arrival matches the estimate.
