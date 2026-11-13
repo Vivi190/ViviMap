@@ -50,6 +50,8 @@ public final class NavigationSession {
     @ObservationIgnored private var lastSpeed: Double = 0
     /// Shipped OSM cameras and bumps (works offline).
     @ObservationIgnored private let hazards = HazardCatalog.bundled()?.hazards ?? []
+    /// The driver's own marks; set before a route starts, used from the next route change.
+    @ObservationIgnored public var userHazards: [Hazard] = []
     @ObservationIgnored private var hazardWatch = HazardWatch()
     /// Measured geometry of the current route; rebuilt when the route changes.
     @ObservationIgnored private var routePath: RoutePath?
@@ -141,7 +143,7 @@ public final class NavigationSession {
             // New route (start, reroute or a taken suggestion): find the cameras and bumps it passes.
             let path = RoutePath(routeCoordinates)
             routePath = path
-            hazardWatch = HazardWatch(hazards: RouteHazards.along(path, hazards: hazards))
+            hazardWatch = HazardWatch(hazards: RouteHazards.along(path, hazards: hazards + userHazards))
             hazardWatch.kinds = hazardKinds
         }
 

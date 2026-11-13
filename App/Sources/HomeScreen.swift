@@ -41,6 +41,7 @@ struct HomeScreen: View {
 
     @Environment(AppSettings.self) private var settings
     @Environment(LocationProvider.self) private var location
+    @Environment(UserHazardStore.self) private var userHazards
     @Environment(\.openURL) private var openURL
 
     @State private var camera: MapViewCamera
@@ -143,6 +144,7 @@ struct HomeScreen: View {
                 destination: selectedPlace?.point.coordinate,
                 route: displayedRoute,
                 traffic: displayedTraffic,
+                marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 puckSource: simulatedPuck,
                 isGuiding: isNavigating,
                 onLongPress: longPressHandler
@@ -163,6 +165,7 @@ struct HomeScreen: View {
             sheetContent(sheet)
                 .environment(settings)
                 .environment(location)
+                .environment(userHazards)
                 .preferredColorScheme(isNight ? .dark : .light)
         }
         .task(id: settings.appearanceMode) {
@@ -335,6 +338,7 @@ struct HomeScreen: View {
             error: routeError,
             onRoute: { planRoute(to: place) },
             onSave: { search.save(place, as: $0) },
+            onMark: { userHazards.mark($0, latitude: place.point.latitude, longitude: place.point.longitude) },
             onClose: { clearPlace() }
         )
         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -434,6 +438,7 @@ struct HomeScreen: View {
         }
         do {
             navigation.hazardKinds = hazardKinds
+            navigation.userHazards = userHazards.hazards
             try navigation.start(route, from: start)
             location.setNavigating(true)
             // The screen stays on while guiding (it can still be locked by hand; guidance continues).

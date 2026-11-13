@@ -1,6 +1,7 @@
 import AppCore
 import LocationEngine
 import NavigationEngine
+import RoadHazards
 import RoutingEngine
 import SwiftUI
 import TrafficEngine
@@ -9,6 +10,7 @@ import TrafficEngine
 struct AtlasApp: App {
     @State private var settings: AppSettings
     @State private var location: LocationProvider
+    @State private var userHazards = UserHazardStore()
     @Environment(\.scenePhase) private var scenePhase
     private let startsTracking: Bool
     private let initiallyNight: Bool
@@ -41,6 +43,7 @@ struct AtlasApp: App {
             )
                 .environment(settings)
                 .environment(location)
+                .environment(userHazards)
         }
         // initial: true — without it a launch that is already `.active` never started our location
         // manager (seen in CI: MapLibre's puck had a fix, the speedometer/navigation stream had none).

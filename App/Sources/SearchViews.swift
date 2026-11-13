@@ -1,6 +1,7 @@
 import AppCore
 import DesignSystem
 import LocationEngine
+import RoadHazards
 import RoutingEngine
 import SearchEngine
 import SwiftUI
@@ -170,6 +171,8 @@ struct PlaceCard: View {
     let error: String?
     let onRoute: () -> Void
     let onSave: (SearchController.Slot) -> Void
+    /// Marks a camera or bump at this place (OSM barely maps cameras around Pendik/Kartal/Tuzla).
+    let onMark: (Hazard.Kind) -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -201,6 +204,10 @@ struct PlaceCard: View {
                 Menu {
                     Button("Ev olarak kaydet", systemImage: "house.fill") { onSave(.home) }
                     Button("İş olarak kaydet", systemImage: "briefcase.fill") { onSave(.work) }
+                    Section("Uyarı noktası") {
+                        Button("Kamera işaretle", systemImage: "camera.fill") { onMark(.camera) }
+                        Button("Kasis işaretle", systemImage: "exclamationmark.triangle.fill") { onMark(.bump) }
+                    }
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.headline)

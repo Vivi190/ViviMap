@@ -2,7 +2,7 @@ import CoreLocation
 import Foundation
 
 /// A point on the road worth a warning: a fixed speed camera or a speed bump ("kasis").
-public struct Hazard: Sendable, Equatable {
+public struct Hazard: Sendable, Equatable, Codable {
     public enum Kind: String, Sendable, Codable, CaseIterable {
         case camera
         case bump

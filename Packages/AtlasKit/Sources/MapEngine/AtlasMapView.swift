@@ -20,6 +20,17 @@ public struct TrafficLine: Sendable {
     }
 }
 
+/// A camera or bump the driver marked, shown as a small dot.
+public struct MapMark: Sendable {
+    public let isCamera: Bool
+    public let coordinate: CLLocationCoordinate2D
+
+    public init(isCamera: Bool, coordinate: CLLocationCoordinate2D) {
+        self.isCamera = isCamera
+        self.coordinate = coordinate
+    }
+}
+
 /// Full-screen Atlas map. Holds no state of its own: camera, appearance and 3D mode come from the caller,
 /// and MapLibre's built-in ornaments are hidden because the app draws its own controls.
 public struct AtlasMapView: View {
@@ -29,6 +40,7 @@ public struct AtlasMapView: View {
     private let destination: CLLocationCoordinate2D?
     private let route: [CLLocationCoordinate2D]
     private let traffic: [TrafficLine]
+    private let marks: [MapMark]
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
@@ -43,6 +55,7 @@ public struct AtlasMapView: View {
         destination: CLLocationCoordinate2D? = nil,
         route: [CLLocationCoordinate2D] = [],
         traffic: [TrafficLine] = [],
+        marks: [MapMark] = [],
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
@@ -54,6 +67,7 @@ public struct AtlasMapView: View {
         self.destination = destination
         self.route = route
         self.traffic = traffic
+        self.marks = marks
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.onLongPress = onLongPress
@@ -65,6 +79,7 @@ public struct AtlasMapView: View {
         let guiding = isGuiding
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
         let slow = byLevel[.slow] ?? [], heavy = byLevel[.heavy] ?? [], stopped = byLevel[.stopped] ?? []
+        let cameraMarks = marks.filter(\.isCamera).map(\.coordinate), bumpMarks = marks.filter { !$0.isCamera }.map(\.coordinate)
         MapView(styleURL: appearance.styleURL, camera: $camera, locationManager: puckSource) {
             if route.count > 1 {
                 let line = ShapeSource(identifier: "atlas-route") {
@@ -97,6 +112,12 @@ public struct AtlasMapView: View {
             }
             if !stopped.isEmpty {
                 Self.trafficLayer("stopped", stopped, Self.trafficStopped)
+            }
+            if !cameraMarks.isEmpty {
+                Self.markLayer("camera", cameraMarks, Self.destinationColor)
+            }
+            if !bumpMarks.isEmpty {
+                Self.markLayer("bump", bumpMarks, Self.trafficSlow)
             }
             if let destination {
                 let pin = ShapeSource(identifier: "atlas-destination") {
@@ -159,6 +180,17 @@ public struct AtlasMapView: View {
                        parameters: NSExpression(forConstantValue: 1.5),
                        stops: NSExpression(forConstantValue: [10: 3.5, 14: 6.5, 18: 20]))
             .renderBelow(.symbols)
+    }
+
+    private static func markLayer(_ name: String, _ points: [CLLocationCoordinate2D], _ color: UIColor) -> some StyleLayerDefinition {
+        let source = ShapeSource(identifier: "atlas-mark-\(name)") {
+            points.map { MLNPointFeature(coordinate: $0) as MLNShape }
+        }
+        return CircleStyleLayer(identifier: "atlas-mark-\(name)", source: source)
+            .radius(6)
+            .color(color)
+            .strokeWidth(2)
+            .strokeColor(.white)
     }
 
     private static let trafficSlow = UIColor(red: 0.96, green: 0.62, blue: 0.04, alpha: 1)

@@ -67,6 +67,22 @@ struct HazardWatchTests {
     }
 }
 
+@MainActor
+struct UserHazardStoreTests {
+    @Test func marksPersistAndReplaceTheSameSpot() {
+        let defaults = UserDefaults(suiteName: "atlas.test.\(UUID())")!
+        let store = UserHazardStore(defaults: defaults)
+        store.mark(.camera, latitude: 40.9, longitude: 29.2)
+        store.mark(.bump, latitude: 40.90003, longitude: 29.20004) // same spot (~5 m): replaces, no double warning
+        store.mark(.camera, latitude: 40.91, longitude: 29.21)
+        #expect(store.hazards.map(\.kind) == [.bump, .camera])
+        let reopened = UserHazardStore(defaults: defaults)
+        #expect(reopened.hazards == store.hazards)
+        reopened.remove(atOffsets: IndexSet(integer: 0))
+        #expect(reopened.hazards.map(\.latitude) == [40.91])
+    }
+}
+
 struct HazardCatalogTests {
     @Test func shippedDataLoads() throws {
         let catalog = try #require(HazardCatalog.bundled())

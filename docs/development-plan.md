@@ -24,22 +24,29 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
    - Ekranda her zaman **Simülasyon** etiketi durur.
 1. **Arama:** "Ara" alanına bir yer, adres ya da koordinat yaz (örneğin "Kartal Adliyesi", "40.889, 29.19"). Sonuçlar mesafeli ve Türkçe adlı mı?
 2. **Haritadan seçme:** haritada bir noktaya uzun bas. Kartta adres çıkıyor mu? "…" menüsünden **Ev olarak kaydet**'e dokun. Sonra "Ara" sayfasında **Kısayollar → Ev**'e tek dokunuş doğrudan rota açmalı.
-3. **Rota:** kartta süre, mesafe, varış saati, ana yollar ve varsa alternatifler (16/19/18 dk gibi) görünmeli. Süreler **trafiksiz**; kartta bu açıkça yazıyor.
+3. **Rota:** kartta süre, mesafe, varış saati, ana yollar ve varsa alternatifler görünmeli. Canlı trafik (build 10+):
+   - Kart önce "Canlı trafik alınıyor…" der, sonra trafikli süreyi ve "Trafik X dk ekliyor" satırını gösterir. Altta "Canlı trafikle · © HERE" yazar.
+   - Alternatiflerin süreleri de trafikli olur ve en hızlısı seçili gelir.
+   - Yoğun saatte rota çizgisinin yavaş kısımları turuncu, kırmızı ya da koyu kırmızı olur. Gece her şey akıcı olduğu için renk görmezsin; bu doğru davranış.
 4. **Navigasyon:** "Başlat"a bas. Şunları kontrol et:
    - Mavi bantta Türkçe talimat ("300 m · Sola dön · Ankara Caddesi") görünüyor mu?
    - Sesli uyarılar zamanında geliyor mu? Şehirde yaklaşık 400 m, 120 m ve dönüşte; hızlı yolda daha erken.
    - Rotadan çıkınca "Yeni rota hesaplanıyor" denip yeni rota çiziliyor mu?
+   - Alt çubuk 3 dakikada bir trafikli varış saatine geçer ("Canlı trafikle · © HERE").
+   - Belirgin bir kazanç (en az 3 dk ve en az %15) varsa "Daha hızlı rota" bandı çıkar: Geç ya da Kalsın. 20 sn içinde dokunmazsan mevcut rota kalır.
 5. **Ekran:** navigasyon sürerken ekran kendiliğinden kararmamalı. Yan tuşla elle kilitlediğinde sesli yönlendirme devam etmeli ve üstte mavi konum göstergesi görünmeli.
 6. **Konum oku:** navigasyonda ekranın alt bölümünde durmalı; böylece ilerideki yol görünür. Varışta alt çubukta "Vardın" yazmalı.
 7. **Hız göstergesi:** sol altta, araçla tutarlı mı?
+8. **Kasis ve kamera uyarıları:** bantta "Kasis · 80 m" ya da "Hız kamerası · 300 m" çipi çıkmalı ve uyarı bir kez seslendirilmeli. Ayarlar → Uyarılar'dan açılıp kapanır.
+   - Bölgende OSM'de neredeyse kamera yok (Pendik, Kartal ve Tuzla'da 2 tane). Bildiğin kameraları ve kasisleri kendin işaretle: haritada uzun bas, "…" menüsünden "Kamera işaretle" ya da "Kasis işaretle"yi seç. İşaretler haritada nokta olarak görünür, Ayarlar → Uyarılar → İşaretlerim'den silinir.
 
 **Bilinen sınırlar:**
 
-- Canlı trafik yok (Faz 3, HERE).
+- Canlı trafik HERE'in ücretsiz kotasıyla sınırlı. Uygulama cihaz başına aylık sınırın altında kalır; sınır dolarsa kart "Trafik alınamadı" der.
 - Rota sunucusu FOSSGIS'in ortak sunucusu; arada yavaşlayabilir.
 - Şerit bilgisi çoğu yolda yok (OSM'de veri yok; sahte şerit çizilmiyor).
 - Adres aramada kapı numarası çoğu yerde bulunmuyor (OSM'de numara verisi az): sokak bulunur. Tam nokta için haritada uzun bas. Türkçe karakterli ve karaktersiz yazım ("çanakkale" / "canakkale") aynı sonucu veriyor (14.11.2026 ölçümü).
-- Hız sınırı, kasis ve kamera uyarıları Faz 5'te.
+- Hız sınırı tabelası henüz yok: OSM'de yolların yalnızca %9–16'sında sınır bilgisi var.
 - Offline çalışmıyor (Faz 4).
 - Ses kalitesi cihazdaki Türkçe sese bağlı. Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe yolundan "Geliştirilmiş" sesi indirirsen daha doğal okunur.
 
