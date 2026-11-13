@@ -1,0 +1,68 @@
+name: Offline data
+
+# Manual: builds the Istanbul offline packages for Phase 4 and reports their sizes, so "ship inside the app
+# or download separately" is decided on real numbers. The app does not use these files yet.
+#   - Valhalla routing tiles (on-device routing via Rallista/valhalla-mobile, MIT)
+#   - Vector map tiles in the OpenMapTiles schema our map style already uses (Planetiler → PMTiles)
+# Data © OpenStreetMap contributors (ODbL), extract from Geofabrik.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      BBOX: "28.0,40.75,29.95,41.6" # west,south,east,north: greater Istanbul, same box as the hazard data
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Istanbul extract
+        run: |
+          curl -fsSL -o turkey.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          osmium extract -b "$BBOX" turkey.osm.pbf -o istanbul.osm.pbf --overwrite
+          rm turkey.osm.pbf
+          osmium fileinfo -e istanbul.osm.pbf | grep -E "Number of (nodes|ways)|Timestamp" || true
+
+      - name: Valhalla routing tiles
+        run: |
+          mkdir -p valhalla && cp istanbul.osm.pbf valhalla/
+          docker run --rm -v "$PWD/valhalla:/data" ghcr.io/valhalla/valhalla:latest bash -euo pipefail -c '
+            cd /data
+            valhalla_build_config --mjolnir-tile-dir /data/tiles --mjolnir-tile-extract /data/valhalla_tiles.tar \
+              --mjolnir-timezone /data/tz.sqlite --mjolnir-admin /data/admins.sqlite > valhalla.json
+            valhalla_build_timezones > tz.sqlite
+            valhalla_build_admins -c valhalla.json istanbul.osm.pbf
+            valhalla_build_tiles -c valhalla.json istanbul.osm.pbf
+            valhalla_build_extract -c valhalla.json -v'
+          sudo chown -R "$USER" valhalla
+
+      - name: Vector map tiles
+        run: |
+          curl -fsSL -o planetiler.jar https://github.com/onthegomap/planetiler/releases/download/v0.10.2/planetiler.jar
+          java -Xmx5g -jar planetiler.jar --osm-path=istanbul.osm.pbf --output=istanbul.pmtiles \
+            --download --maxzoom=14 --force
+
+      - name: Sizes
+        run: |
+          {
+            echo "OSM extract:          $(du -h istanbul.osm.pbf | cut -f1)"
+            echo "Valhalla tiles (tar): $(du -h valhalla/valhalla_tiles.tar | cut -f1)"
+            echo "Map tiles (pmtiles):  $(du -h istanbul.pmtiles | cut -f1)"
+            gzip -9 -c valhalla/valhalla_tiles.tar > valhalla_tiles.tar.gz
+            echo "Valhalla tiles (gz):  $(du -h valhalla_tiles.tar.gz | cut -f1)"
+          } | tee sizes.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offline-istanbul-${{ github.run_number }}
+          path: |
+            sizes.txt
+            valhalla/valhalla.json
+            valhalla/valhalla_tiles.tar
+            istanbul.pmtiles
+          retention-days: 14

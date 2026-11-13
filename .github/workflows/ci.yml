@@ -3,9 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore: ["docs/**", "**.md", "Tools/**", ".github/workflows/testflight.yml"]
+    paths-ignore: ["docs/**", "**.md", "Tools/**", ".github/workflows/testflight.yml", ".github/workflows/offline-data.yml"]
   pull_request:
-    paths-ignore: ["docs/**", "**.md", "Tools/**", ".github/workflows/testflight.yml"]
+    paths-ignore: ["docs/**", "**.md", "Tools/**", ".github/workflows/testflight.yml", ".github/workflows/offline-data.yml"]
   workflow_dispatch:
 
 concurrency:
