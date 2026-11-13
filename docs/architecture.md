@@ -10,12 +10,12 @@ Gerekçelerin ve kaynakların ayrıntısı: [research/2026-11-13-faz0-arastirma.
 | ADR-1 | Native Swift 6 + SwiftUI, iOS 17+, yalnızca iPhone | Kabul |
 | ADR-2 | Harita: MapLibre Native 7 + swiftui-dsl; karolar OpenFreeMap → kendi PMTiles | Kabul |
 | ADR-3 | Navigasyon çekirdeği: Ferrostar; arayüz bizim | Kabul (Faz 2'de uyumluluk testi) |
-| ADR-4 | Routing: Valhalla, online ve cihaz içi | Kabul. Online barındırma **onay bekliyor** |
-| ADR-5 | Rota zekâsı: aday üret → trafikle puanla → histerezisli karar | Kabul. Sağlayıcı (HERE) **onay bekliyor** |
+| ADR-4 | Routing: Valhalla, online ve cihaz içi | Kabul. Önce FOSSGIS, sonra kendi sunucu (onaylandı 13.11.2026) |
+| ADR-5 | Rota zekâsı: aday üret → trafikle puanla → histerezisli karar | Kabul. Trafik: HERE (onaylandı 13.11.2026) |
 | ADR-6 | Arama: Photon + offline FTS5; Apple araması yok | Kabul |
 | ADR-7 | Veri cihazda kalır; analytics yok; anahtarlar kodda değil | Kabul |
 | ADR-8 | Derleme: XcodeGen + GitHub Actions; imzalama Windows'ta üretilen .p12 ile | Kabul |
-| ADR-9 | Hız kamerası uyarısı | **Onay bekliyor** (hukuki gri alan) |
+| ADR-9 | Hız kamerası uyarısı | Kabul: uyarılar olacak (senin kararın, 13.11.2026) |
 
 ---
 
@@ -118,10 +118,14 @@ Gerekçelerin ve kaynakların ayrıntısı: [research/2026-11-13-faz0-arastirma.
 - **CI (`ci.yml`):** her push'ta derleme, birim testleri ve simülatörde gündüz/gece ekran görüntüsü. Görüntüler artifact olarak saklanır.
 - **TestFlight (`testflight.yml`):** yalnızca elle tetiklenir. Manuel imzalama, `xcodebuild -exportArchive` ile `destination=upload`.
 
-## ADR-9 — Hız kamerası uyarısı (onay bekliyor)
+## ADR-9 — Hız kamerası uyarısı
 
-- KTK md. 51, radar tespit/ikaz *cihazlarını* yasaklıyor; uygulamaların durumu belirsiz.
-- Öneri: kasis ve tehlike uyarıları serbest. Kamera uyarısı yalnızca senin açık onayınla, yalnızca resmi sabit noktalar ve senin işaretlediğin noktalar için.
+- **Karar (13.11.2026):** Kamera uyarıları olacak.
+- **Veri kaynakları:**
+  - OSM `highway=speed_camera`: İstanbul'da 184 nokta, Pendik'te 1 nokta.
+  - Resmi sabit EDS noktaları, makine tarafından okunabilir bir kaynak bulunursa.
+  - Senin işaretlediğin noktalar.
+- **Bilinen risk:** KTK md. 51 (7574 sayılı kanun) radar tespit/ikaz *cihazlarını* yasaklıyor; telefon uygulamasının bu kapsamda olup olmadığı tartışmalı. Kararı verdin; bu not yalnızca kayıt için.
 
 ---
 

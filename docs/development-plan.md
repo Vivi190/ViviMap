@@ -6,10 +6,10 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 |---|---|---|---|
 | 0 — Araştırma | Depolar, lisanslar, trafik, offline, arama, CarPlay, CI | Rapor + mimari kararlar | ✅ |
 | 1 — Temel | Proje yapısı, tasarım sistemi, harita, konum, hız rozeti, CI, TestFlight akışı | CI yeşil; simülatör ekran görüntüleri; **senin iPhone'unda TestFlight kurulumu** | 🟡 Kod hazır, CI ve cihaz testi bekliyor |
-| 2 — Navigasyon MVP | Arama (Photon), favoriler, rota (Valhalla), Ferrostar, Türkçe ses, rotadan sapma, arka plan | 50 adreslik İstanbul arama testi; simüle sürüş testleri; Pendik → Kartal gerçek sürüş (araç dururken etkileşim) | ⏳ Onay bekliyor (routing barındırma) |
-| 3 — Trafik zekâsı | HERE, aday üretimi + puanlama, trafik katmanı, histerezisli rota değiştirme | Aynı sürüşte önerilen ve gerçekleşen süre kaydı; sık sık rota değiştirmenin önlendiğinin testi | ⏳ Onay bekliyor (HERE) |
+| 2 — Navigasyon MVP | Arama (Photon), favoriler, rota (Valhalla: önce FOSSGIS), Ferrostar, Türkçe ses, rotadan sapma, arka plan | 50 adreslik İstanbul arama testi; simüle sürüş testleri; Pendik → Kartal gerçek sürüş (araç dururken etkileşim) | ⏳ Faz 1 doğrulamasını bekliyor |
+| 3 — Trafik zekâsı | HERE, aday üretimi + puanlama, trafik katmanı, histerezisli rota değiştirme | Aynı sürüşte önerilen ve gerçekleşen süre kaydı; sık sık rota değiştirmenin önlendiğinin testi | ⏳ HERE hesabı ve anahtarı gerekiyor |
 | 4 — Offline | PMTiles bölgeleri, Valhalla cihaz içi, FTS5 arama, indirme/devam ettirme, online ↔ offline geçiş | Uçak modunda baştan sona sürüş; bağlantı kesilince navigasyonun devam etmesi | ⏳ |
-| 5 — Sürüş zekâsı | Hız sınırı (bilinmiyor/varsayılan ayrımıyla), kasis/tehlike, kullanıcı işaretleri, şerit (veri varsa) | Uyarı zamanlaması testi; karşı yön filtresi; aynı uyarının tekrarlanmaması | ⏳ Kamera uyarısı onay bekliyor |
+| 5 — Sürüş zekâsı | Hız sınırı (bilinmiyor/varsayılan ayrımıyla), kasis/tehlike/kamera uyarıları, kullanıcı işaretleri, şerit (veri varsa) | Uyarı zamanlaması testi; karşı yön filtresi; aynı uyarının tekrarlanmaması | ⏳ |
 | 6 — Premium deneyim | 3D navigasyon kamerası, hıza göre zoom, rota kartları, yatay mod, takip modunda yakınlaştırma | Ekran görüntüsü incelemesi; 60 FPS ölçümü (Instruments, cihazda) | ⏳ |
 | 7 — İleri özellikler | Live Activity / Dynamic Island, CarPlay (yetki gelirse), sürüş geçmişi, kişisel süre kalibrasyonu | Sürüş verisiyle kalibrasyon raporu | ⏳ |
 | 8 — Doğrulama | Pil, bellek sızıntısı, uzun sürüş, trafik doğruluğu, arayüz incelemesi | Ölçüm raporu; Google/Yandex karşılaştırması yalnızca ölçülmüş verilerle | ⏳ |
