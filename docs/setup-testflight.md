@@ -1,67 +1,52 @@
-# TestFlight kurulumu (Windows, tek seferlik)
+# TestFlight kurulumu (Mac olmadan)
 
-Bu adımları **sen** yapmalısın. Sertifikalar, anahtarlar ve parolalar yalnızca senin bilgisayarında ve GitHub Secrets'ta durur; depoya asla girmez (`.gitignore` bunları engelliyor).
-Komutlar **Git Bash** içindir. Dosyaları depo klasörünün dışında, örneğin `~/atlas-signing` altında tut.
+**Durum:** 13.11.2026'da kuruldu.
 
-## 1. Dağıtım sertifikası (Apple Distribution)
+| Kayıt | Değer |
+|---|---|
+| Bundle ID | `com.vivimap.atlas` |
+| App Store Connect uygulaması | "Atlas Navigasyon" |
+| Dağıtım sertifikası | 13.11.2027'ye kadar geçerli |
+| TestFlight dahili grubu | "Ben" |
 
-```bash
-mkdir -p ~/atlas-signing && cd ~/atlas-signing
-# Git Bash "/CN=..." ifadesini dosya yolu sanmasın diye MSYS_NO_PATHCONV kullanılıyor
-MSYS_NO_PATHCONV=1 openssl req -new -newkey rsa:2048 -nodes \
-  -keyout dist.key -out dist.csr -subj "/CN=Atlas Distribution/C=TR"
-```
+İmza dosyaları yalnızca bilgisayarında, `C:\Users\Vivi\atlas-signing` klasöründe ve GitHub Secrets'ta durur; depoya asla girmez (`.gitignore` bunları engelliyor). **Bu klasörü yedekle.**
 
-1. https://developer.apple.com/account/resources/certificates/add adresine git ve **Apple Distribution**'ı seç.
-2. `dist.csr` dosyasını yükle ve `distribution.cer` dosyasını indir.
-3. Sertifikayı .p12'ye çevir. Eski (3DES/SHA1) algoritmalar şart; OpenSSL 3'ün varsayılan formatını macOS keychain reddedebiliyor:
-
-```bash
-openssl x509 -inform DER -in distribution.cer -out dist.pem
-openssl pkcs12 -export -inkey dist.key -in dist.pem -out dist.p12 \
-  -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
-# Burada bir parola belirle; bu parola DIST_P12_PASSWORD olacak.
-```
-
-## 2. App ID ve profil
-
-1. **Identifiers → +** yolunu izle, **App IDs → App** seç. Bundle ID'yi **Explicit** olarak gir, örneğin `com.vivimap.atlas`. İstersen kendi ID'ni seç; iş akışı ID'yi profilden okur.
-   Faz 1 için ek bir capability gerekmiyor; konum ayarları Info.plist üzerinden yapılıyor.
-2. **Profiles → +** yolunu izle, **App Store Connect** seç. Bu App ID'yi ve 1. adımdaki sertifikayı seç, profili `Atlas AppStore` adıyla indir.
-
-## 3. App Store Connect
-
-1. Gerekirse **Agreements** sayfasında güncel sözleşmeleri kabul et.
-2. **Apps → +** ile **New App** oluştur: platform iOS, ad (ör. "Atlas Nav"; mağaza adı benzersiz olmalı), dil Türkçe, aynı Bundle ID, SKU olarak herhangi bir değer.
-3. **Users and Access → Integrations → App Store Connect API** yolunu izle. **Team Key** oluştur, rolü **App Manager** olsun.
-   `.p8` dosyasını indir (yalnızca bir kez indirilebilir). Key ID ve Issuer ID'yi not et.
-4. **TestFlight → Internal Testing** altında bir grup oluştur ve kendini ekle.
-
-## 4. GitHub Secrets
-
-Depo klasöründe `gh` ile çalıştır. Değerler doğrudan şifreli olarak yüklenir, ekranda görünmez:
-
-```bash
-cd ~/atlas-signing
-base64 -w0 dist.p12 | gh secret set DIST_P12_BASE64 -R Vivi190/ViviMap
-gh secret set DIST_P12_PASSWORD -R Vivi190/ViviMap          # parolayı yaz, Enter
-base64 -w0 "Atlas_AppStore.mobileprovision" | gh secret set PROFILE_BASE64 -R Vivi190/ViviMap
-base64 -w0 AuthKey_XXXXXXXXXX.p8 | gh secret set ASC_KEY_P8_BASE64 -R Vivi190/ViviMap
-gh secret set ASC_KEY_ID -R Vivi190/ViviMap                 # Key ID
-gh secret set ASC_ISSUER_ID -R Vivi190/ViviMap              # Issuer ID
-```
-
-## 5. Build gönderme
+## Build gönderme
 
 ```bash
 gh workflow run testflight.yml -R Vivi190/ViviMap
 gh run watch -R Vivi190/ViviMap
 ```
 
-Apple build'i işledikten sonra TestFlight uygulamasında görünür; işlem genellikle dakikalar sürer. Dahili test için Beta App Review gerekmez.
+Apple build'i işledikten sonra (genellikle birkaç dakika) iPhone'daki TestFlight uygulamasında görünür. Dahili test için Beta App Review gerekmez.
 
-## Bakım
+## Nasıl kuruldu
 
-- Dağıtım sertifikası **1 yıl** geçerli. Süresi dolunca 1. ve 2. adımları tekrarla.
-- TestFlight build'leri **90 gün** geçerli.
-- `~/atlas-signing` klasörünü yedekle; özellikle `dist.key` ve `.p8` kaybolursa yeniden üretmek gerekir.
+Apple'ın web arayüzünde yalnızca iki şey elle yapıldı; geri kalan her şey App Store Connect API üzerinden çalışan [Tools/appstore/provision.mjs](../Tools/appstore/provision.mjs) betiğiyle yapıldı.
+
+1. Anahtar ve CSR bu bilgisayarda üretildi:
+   ```bash
+   MSYS_NO_PATHCONV=1 openssl req -new -newkey rsa:2048 -nodes -keyout dist.key -out dist.csr -subj "/CN=Atlas Distribution/C=TR"
+   ```
+2. App Store Connect'te **Users and Access → Integrations → Team Keys** altında "Atlas CI" adında, **Admin** rollü bir API anahtarı oluşturuldu. `.p8` dosyası `atlas-signing` klasörüne kaydedildi.
+3. Betik Bundle ID'yi, sertifikayı (CSR'den) ve App Store profilini oluşturdu:
+   ```bash
+   node Tools/appstore/provision.mjs --key ~/atlas-signing/AuthKey_<KEYID>.p8 --issuer <ISSUER_ID> \
+     --csr ~/atlas-signing/dist.csr --out ~/atlas-signing --steps bundle,cert,profile
+   ```
+4. Web arayüzünde **Apps → New App** ile uygulama kaydı oluşturuldu. Apple bu işlemi API'ye açmıyor.
+5. Betik `--steps testflight` ile dahili grubu kurdu ve hesap sahibini gruba ekledi.
+6. Sertifika eski algoritmalarla .p12'ye çevrildi ve 6 secret yüklendi:
+   - `DIST_P12_BASE64`, `DIST_P12_PASSWORD`
+   - `PROFILE_BASE64`
+   - `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`
+
+## Yıllık yenileme (sertifika süresi dolunca)
+
+3. adımı ve 6. adımı tekrarla. Yeni bir CSR gerekmez; aynı `dist.csr` kullanılabilir.
+
+## Tuzaklar
+
+- **Windows'taki OpenSSL çıktısı CRLF ile biter.** Parola üretirken `tr -d '\r\n'` kullan. Sondaki görünmez `\r`, .p12'yi şifrelerken parolanın içinde kalıyor; `gh secret set` ise yüklerken onu kırpıyor. Sonuç: CI'da "passphrase not correct" hatası.
+- Git Bash'te OpenSSL'e `file:/c/...` biçiminde yol verilemez. Parolayı `env:` veya `stdin` ile geçir.
+- Bir secret'tan şüphelenirsen TestFlight iş akışının "Check secrets" adımı her secret'ın uzunluğunu ve SHA-256 önekini yazdırır. Bunları yerel dosyalarla karşılaştır.
