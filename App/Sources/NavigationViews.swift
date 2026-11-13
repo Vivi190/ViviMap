@@ -34,6 +34,19 @@ struct NavigationBanner: View {
                 }
                 Spacer(minLength: 0)
             }
+            if let then = navigation.thenSymbol {
+                // The next maneuver follows within 150 m: show it now, like the spoken "ardından".
+                HStack(spacing: Spacing.xs) {
+                    Text("Sonra")
+                        .font(.subheadline.weight(.semibold))
+                    Image(systemName: then)
+                        .font(.subheadline.weight(.bold))
+                }
+                .padding(.horizontal, Spacing.m)
+                .padding(.vertical, Spacing.xs)
+                .background(.white.opacity(0.18), in: Capsule())
+                .padding(.leading, 72)
+            }
             if !navigation.lanes.isEmpty {
                 HStack(spacing: Spacing.s) {
                     ForEach(Array(navigation.lanes.enumerated()), id: \.offset) { _, lane in

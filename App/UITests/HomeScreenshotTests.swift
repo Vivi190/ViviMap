@@ -13,11 +13,12 @@ final class HomeScreenshotTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-atlas.appearance", "day", "-atlas.simulation", "YES"]
         app.launch()
-        allowLocationIfAsked()
 
         XCTAssertTrue(app.buttons["Konumumu göster"].waitForExistence(timeout: 20), "map controls did not appear")
         // The app starts following the user on its first fix; the button then shows the filled symbol.
-        XCTAssertTrue(app.buttons["location.fill"].waitForExistence(timeout: 20), "no location fix")
+        let fixed = waitForFirstFix(app, timeout: 40)
+        if !fixed { capture("0-no-fix") } // evidence: is an alert still up, where is the map?
+        XCTAssertTrue(fixed, "no location fix")
         // MapLibre exposes no "tiles loaded" signal to XCUITest; give the network a fixed window.
         settle(10)
         capture("1-home-day")
@@ -97,19 +98,21 @@ final class HomeScreenshotTests: XCTestCase {
         add(shot)
     }
 
-    /// The permission alert can arrive several seconds after launch on a cold CI simulator; a short wait
-    /// once left location unauthorized and the route step failed with "Konumun henüz bilinmiyor".
+    /// Waits for the app's first fix, accepting the location permission alert whenever it shows up (on a
+    /// cold CI simulator it comes at varying times after launch). One run failed here with "no location fix"
+    /// while MapLibre's own puck had a position; the cause is unconfirmed, so a failure now leaves the
+    /// 0-no-fix screenshot as evidence.
     @MainActor
-    private func allowLocationIfAsked() {
+    private func waitForFirstFix(_ app: XCUIApplication, timeout: TimeInterval) -> Bool {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let buttons = ["Allow While Using App", "Uygulamayı Kullanırken İzin Ver"].map { springboard.buttons[$0] }
-        let deadline = Date().addingTimeInterval(20)
+        let allow = ["Allow While Using App", "Uygulamayı Kullanırken İzin Ver"].map { springboard.buttons[$0] }
+        let fix = app.buttons["location.fill"]
+        let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if let allow = buttons.first(where: \.exists) {
-                allow.tap()
-                return
-            }
+            if fix.exists { return true }
+            allow.first(where: \.exists)?.tap()
             Thread.sleep(forTimeInterval: 0.5)
         }
+        return fix.exists
     }
 }

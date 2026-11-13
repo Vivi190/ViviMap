@@ -32,6 +32,21 @@ struct TurkishInstructionsTests {
         #expect(TurkishInstructions.spoken(action: "U dönüşü yap", distance: 1_234, road: nil)
             == "1,2 kilometre sonra U dönüşü yap.")
         #expect(TurkishInstructions.spoken(action: "Sağa dön", distance: nil, road: "") == "Sağa dön.")
+        #expect(TurkishInstructions.spoken(action: "Sağa dön", distance: 120, road: "İhlas Sokağı", then: "Sola dön")
+            == "120 metre sonra sağa dön, İhlas Sokağı, ardından sola dön.")
+        #expect(TurkishInstructions.spoken(action: "Sağa dön", distance: nil, road: nil, then: "Hedef solunda")
+            == "Sağa dön, ardından hedef solunda.")
+    }
+
+    @Test func followUpOnlyForCloseRealManeuvers() {
+        #expect(TurkishInstructions.followUp(type: .turn, modifier: .left, roundaboutExitDegrees: nil, after: 80) == "Sola dön")
+        #expect(TurkishInstructions.followUp(type: .arrive, modifier: .right, roundaboutExitDegrees: nil, after: 40) == "Hedef sağında")
+        // Too far to chain, or not worth a word.
+        #expect(TurkishInstructions.followUp(type: .turn, modifier: .left, roundaboutExitDegrees: nil, after: 400) == nil)
+        #expect(TurkishInstructions.followUp(type: .newName, modifier: .straight, roundaboutExitDegrees: nil, after: 50) == nil)
+        #expect(TurkishInstructions.followUp(type: .continue, modifier: .slightLeft, roundaboutExitDegrees: nil, after: 50) == nil)
+        #expect(TurkishInstructions.followUp(type: .turn, modifier: .straight, roundaboutExitDegrees: nil, after: 50) == nil)
+        #expect(TurkishInstructions.followUp(type: nil, modifier: nil, roundaboutExitDegrees: nil, after: 50) == nil)
     }
 }
 

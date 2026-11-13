@@ -30,6 +30,8 @@ public final class NavigationSession {
     public private(set) var nextRoad: String?
     /// Empty when the data has no lanes — never invented (OSM barely tags them in Istanbul, research §8).
     public private(set) var lanes: [Lane] = []
+    /// Symbol of the maneuver right after the next one when it follows within 150 m ("Sonra ↰").
+    public private(set) var thenSymbol: String?
     public private(set) var routeCoordinates: [CLLocationCoordinate2D] = []
 
     public let voice = VoiceGuide()
@@ -95,6 +97,7 @@ public final class NavigationSession {
         actionText = nil
         nextRoad = nil
         lanes = []
+        thenSymbol = nil
         routeCoordinates = []
     }
 
@@ -121,6 +124,7 @@ public final class NavigationSession {
             actionText = "Hedefe ulaştın"
             nextRoad = nil
             lanes = []
+            thenSymbol = nil
             return
         }
         guard let progress = state.currentProgress else { return }
@@ -142,17 +146,34 @@ public final class NavigationSession {
         // The banner text from Valhalla is the next road's name for most maneuvers.
         nextRoad = content.flatMap { $0.maneuverType == .arrive ? nil : $0.text }
 
-        announce(step: state.remainingSteps?.count ?? 0, distance: progress.distanceToNextManeuver)
+        // remainingSteps[0] is the current step; the step after it ends at the follow-up maneuver.
+        let following = state.remainingSteps.flatMap { $0.count > 1 ? $0[1] : nil }
+        let followingContent = following?.visualInstructions.first?.primaryContent
+        let followUp = following.flatMap { step in
+            TurkishInstructions.followUp(
+                type: followingContent?.maneuverType,
+                modifier: followingContent?.maneuverModifier,
+                roundaboutExitDegrees: followingContent?.roundaboutExitDegrees,
+                after: step.distance
+            )
+        }
+        let symbol = followUp.map { _ in
+            ManeuverSymbols.symbol(type: followingContent?.maneuverType, modifier: followingContent?.maneuverModifier)
+        }
+        if symbol != thenSymbol { thenSymbol = symbol }
+
+        announce(step: state.remainingSteps?.count ?? 0, distance: progress.distanceToNextManeuver, followUp: followUp)
     }
 
-    private func announce(step: Int, distance: Double) {
+    private func announce(step: Int, distance: Double, followUp: String?) {
         guard let action = actionText,
               let stage = planner.stage(step: step, distance: distance, speed: lastSpeed)
         else { return }
         let sentence = TurkishInstructions.spoken(
             action: action,
             distance: stage == .now ? nil : distance,
-            road: nextRoad
+            road: nextRoad,
+            then: followUp
         )
         voice.speak(sentence)
     }
