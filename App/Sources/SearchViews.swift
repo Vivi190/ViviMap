@@ -258,6 +258,8 @@ struct RouteCard: View {
     let place: Place
     let routes: [RouteOption]
     @Binding var selection: Int
+    /// nil when navigation could not be set up; the button is hidden rather than shown broken.
+    let onStart: (() -> Void)?
     let onClose: () -> Void
 
     var body: some View {
@@ -312,6 +314,17 @@ struct RouteCard: View {
             Label("Trafik dahil değil — trafiksiz tahmini süre", systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            if let onStart {
+                Button(action: onStart) {
+                    Label("Başlat", systemImage: "location.north.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .padding(.top, Spacing.xs)
+                .accessibilityIdentifier("route.start")
+            }
         }
         .padding(Spacing.l)
         .frame(maxWidth: .infinity, alignment: .leading)

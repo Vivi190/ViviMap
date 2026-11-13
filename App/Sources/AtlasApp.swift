@@ -1,5 +1,6 @@
 import AppCore
 import LocationEngine
+import NavigationEngine
 import RoutingEngine
 import SwiftUI
 
@@ -11,6 +12,7 @@ struct AtlasApp: App {
     private let startsTracking: Bool
     private let initiallyNight: Bool
     private let planner = try? RoutePlanner()
+    private let navigation = try? NavigationSession()
 
     init() {
         let settings = AppSettings()
@@ -21,19 +23,21 @@ struct AtlasApp: App {
         startsTracking = location.lastLocation != nil
         let anchor = location.lastLocation?.coordinate ?? Defaults.istanbul
         initiallyNight = settings.appearanceMode.isNight(at: .now, latitude: anchor.latitude, longitude: anchor.longitude)
+        // One GPS stream: guidance receives the same fixes as the map and speedometer.
+        location.onFix = { [navigation] fix in navigation?.ingest(fix) }
     }
 
     var body: some Scene {
         WindowGroup {
-            HomeScreen(startsTracking: startsTracking, initiallyNight: initiallyNight, planner: planner)
+            HomeScreen(startsTracking: startsTracking, initiallyNight: initiallyNight, planner: planner, navigation: navigation)
                 .environment(settings)
                 .environment(location)
         }
         .onChange(of: scenePhase) { _, phase in
-            // Phase 1 has no background mode: release GPS when the app leaves the screen.
             switch phase {
             case .active: location.start()
-            case .background: location.stop()
+            // Keep guiding with the screen locked; otherwise release GPS to save battery.
+            case .background where !location.isNavigating: location.stop()
             default: break
             }
         }

@@ -46,6 +46,10 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSLocationWhenInUseUsageDescription: Atlas konumunu haritada göstermek, hızını ölçmek ve seni yönlendirmek için kullanır. Konum geçmişin cihazından çıkmaz.
+        # Navigation keeps guiding with the screen locked: GPS + spoken prompts.
+        UIBackgroundModes:
+          - location
+          - audio
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(ATLAS_BUNDLE_ID)
@@ -88,6 +92,7 @@ schemes:
         - package: AtlasKit/LocationEngineTests
         - package: AtlasKit/SearchEngineTests
         - package: AtlasKit/RoutingEngineTests
+        - package: AtlasKit/NavigationEngineTests
         - AtlasUITests
     archive:
       config: Release

@@ -38,8 +38,14 @@ final class HomeScreenshotTests: XCTestCase {
         XCTAssertTrue(app.otherElements["route.card"].waitForExistence(timeout: 30), "route card missing")
         settle(6)
         capture("3b-route")
-        app.buttons["Rotayı kapat"].tap()
-        app.buttons["Kapat"].tap()
+
+        // Guidance: banner with the first Turkish instruction, then end it.
+        app.buttons["route.start"].tap()
+        XCTAssertTrue(app.otherElements["nav.banner"].waitForExistence(timeout: 15), "navigation banner missing")
+        settle(6)
+        capture("3c-navigation")
+        app.buttons["nav.end"].tap()
+        XCTAssertTrue(app.buttons["search.open"].waitForExistence(timeout: 5), "home screen did not return")
 
         app.buttons["Üç boyutlu görünüm"].tap()
         settle(6)

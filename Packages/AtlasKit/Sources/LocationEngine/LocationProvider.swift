@@ -17,7 +17,12 @@ public final class LocationProvider: NSObject {
     public private(set) var updateInterval: TimeInterval?
     public private(set) var lastError: String?
 
+    /// Called with every accepted fix (navigation feeds Ferrostar from here: one GPS stream for the app).
+    @ObservationIgnored public var onFix: (@MainActor (CLLocation) -> Void)?
+    public private(set) var isNavigating = false
+
     @ObservationIgnored private let manager = CLLocationManager()
+    @ObservationIgnored private var backgroundSession: CLBackgroundActivitySession?
     // Observed on purpose: views calling speedReading(at:) re-render on every fix, plus on their own timer
     // so a reading can go stale when fixes stop.
     private var estimator = SpeedEstimator()
@@ -55,6 +60,21 @@ public final class LocationProvider: NSObject {
         manager.stopUpdatingLocation()
     }
 
+    /// While navigating, keep receiving fixes with the app in the background (blue status-bar pill);
+    /// a When-In-Use permission is enough with CLBackgroundActivitySession (iOS 17).
+    public func setNavigating(_ navigating: Bool) {
+        isNavigating = navigating
+        manager.allowsBackgroundLocationUpdates = navigating
+        manager.showsBackgroundLocationIndicator = navigating
+        if navigating {
+            backgroundSession = CLBackgroundActivitySession()
+            manager.startUpdatingLocation()
+        } else {
+            backgroundSession?.invalidate()
+            backgroundSession = nil
+        }
+    }
+
     /// Speed as of `date`; goes stale when fixes stop arriving (tunnel, lost signal).
     public func speedReading(at date: Date) -> SpeedEstimator.Reading {
         estimator.reading(at: date)
@@ -83,6 +103,7 @@ public final class LocationProvider: NSObject {
         if !hasFix { hasFix = true } // Observation notifies on every set, even with an equal value
         _ = estimator.update(speed: location.speed, speedAccuracy: location.speedAccuracy, at: location.timestamp)
         lastError = nil
+        onFix?(location)
     }
 }
 

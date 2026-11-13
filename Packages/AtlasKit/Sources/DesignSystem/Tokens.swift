@@ -26,6 +26,8 @@ public extension Color {
     static let atlasAccent = Color(light: 0x1F6FEB, dark: 0x4C8DFF)
     static let atlasWarning = Color(light: 0xC2410C, dark: 0xFB923C)
     static let atlasCritical = Color(light: 0xD7263D, dark: 0xFF5A6A)
+    /// Solid, high-contrast background for the turn banner: readable at a glance in sun and at night.
+    static let atlasNavBanner = Color(light: 0x0F4FA8, dark: 0x0B3B80)
 }
 
 extension Color {

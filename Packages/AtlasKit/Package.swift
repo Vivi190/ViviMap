@@ -9,7 +9,10 @@ let package = Package(
     products: [
         .library(
             name: "AtlasKit",
-            targets: ["AppCore", "DesignSystem", "LocationEngine", "MapEngine", "Diagnostics", "SearchEngine", "RoutingEngine"]
+            targets: [
+                "AppCore", "DesignSystem", "LocationEngine", "MapEngine", "Diagnostics",
+                "SearchEngine", "RoutingEngine", "NavigationEngine",
+            ]
         ),
     ],
     dependencies: [
@@ -40,9 +43,17 @@ let package = Package(
             name: "RoutingEngine",
             dependencies: ["SearchEngine", .product(name: "FerrostarCore", package: "ferrostar")]
         ),
+        .target(
+            name: "NavigationEngine",
+            dependencies: ["RoutingEngine", .product(name: "FerrostarCore", package: "ferrostar")]
+        ),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),
         .testTarget(name: "LocationEngineTests", dependencies: ["LocationEngine"]),
         .testTarget(name: "SearchEngineTests", dependencies: ["SearchEngine"], resources: [.copy("Fixtures")]),
         .testTarget(name: "RoutingEngineTests", dependencies: ["RoutingEngine"]),
+        .testTarget(
+            name: "NavigationEngineTests",
+            dependencies: ["NavigationEngine", .product(name: "FerrostarCore", package: "ferrostar")]
+        ),
     ]
 )

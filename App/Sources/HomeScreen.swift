@@ -4,6 +4,7 @@ import DesignSystem
 import Diagnostics
 import LocationEngine
 import MapEngine
+import NavigationEngine
 import RoutingEngine
 import SearchEngine
 import SwiftUI
@@ -54,17 +55,27 @@ struct HomeScreen: View {
     @State private var routeError: String?
 
     private let planner: RoutePlanner?
+    private let navigation: NavigationSession?
     private static let pitch3D: Double = 55
 
-    init(startsTracking: Bool, initiallyNight: Bool, planner: RoutePlanner?) {
+    init(startsTracking: Bool, initiallyNight: Bool, planner: RoutePlanner?, navigation: NavigationSession?) {
         _camera = State(initialValue: startsTracking ? .trackUserLocation(zoom: 15.5) : .center(Defaults.istanbul, zoom: 10))
         _awaitingFirstFix = State(initialValue: !startsTracking)
         _isNight = State(initialValue: initiallyNight)
         self.planner = planner
+        self.navigation = navigation
     }
 
     private var activeRoute: RouteOption? {
         routes.isEmpty ? nil : routes[min(routeSelection, routes.count - 1)]
+    }
+
+    private var isNavigating: Bool { navigation?.isActive == true }
+
+    /// During guidance the session's geometry wins: it changes after a reroute.
+    private var displayedRoute: [CLLocationCoordinate2D] {
+        if isNavigating, let coordinates = navigation?.routeCoordinates, coordinates.count > 1 { return coordinates }
+        return activeRoute?.coordinates ?? []
     }
 
     var body: some View {
@@ -74,13 +85,17 @@ struct HomeScreen: View {
                 appearance: isNight ? .night : .day,
                 showsBuildings3D: is3D,
                 destination: selectedPlace?.point.coordinate,
-                route: activeRoute?.coordinates ?? []
+                route: displayedRoute
             ) { proxy in
                 viewport.update(from: proxy)
             }
             .ignoresSafeArea()
 
-            overlay
+            if let navigation, navigation.isActive {
+                navigationOverlay(navigation)
+            } else {
+                overlay
+            }
         }
         .preferredColorScheme(isNight ? .dark : .light)
         .sheet(item: $sheet) { sheet in
@@ -154,7 +169,12 @@ struct HomeScreen: View {
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else {
-                    RouteCard(place: place, routes: routes, selection: $routeSelection) {
+                    RouteCard(
+                        place: place,
+                        routes: routes,
+                        selection: $routeSelection,
+                        onStart: navigation == nil ? nil : startNavigation
+                    ) {
                         routes = []
                         camera = .center(place.point.coordinate, zoom: 16, pitch: is3D ? Self.pitch3D : 0)
                     }
@@ -243,6 +263,51 @@ struct HomeScreen: View {
         selectedPlace = place
         sheet = nil
         camera = .center(place.point.coordinate, zoom: max(viewport.zoom, 16), pitch: is3D ? Self.pitch3D : 0)
+    }
+
+    private func navigationOverlay(_ navigation: NavigationSession) -> some View {
+        VStack(spacing: Spacing.s) {
+            NavigationBanner(navigation: navigation)
+            HStack {
+                Spacer(minLength: 0)
+                MapControlGroup {
+                    MapControlButton(systemImage: "location.north.line.fill", label: "Konumumu göster", isActive: true) {
+                        camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            HStack(alignment: .bottom) {
+                SpeedOverlay()
+                Spacer(minLength: 0)
+            }
+            NavigationBottomBar(navigation: navigation, onEnd: endNavigation)
+        }
+        .padding(.horizontal, Spacing.l)
+        .padding(.vertical, Spacing.s)
+    }
+
+    private func startNavigation() {
+        guard let navigation, let route = activeRoute, let here = location.lastLocation else {
+            routeError = "Konumun henüz bilinmiyor."
+            return
+        }
+        do {
+            try navigation.start(route, from: here)
+            location.setNavigating(true)
+            is3D = true
+            camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D)
+        } catch {
+            routeError = "Navigasyon başlatılamadı."
+        }
+    }
+
+    private func endNavigation() {
+        navigation?.stop()
+        location.setNavigating(false)
+        clearPlace()
+        is3D = false
+        camera = .trackUserLocation(zoom: 15.5)
     }
 
     private func clearPlace() {

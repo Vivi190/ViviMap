@@ -32,13 +32,18 @@ public final class RoutePlanner {
     private let session: URLSession
 
     public init(session: URLSession = .shared) throws {
-        provider = try WellKnownRouteProvider.valhalla(endpointUrl: Self.endpoint, profile: "auto", optionsJson: nil)
+        provider = try Self.valhallaProvider()
+        adapter = try RouteAdapter.fromWellKnownRouteProvider(wellKnownRouteProvider: provider)
+        self.session = session
+    }
+
+    /// Shared with the navigation session so reroutes use the same engine and options.
+    public static func valhallaProvider() throws -> WellKnownRouteProvider {
+        try WellKnownRouteProvider.valhalla(endpointUrl: endpoint, profile: "auto", optionsJson: nil)
             .withJsonOptions(options: [
                 "directions_options": ["language": "tr-TR", "units": "kilometers"],
                 "alternates": 2,
             ])
-        adapter = try RouteAdapter.fromWellKnownRouteProvider(wellKnownRouteProvider: provider)
-        self.session = session
     }
 
     public func routes(from location: CLLocation, to destination: GeoPoint) async throws -> [RouteOption] {
@@ -70,10 +75,24 @@ public final class RoutePlanner {
         for (field, value) in headers {
             urlRequest.setValue(value, forHTTPHeaderField: field)
         }
-        // FOSSGIS asks apps to identify themselves.
-        urlRequest.setValue("Atlas-iOS/1.0 (personal navigation app)", forHTTPHeaderField: "User-Agent")
-        urlRequest.setValue("atlas-ios-personal", forHTTPHeaderField: "X-Client-Id")
-        return urlRequest
+        return IdentifiedLoader.identified(urlRequest)
+    }
+}
+
+/// Network loader for Ferrostar's own requests (reroutes during navigation) with the identification
+/// headers FOSSGIS asks apps to send.
+public struct IdentifiedLoader: URLRequestLoading {
+    public init() {}
+
+    public func loadData(with urlRequest: URLRequest) async throws -> (Data, URLResponse) {
+        try await URLSession.shared.data(for: Self.identified(urlRequest))
+    }
+
+    static func identified(_ request: URLRequest) -> URLRequest {
+        var request = request
+        request.setValue("Atlas-iOS/1.0 (personal navigation app)", forHTTPHeaderField: "User-Agent")
+        request.setValue("atlas-ios-personal", forHTTPHeaderField: "X-Client-Id")
+        return request
     }
 }
 
