@@ -69,6 +69,12 @@ final class HomeScreenshotTests: XCTestCase {
         settle(20)
         capture("3d-simulation")
         XCTAssertNotEqual(banner.label, before, "guidance did not advance during the simulated drive")
+        // Car-mount landscape: panels in a left column, map on the right.
+        XCUIDevice.shared.orientation = .landscapeLeft
+        settle(5)
+        capture("3e-landscape")
+        XCUIDevice.shared.orientation = .portrait
+        settle(3)
         app.buttons["nav.end"].tap()
         XCTAssertTrue(app.buttons["search.open"].waitForExistence(timeout: 5), "home screen did not return after simulation")
 

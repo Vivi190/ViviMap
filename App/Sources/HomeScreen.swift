@@ -45,6 +45,7 @@ struct HomeScreen: View {
     @Environment(UserHazardStore.self) private var userHazards
     @Environment(TripLog.self) private var trips
     @Environment(\.openURL) private var openURL
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     @State private var camera: MapViewCamera
     @State private var viewport = MapViewport()
@@ -222,8 +223,10 @@ struct HomeScreen: View {
             HStack(alignment: .top, spacing: Spacing.m) {
                 VStack(alignment: .leading, spacing: Spacing.s) {
                     SearchBarButton { sheet = .search }
+                        .frame(maxWidth: isLandscape ? 420 : .infinity)
                     GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 VStack(spacing: Spacing.m) {
                     controls
                     CompassButton(viewport: viewport, action: resetNorth)
@@ -247,11 +250,15 @@ struct HomeScreen: View {
                 }
             }
             if let place = selectedPlace {
-                if routes.isEmpty {
-                    placeCard(place)
-                } else {
-                    routeCard(place)
+                Group {
+                    if routes.isEmpty {
+                        placeCard(place)
+                    } else {
+                        routeCard(place)
+                    }
                 }
+                .frame(maxWidth: isLandscape ? 420 : .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .animation(.snappy(duration: 0.3), value: selectedPlace)
@@ -381,7 +388,40 @@ struct HomeScreen: View {
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
+    /// iPhone on its side (car mounts): panels move into a left column and the map gets the rest.
+    private var isLandscape: Bool { verticalSizeClass == .compact }
+
+    private func navigationControls(_ navigation: NavigationSession) -> some View {
+        MapControlGroup {
+            MapControlButton(
+                systemImage: "point.topleft.down.to.point.bottomright.curvepath",
+                label: "Rotanın tamamı",
+                isActive: camera.trackingMode == .none
+            ) { showRouteOverview(navigation) }
+            MapControlDivider()
+            MapControlButton(
+                systemImage: "location.north.line.fill",
+                label: "Konumumu göster",
+                isActive: camera.trackingMode == .followDirection
+            ) { followCourse(zoom: navigation.guidanceZoom) }
+        }
+    }
+
     private func navigationOverlay(_ navigation: NavigationSession) -> some View {
+        HStack(alignment: .top, spacing: Spacing.m) {
+            navigationColumn(navigation)
+                .frame(maxWidth: isLandscape ? 380 : .infinity)
+            if isLandscape {
+                Spacer(minLength: 0)
+                navigationControls(navigation)
+            }
+        }
+        .padding(.horizontal, Spacing.l)
+        .padding(.vertical, Spacing.s)
+        .animation(.snappy(duration: 0.3), value: trafficWatch.suggestion?.option.id)
+    }
+
+    private func navigationColumn(_ navigation: NavigationSession) -> some View {
         VStack(spacing: Spacing.s) {
             NavigationBanner(navigation: navigation)
             if let suggestion = trafficWatch.suggestion {
@@ -394,19 +434,7 @@ struct HomeScreen: View {
                         .transition(.move(edge: .leading).combined(with: .opacity))
                 }
                 Spacer(minLength: 0)
-                MapControlGroup {
-                    MapControlButton(
-                        systemImage: "point.topleft.down.to.point.bottomright.curvepath",
-                        label: "Rotanın tamamı",
-                        isActive: camera.trackingMode == .none
-                    ) { showRouteOverview(navigation) }
-                    MapControlDivider()
-                    MapControlButton(
-                        systemImage: "location.north.line.fill",
-                        label: "Konumumu göster",
-                        isActive: camera.trackingMode == .followDirection
-                    ) { followCourse(zoom: navigation.guidanceZoom) }
-                }
+                if !isLandscape { navigationControls(navigation) }
             }
             Spacer(minLength: 0)
             HStack(alignment: .bottom) {
@@ -429,9 +457,6 @@ struct HomeScreen: View {
             }
             NavigationBottomBar(navigation: navigation, trafficArrival: trafficWatch.arrival, onEnd: { endNavigation() })
         }
-        .padding(.horizontal, Spacing.l)
-        .padding(.vertical, Spacing.s)
-        .animation(.snappy(duration: 0.3), value: trafficWatch.suggestion?.option.id)
     }
 
     /// Traffic rounds while guiding; the task is cancelled when navigation ends (its id changes).

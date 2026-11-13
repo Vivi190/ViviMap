@@ -45,8 +45,11 @@ targets:
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # Landscape for car mounts: panels move into a left column (HomeScreen.isLandscape).
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         NSLocationWhenInUseUsageDescription: Atlas konumunu haritada göstermek, hızını ölçmek ve seni yönlendirmek için kullanır. Konum geçmişin cihazından çıkmaz.
         # Navigation keeps guiding with the screen locked: GPS + spoken prompts.
         UIBackgroundModes:

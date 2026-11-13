@@ -154,12 +154,15 @@ public struct AtlasMapView: View {
                 if let layer = mapView.style?.layer(withIdentifier: MapLayerID.buildings3D), layer.isVisible != show3D {
                     layer.isVisible = show3D
                 }
-                // Guidance: puck at ~70 % of the height (centre of the area below a 40 % top inset).
+                // Guidance: puck at ~70 % of the height (centre of the area below a 40 % top inset); on its side
+                // the panels take a left column, so the puck centres in the map area to their right.
                 // Otherwise the safe area, which is what MapLibre's automatic inset uses. Set directly
                 // because swiftui-dsl's mapContentInset never resets once its value goes back to nil.
-                let inset = guiding
-                    ? UIEdgeInsets(top: mapView.bounds.height * 0.4, left: 0, bottom: 0, right: 0)
-                    : mapView.safeAreaInsets
+                let size = mapView.bounds.size
+                let inset = !guiding ? mapView.safeAreaInsets
+                    : size.width > size.height
+                    ? UIEdgeInsets(top: size.height * 0.3, left: min(size.width * 0.45, 420), bottom: 0, right: 0)
+                    : UIEdgeInsets(top: size.height * 0.4, left: 0, bottom: 0, right: 0)
                 if mapView.contentInset != inset {
                     mapView.automaticallyAdjustsContentInset = false
                     mapView.setContentInset(inset, animated: true, completionHandler: nil)
