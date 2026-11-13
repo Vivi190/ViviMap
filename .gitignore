@@ -24,3 +24,6 @@ Packages/AtlasKit/Package.resolved
 .DS_Store
 .playwright-mcp/
 __pycache__/
+
+# Local Claude Code state (e.g. Ralph Loop)
+.claude/
