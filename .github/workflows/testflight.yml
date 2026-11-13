@@ -42,11 +42,33 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 3600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          echo "$DIST_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/dist.p12"
-          security import "$RUNNER_TEMP/dist.p12" -P "$DIST_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
-          rm "$RUNNER_TEMP/dist.p12"
+
+          P12="$RUNNER_TEMP/dist.p12"
+          echo "$DIST_P12_BASE64" | base64 --decode > "$P12"
+          openssl pkcs12 -in "$P12" -passin env:DIST_P12_PASSWORD -noout \
+            || { echo "::error::DIST_P12_PASSWORD does not open DIST_P12_BASE64"; exit 1; }
+          # macOS rejected the OpenSSL-made legacy (3DES/SHA1) p12 as "passphrase not correct" although the
+          # password opens it; fall back to re-packing with modern algorithms, then to separate key + cert.
+          import_p12() { security import "$1" -P "$DIST_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"; }
+          if ! import_p12 "$P12"; then
+            OSSL3="$(brew --prefix openssl@3)/bin/openssl"
+            "$OSSL3" pkcs12 -in "$P12" -passin env:DIST_P12_PASSWORD -nodes -out "$RUNNER_TEMP/bundle.pem"
+            "$OSSL3" pkcs12 -export -in "$RUNNER_TEMP/bundle.pem" -out "$RUNNER_TEMP/modern.p12" -passout env:DIST_P12_PASSWORD
+            if ! import_p12 "$RUNNER_TEMP/modern.p12"; then
+              echo "modern p12 rejected too; importing key and certificate separately"
+              "$OSSL3" pkey -in "$RUNNER_TEMP/bundle.pem" -traditional -out "$RUNNER_TEMP/key.pem"
+              "$OSSL3" x509 -in "$RUNNER_TEMP/bundle.pem" -outform DER -out "$RUNNER_TEMP/cert.cer"
+              security import "$RUNNER_TEMP/key.pem" -A -k "$KEYCHAIN"
+              security import "$RUNNER_TEMP/cert.cer" -A -k "$KEYCHAIN"
+            fi
+            rm -f "$RUNNER_TEMP/bundle.pem" "$RUNNER_TEMP/modern.p12" "$RUNNER_TEMP/key.pem" "$RUNNER_TEMP/cert.cer"
+          fi
+          rm -f "$P12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security find-identity -v -p codesigning "$KEYCHAIN" | tee "$RUNNER_TEMP/identities.txt"
+          grep -q "Apple Distribution" "$RUNNER_TEMP/identities.txt" \
+            || { echo "::error::No Apple Distribution signing identity in the keychain"; exit 1; }
 
           PROFILE="$RUNNER_TEMP/app.mobileprovision"
           echo "$PROFILE_BASE64" | base64 --decode > "$PROFILE"
