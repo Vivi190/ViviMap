@@ -67,6 +67,7 @@ let package = Package(
         ),
         .testTarget(name: "TrafficEngineTests", dependencies: ["TrafficEngine"], resources: [.copy("Fixtures")]),
         .testTarget(name: "TripHistoryTests", dependencies: ["TripHistory"]),
+        .testTarget(name: "MapEngineTests", dependencies: ["MapEngine"]),
         .testTarget(
             name: "NavigationEngineTests",
             dependencies: ["NavigationEngine", "RoutingEngine", "SearchEngine", "RoadHazards", .product(name: "FerrostarCore", package: "ferrostar")]

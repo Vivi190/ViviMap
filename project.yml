@@ -109,6 +109,7 @@ schemes:
         - package: AtlasKit/NavigationEngineTests
         - package: AtlasKit/TrafficEngineTests
         - package: AtlasKit/TripHistoryTests
+        - package: AtlasKit/MapEngineTests
         - AtlasUITests
     archive:
       config: Release

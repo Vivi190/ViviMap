@@ -69,6 +69,7 @@ struct HomeScreen: View {
     /// Bumped per route request so a late traffic answer never lands on newer routes.
     @State private var planGeneration = 0
     @State private var trafficWatch = TrafficWatch()
+    @State private var connectivity = Connectivity()
     /// What the driver was told when a real (not simulated) drive started, for the trip log.
     @State private var tripStart: TripStart?
 
@@ -160,6 +161,7 @@ struct HomeScreen: View {
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 puckSource: simulatedPuck,
                 isGuiding: isNavigating,
+                isOffline: !connectivity.isOnline,
                 onLongPress: longPressHandler
             ) { proxy in
                 viewport.update(from: proxy)
@@ -225,6 +227,7 @@ struct HomeScreen: View {
                     SearchBarButton { sheet = .search }
                         .frame(maxWidth: isLandscape ? 420 : .infinity)
                     GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
+                    if !connectivity.isOnline { offlineChip }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 VStack(spacing: Spacing.m) {
@@ -388,6 +391,17 @@ struct HomeScreen: View {
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
+    /// What still works without a connection: with the shipped Istanbul packages, map and routes; without
+    /// them, only what MapLibre happens to have cached.
+    private var offlineChip: some View {
+        StatusChip(
+            systemImage: "wifi.slash",
+            title: OfflineMap.packages == nil ? "İnternet yok" : "İnternet yok · İstanbul çevrimdışı",
+            tone: .warning
+        )
+        .accessibilityIdentifier("offline.chip")
+    }
+
     /// iPhone on its side (car mounts): panels move into a left column and the map gets the rest.
     private var isLandscape: Bool { verticalSizeClass == .compact }
 
@@ -429,9 +443,12 @@ struct HomeScreen: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
             HStack(alignment: .top) {
-                if let alert = navigation.hazardAlert {
-                    HazardChip(alert: alert)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
+                VStack(alignment: .leading, spacing: Spacing.s) {
+                    if let alert = navigation.hazardAlert {
+                        HazardChip(alert: alert)
+                            .transition(.move(edge: .leading).combined(with: .opacity))
+                    }
+                    if !connectivity.isOnline { offlineChip }
                 }
                 Spacer(minLength: 0)
                 if !isLandscape { navigationControls(navigation) }

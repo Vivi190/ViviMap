@@ -45,6 +45,7 @@ public struct AtlasMapView: View {
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
     private let isGuiding: Bool
+    private let isOffline: Bool
 
     /// `puckSource` replaces CoreLocation for the user puck (simulated drive); nil = real GPS.
     /// `isGuiding` moves the puck low on screen so the road ahead gets the room.
@@ -58,6 +59,7 @@ public struct AtlasMapView: View {
         marks: [MapMark] = [],
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
+        isOffline: Bool = false,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
     ) {
@@ -70,6 +72,7 @@ public struct AtlasMapView: View {
         self.marks = marks
         self.puckSource = puckSource
         self.isGuiding = isGuiding
+        self.isOffline = isOffline
         self.onLongPress = onLongPress
         self.onViewport = onViewport
     }
@@ -80,7 +83,9 @@ public struct AtlasMapView: View {
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
         let slow = byLevel[.slow] ?? [], heavy = byLevel[.heavy] ?? [], stopped = byLevel[.stopped] ?? []
         let cameraMarks = marks.filter(\.isCamera).map(\.coordinate), bumpMarks = marks.filter { !$0.isCamera }.map(\.coordinate)
-        MapView(styleURL: appearance.styleURL, camera: $camera, locationManager: puckSource) {
+        // Without a connection the shipped Istanbul tiles take over (when this build has them).
+        let style = isOffline ? OfflineMap.styleURL(appearance) ?? appearance.styleURL : appearance.styleURL
+        MapView(styleURL: style, camera: $camera, locationManager: puckSource) {
             if route.count > 1 {
                 let line = ShapeSource(identifier: "atlas-route") {
                     MLNPolylineFeature(coordinates: route)
