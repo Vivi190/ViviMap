@@ -16,8 +16,10 @@ public struct AtlasMapView: View {
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
+    private let isGuiding: Bool
 
     /// `puckSource` replaces CoreLocation for the user puck (simulated drive); nil = real GPS.
+    /// `isGuiding` moves the puck low on screen so the road ahead gets the room.
     public init(
         camera: Binding<MapViewCamera>,
         appearance: MapAppearance,
@@ -25,6 +27,7 @@ public struct AtlasMapView: View {
         destination: CLLocationCoordinate2D? = nil,
         route: [CLLocationCoordinate2D] = [],
         puckSource: StaticLocationManager? = nil,
+        isGuiding: Bool = false,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
     ) {
@@ -34,12 +37,14 @@ public struct AtlasMapView: View {
         self.destination = destination
         self.route = route
         self.puckSource = puckSource
+        self.isGuiding = isGuiding
         self.onLongPress = onLongPress
         self.onViewport = onViewport
     }
 
     public var body: some View {
         let show3D = showsBuildings3D
+        let guiding = isGuiding
         MapView(styleURL: appearance.styleURL, camera: $camera, locationManager: puckSource) {
             if route.count > 1 {
                 let line = ShapeSource(identifier: "atlas-route") {
@@ -97,6 +102,16 @@ public struct AtlasMapView: View {
                 if !mapView.showsUserHeadingIndicator { mapView.showsUserHeadingIndicator = true }
                 if let layer = mapView.style?.layer(withIdentifier: MapLayerID.buildings3D), layer.isVisible != show3D {
                     layer.isVisible = show3D
+                }
+                // Guidance: puck at ~70 % of the height (centre of the area below a 40 % top inset).
+                // Otherwise the safe area, which is what MapLibre's automatic inset uses. Set directly
+                // because swiftui-dsl's mapContentInset never resets once its value goes back to nil.
+                let inset = guiding
+                    ? UIEdgeInsets(top: mapView.bounds.height * 0.4, left: 0, bottom: 0, right: 0)
+                    : mapView.safeAreaInsets
+                if mapView.contentInset != inset {
+                    mapView.automaticallyAdjustsContentInset = false
+                    mapView.setContentInset(inset, animated: true, completionHandler: nil)
                 }
             }
     }

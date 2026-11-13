@@ -110,8 +110,17 @@ public final class NavigationSession {
         }
 
         if case .complete = state.tripState {
-            if !hasArrived { voice.speak("Hedefe ulaştın.") }
+            guard !hasArrived else { return }
+            voice.speak("Hedefe ulaştın.")
             hasArrived = true
+            // Cleared so the bottom bar says "Vardın" instead of a stale arrival time.
+            distanceToManeuver = nil
+            distanceRemaining = nil
+            durationRemaining = nil
+            maneuverSymbol = ManeuverSymbols.symbol(type: .arrive, modifier: nil)
+            actionText = "Hedefe ulaştın"
+            nextRoad = nil
+            lanes = []
             return
         }
         guard let progress = state.currentProgress else { return }

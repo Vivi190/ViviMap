@@ -29,8 +29,9 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
    - Mavi bantta Türkçe talimat ("300 m · Sola dön · Ankara Caddesi") görünüyor mu?
    - Sesli uyarılar zamanında geliyor mu? Şehirde yaklaşık 400 m, 120 m ve dönüşte; hızlı yolda daha erken.
    - Rotadan çıkınca "Yeni rota hesaplanıyor" denip yeni rota çiziliyor mu?
-5. **Ekran kilidi:** navigasyon sürerken ekranı kilitle. Sesli yönlendirme devam etmeli ve üstte mavi konum göstergesi görünmeli.
-6. **Hız göstergesi:** sol altta, araçla tutarlı mı?
+5. **Ekran:** navigasyon sürerken ekran kendiliğinden kararmamalı. Yan tuşla elle kilitlediğinde sesli yönlendirme devam etmeli ve üstte mavi konum göstergesi görünmeli.
+6. **Konum oku:** navigasyonda ekranın alt bölümünde durmalı; böylece ilerideki yol görünür. Varışta alt çubukta "Vardın" yazmalı.
+7. **Hız göstergesi:** sol altta, araçla tutarlı mı?
 
 **Bilinen sınırlar:**
 

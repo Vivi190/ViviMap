@@ -107,6 +107,7 @@ struct HomeScreen: View {
                 destination: selectedPlace?.point.coordinate,
                 route: displayedRoute,
                 puckSource: simulatedPuck,
+                isGuiding: isNavigating,
                 onLongPress: longPressHandler
             ) { proxy in
                 viewport.update(from: proxy)
@@ -361,6 +362,8 @@ struct HomeScreen: View {
         do {
             try navigation.start(route, from: start)
             location.setNavigating(true)
+            // The screen stays on while guiding (it can still be locked by hand; guidance continues).
+            UIApplication.shared.isIdleTimerDisabled = true
             if simulated { simulate(route, from: start) }
             is3D = true
             camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
@@ -388,6 +391,7 @@ struct HomeScreen: View {
         }
         navigation?.stop()
         location.setNavigating(false)
+        UIApplication.shared.isIdleTimerDisabled = false
         clearPlace()
         is3D = false
         camera = .trackUserLocation(zoom: 15.5, pitch: 0, pitchRange: .fixed(0))

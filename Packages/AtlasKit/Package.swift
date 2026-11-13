@@ -53,7 +53,7 @@ let package = Package(
         .testTarget(name: "RoutingEngineTests", dependencies: ["RoutingEngine"]),
         .testTarget(
             name: "NavigationEngineTests",
-            dependencies: ["NavigationEngine", .product(name: "FerrostarCore", package: "ferrostar")]
+            dependencies: ["NavigationEngine", "RoutingEngine", "SearchEngine", .product(name: "FerrostarCore", package: "ferrostar")]
         ),
     ]
 )
