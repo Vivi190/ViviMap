@@ -16,6 +16,8 @@ final class HomeScreenshotTests: XCTestCase {
         allowLocationIfAsked()
 
         XCTAssertTrue(app.buttons["Konumumu göster"].waitForExistence(timeout: 20), "map controls did not appear")
+        // The app starts following the user on its first fix; the button then shows the filled symbol.
+        XCTAssertTrue(app.buttons["location.fill"].waitForExistence(timeout: 20), "no location fix")
         // MapLibre exposes no "tiles loaded" signal to XCUITest; give the network a fixed window.
         settle(10)
         capture("1-home-day")
@@ -74,15 +76,19 @@ final class HomeScreenshotTests: XCTestCase {
         add(shot)
     }
 
+    /// The permission alert can arrive several seconds after launch on a cold CI simulator; a short wait
+    /// once left location unauthorized and the route step failed with "Konumun henüz bilinmiyor".
     @MainActor
     private func allowLocationIfAsked() {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        for title in ["Allow While Using App", "Uygulamayı Kullanırken İzin Ver"] {
-            let button = springboard.buttons[title]
-            if button.waitForExistence(timeout: 4) {
-                button.tap()
+        let buttons = ["Allow While Using App", "Uygulamayı Kullanırken İzin Ver"].map { springboard.buttons[$0] }
+        let deadline = Date().addingTimeInterval(20)
+        while Date() < deadline {
+            if let allow = buttons.first(where: \.exists) {
+                allow.tap()
                 return
             }
+            Thread.sleep(forTimeInterval: 0.5)
         }
     }
 }
