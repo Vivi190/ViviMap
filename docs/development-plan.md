@@ -38,6 +38,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 - Canlı trafik yok (Faz 3, HERE).
 - Rota sunucusu FOSSGIS'in ortak sunucusu; arada yavaşlayabilir.
 - Şerit bilgisi çoğu yolda yok (OSM'de veri yok; sahte şerit çizilmiyor).
+- Adres aramada kapı numarası çoğu yerde bulunmuyor (OSM'de numara verisi az): sokak bulunur. Tam nokta için haritada uzun bas. Türkçe karakterli ve karaktersiz yazım ("çanakkale" / "canakkale") aynı sonucu veriyor (14.11.2026 ölçümü).
 - Hız sınırı, kasis ve kamera uyarıları Faz 5'te.
 - Offline çalışmıyor (Faz 4).
 - Ses kalitesi cihazdaki Türkçe sese bağlı. Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe yolundan "Geliştirilmiş" sesi indirirsen daha doğal okunur.
