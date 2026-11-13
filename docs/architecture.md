@@ -147,6 +147,6 @@ Her modül `Packages/AtlasKit` içinde bir hedef olarak yaşar. Sağlayıcıya b
 | VoiceGuidance | Türkçe talimat üretimi, AVSpeech, ses oturumu | 2 | — |
 | TrafficEngine | `TrafficProvider`: HERE, trafik katmanı | 3 | 🟡 HERE route import puanlama + kota bekçisi; anahtar bekliyor |
 | OfflineEngine | Bölge paketleri, indirme/devam ettirme, bütünlük | 4 | — |
-| RoadHazards | Kasis/kamera/tehlike verisi, kullanıcı işaretleri, uyarı zamanlaması | 5 | — |
+| RoadHazards | Kasis/kamera/tehlike verisi, kullanıcı işaretleri, uyarı zamanlaması | 5 | 🟡 OSM verisi + rota uyarıları; kullanıcı işaretleri sırada |
 | TripHistory | Sürüş kayıtları, süre kalibrasyonu | 6 / 7 | — |
 | Settings | Ayarlar ekranları (şimdilik AppCore + harita sayfası) | 2+ | — |

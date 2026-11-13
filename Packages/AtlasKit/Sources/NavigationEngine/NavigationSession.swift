@@ -4,6 +4,7 @@ import CoreLocation
 @preconcurrency import FerrostarCoreFFI
 import Foundation
 import Observation
+import RoadHazards
 import RoutingEngine
 
 /// Turn-by-turn guidance: Ferrostar follows the route (snapping, step advance, deviation and automatic
@@ -33,14 +34,25 @@ public final class NavigationSession {
     /// Symbol of the maneuver right after the next one when it follows within 150 m ("Sonra ↰").
     public private(set) var thenSymbol: String?
     public private(set) var routeCoordinates: [CLLocationCoordinate2D] = []
+    /// The next camera or bump within warning range, for the banner chip.
+    public private(set) var hazardAlert: HazardAlert?
 
     public let voice = VoiceGuide()
+    /// Which hazards to warn about (settings); takes effect from the next fix.
+    @ObservationIgnored public var hazardKinds = Set(Hazard.Kind.allCases) {
+        didSet { hazardWatch.kinds = hazardKinds }
+    }
 
     @ObservationIgnored private let core: FerrostarCore
     @ObservationIgnored private let bridge: FerrostarLocationBridge
     @ObservationIgnored private var subscription: AnyCancellable?
     @ObservationIgnored private var planner = AnnouncementPlanner()
     @ObservationIgnored private var lastSpeed: Double = 0
+    /// Shipped OSM cameras and bumps (works offline).
+    @ObservationIgnored private let hazards = HazardCatalog.bundled()?.hazards ?? []
+    @ObservationIgnored private var hazardWatch = HazardWatch()
+    /// Measured geometry of the current route; rebuilt when the route changes.
+    @ObservationIgnored private var routePath: RoutePath?
 
     public init() throws {
         let bridge = FerrostarLocationBridge()
@@ -93,8 +105,7 @@ public final class NavigationSession {
 
     /// The rest of the route from the current position, for re-measuring traffic on what is left.
     public func remainingRoute() -> [CLLocationCoordinate2D] {
-        guard let remaining = distanceRemaining, routeCoordinates.count > 1 else { return [] }
-        let path = RoutePath(routeCoordinates)
+        guard let remaining = distanceRemaining, let path = routePath else { return [] }
         return path.remainder(after: max(0, path.length - remaining))
     }
 
@@ -113,6 +124,9 @@ public final class NavigationSession {
         lanes = []
         thenSymbol = nil
         routeCoordinates = []
+        routePath = nil
+        hazardAlert = nil
+        hazardWatch = HazardWatch()
     }
 
     private func apply(_ state: NavigationState?) {
@@ -124,6 +138,11 @@ public final class NavigationSession {
             || state.routeGeometry.last?.lat != routeCoordinates.last?.latitude
             || state.routeGeometry.first?.lat != routeCoordinates.first?.latitude {
             routeCoordinates = state.routeGeometry.map(\.clLocationCoordinate2D)
+            // New route (start, reroute or a taken suggestion): find the cameras and bumps it passes.
+            let path = RoutePath(routeCoordinates)
+            routePath = path
+            hazardWatch = HazardWatch(hazards: RouteHazards.along(path, hazards: hazards))
+            hazardWatch.kinds = hazardKinds
         }
 
         if case .complete = state.tripState {
@@ -139,12 +158,19 @@ public final class NavigationSession {
             nextRoad = nil
             lanes = []
             thenSymbol = nil
+            hazardAlert = nil
             return
         }
         guard let progress = state.currentProgress else { return }
         distanceToManeuver = progress.distanceToNextManeuver
         distanceRemaining = progress.distanceRemaining
         durationRemaining = progress.durationRemaining
+
+        if let path = routePath {
+            let (alert, sentence) = hazardWatch.update(travelled: max(0, path.length - progress.distanceRemaining), speed: lastSpeed)
+            if alert != hazardAlert { hazardAlert = alert }
+            if let sentence { voice.speak(sentence) }
+        }
 
         let content = state.currentVisualInstruction?.primaryContent
         maneuverSymbol = ManeuverSymbols.symbol(type: content?.maneuverType, modifier: content?.maneuverModifier)

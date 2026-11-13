@@ -5,6 +5,7 @@ import Diagnostics
 import LocationEngine
 import MapEngine
 import NavigationEngine
+import RoadHazards
 import RoutingEngine
 import SearchEngine
 import SwiftUI
@@ -114,6 +115,13 @@ struct HomeScreen: View {
         return activeRoute?.coordinates ?? []
     }
 
+    private var hazardKinds: Set<Hazard.Kind> {
+        var kinds: Set<Hazard.Kind> = []
+        if settings.warnsCameras { kinds.insert(.camera) }
+        if settings.warnsBumps { kinds.insert(.bump) }
+        return kinds
+    }
+
     private var displayedTraffic: [TrafficLine] {
         let sections = isNavigating ? trafficWatch.sections : activeRoute.flatMap { previewTraffic[$0.index] } ?? []
         return sections.map { section in
@@ -170,6 +178,7 @@ struct HomeScreen: View {
             search.origin = { [location] in location.lastLocation.map { GeoPoint($0.coordinate) } }
         }
         .task(id: isNavigating) { await watchTraffic() }
+        .onChange(of: hazardKinds) { _, kinds in navigation?.hazardKinds = kinds }
         .onChange(of: routeSelection) { _, index in
             if let option = routes.first(where: { $0.index == index }) { loadFlow(for: option, generation: planGeneration) }
         }
@@ -355,7 +364,11 @@ struct HomeScreen: View {
                 RouteSuggestionBanner(suggestion: suggestion, onAccept: acceptSuggestion) { trafficWatch.dismiss() }
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
-            HStack {
+            HStack(alignment: .top) {
+                if let alert = navigation.hazardAlert {
+                    HazardChip(alert: alert)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
                 Spacer(minLength: 0)
                 MapControlGroup {
                     MapControlButton(systemImage: "location.north.line.fill", label: "Konumumu göster", isActive: true) {
@@ -420,6 +433,7 @@ struct HomeScreen: View {
             return
         }
         do {
+            navigation.hazardKinds = hazardKinds
             try navigation.start(route, from: start)
             location.setNavigating(true)
             // The screen stays on while guiding (it can still be locked by hand; guidance continues).

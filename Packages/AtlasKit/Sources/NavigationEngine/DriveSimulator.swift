@@ -70,6 +70,26 @@ struct RoutePath {
         return (coordinate, Self.bearing(from: a, to: b))
     }
 
+    /// Where `point` meets the line, if it is within `tolerance` metres: the distance from the start there
+    /// and the direction of travel. The nearest segment wins.
+    func project(_ point: CLLocationCoordinate2D, tolerance: CLLocationDistance) -> (offset: CLLocationDistance, course: CLLocationDirection)? {
+        let metresPerLon = 111_320 * cos(point.latitude * .pi / 180), metresPerLat = 110_540.0
+        var best: (distance: Double, offset: Double, course: Double)?
+        for index in coordinates.indices.dropLast() {
+            let span = offsets[index + 1] - offsets[index]
+            guard span > 0 else { continue }
+            let a = coordinates[index], b = coordinates[index + 1]
+            let ax = (a.longitude - point.longitude) * metresPerLon, ay = (a.latitude - point.latitude) * metresPerLat
+            let dx = (b.longitude - a.longitude) * metresPerLon, dy = (b.latitude - a.latitude) * metresPerLat
+            let t = max(0, min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy)))
+            let distance = hypot(ax + t * dx, ay + t * dy)
+            if distance <= tolerance, distance < (best?.distance ?? .infinity) {
+                best = (distance, offsets[index] + t * span, Self.bearing(from: a, to: b))
+            }
+        }
+        return best.map { ($0.offset, $0.course) }
+    }
+
     /// The line after `distance` metres, starting exactly there (what is left of a route).
     func remainder(after distance: CLLocationDistance) -> [CLLocationCoordinate2D] {
         guard coordinates.count > 1 else { return coordinates }

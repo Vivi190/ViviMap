@@ -1,6 +1,7 @@
 import AppCore
 import DesignSystem
 import NavigationEngine
+import RoadHazards
 import RoutingEngine
 import SwiftUI
 
@@ -130,6 +131,38 @@ struct NavigationBottomBar: View {
         }
         .padding(Spacing.l)
         .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+}
+
+/// "Hız kamerası · 250 m · 50" / "Kasis · 80 m" while the next one is in warning range.
+struct HazardChip: View {
+    let alert: HazardAlert
+
+    var body: some View {
+        HStack(spacing: Spacing.s) {
+            Image(systemName: alert.kind == .camera ? "camera.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(alert.kind == .camera ? Color.atlasCritical : Color.atlasWarning)
+            Text(alert.kind == .camera ? "Hız kamerası" : "Kasis")
+            Text(Formatting.distance(meters: alert.distance))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+            if let limit = alert.maxspeed {
+                // A speed-limit sign: red ring, number inside.
+                Text("\(limit)")
+                    .font(.system(size: 13, weight: .heavy))
+                    .monospacedDigit()
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(.white))
+                    .overlay(Circle().stroke(Color.atlasCritical, lineWidth: 3))
+                    .foregroundStyle(.black)
+            }
+        }
+        .font(.headline)
+        .padding(.horizontal, Spacing.m)
+        .padding(.vertical, Spacing.s)
+        .atlasFloatingSurface(in: Capsule())
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("nav.hazard")
     }
 }
 

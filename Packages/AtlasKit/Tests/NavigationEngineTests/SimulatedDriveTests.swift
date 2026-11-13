@@ -56,7 +56,8 @@ struct SimulatedDriveTests {
         #expect(prompts.first?.hasPrefix("Rota başladı") == true)
         #expect(prompts.last == "Hedefe ulaştın.")
         #expect(!prompts.contains("Yeni rota hesaplanıyor."), "rerouted while exactly on the route: \(prompts)")
-        let turns = prompts.dropFirst().dropLast()
+        // Maneuver prompts only: camera / bump warnings ("80 metre sonra kasis.") would also match " sonra ".
+        let turns = prompts.dropFirst().dropLast().filter { !$0.contains("kasis") && !$0.contains("Kasis") && !$0.contains("kamera") }
         #expect(turns.contains { $0.contains(" sonra ") }, "no advance warning: \(prompts)")
         #expect(turns.contains { !$0.contains(" sonra ") }, "no at-the-turn prompt: \(prompts)")
         #expect(session.durationRemaining == nil, "arrival must clear the remaining time")
