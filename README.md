@@ -3,7 +3,13 @@
 İstanbul odaklı, kişisel kullanım için iOS navigasyon uygulaması. Geçici adı ATLAS.
 Yığın: native SwiftUI + MapLibre; Ferrostar/Valhalla tabanlı rota motoru (Faz 2+); offline-first.
 
-**Durum:** Faz 1 (temel). Harita, konum, hız göstergesi, gece/gündüz ve CI/TestFlight hattı hazır. Arama ve rota henüz yok.
+**Durum:** Faz 2 (navigasyon MVP) kodlandı ve CI'da uçtan uca test edildi:
+- Arama (Photon) ve haritadan seçme
+- Ev/İş kısayolları
+- Rota (Valhalla, alternatiflerle)
+- Ferrostar ile adım adım navigasyon, Türkçe sesli yönlendirme ve ekran kilitliyken devam
+
+Sırada cihazda sürüş testi var. Canlı trafik, offline ve yol uyarıları sonraki fazlarda.
 Ayrıntılar: [docs/development-plan.md](docs/development-plan.md).
 
 ## Dokümanlar

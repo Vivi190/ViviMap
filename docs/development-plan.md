@@ -6,13 +6,36 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 |---|---|---|---|
 | 0 — Araştırma | Depolar, lisanslar, trafik, offline, arama, CarPlay, CI | Rapor + mimari kararlar | ✅ |
 | 1 — Temel | Proje yapısı, tasarım sistemi, harita, konum, hız rozeti, CI, TestFlight akışı | CI yeşil; simülatör ekran görüntüleri; **senin iPhone'unda TestFlight kurulumu** | 🟡 CI yeşil (testler + ekran görüntüleri), ilk build TestFlight'a yüklendi (13.11.2026); cihaz testi bekliyor |
-| 2 — Navigasyon MVP | Arama (Photon), favoriler, rota (Valhalla: önce FOSSGIS), Ferrostar, Türkçe ses, rotadan sapma, arka plan | 50 adreslik İstanbul arama testi; simüle sürüş testleri; Pendik → Kartal gerçek sürüş (araç dururken etkileşim) | 🟡 Arama ✅, rota önizleme ✅ (CI'da canlı Photon + FOSSGIS Valhalla testi, 3 alternatif); Ev/İş ✅; navigasyon + Türkçe ses + arka plan kodlandı, CI'da |
+| 2 — Navigasyon MVP | Arama (Photon), favoriler, rota (Valhalla: önce FOSSGIS), Ferrostar, Türkçe ses, rotadan sapma, arka plan | 50 adreslik İstanbul arama testi; simüle sürüş testleri; Pendik → Kartal gerçek sürüş (araç dururken etkileşim) | 🟡 Kod + CI tamam (arama, rota, navigasyon, Türkçe ses, arka plan, haritadan seçme); TestFlight 1.0 (5); **cihazda sürüş testi bekliyor** |
 | 3 — Trafik zekâsı | HERE, aday üretimi + puanlama, trafik katmanı, histerezisli rota değiştirme | Aynı sürüşte önerilen ve gerçekleşen süre kaydı; sık sık rota değiştirmenin önlendiğinin testi | ⏳ HERE hesabı ve anahtarı gerekiyor |
 | 4 — Offline | PMTiles bölgeleri, Valhalla cihaz içi, FTS5 arama, indirme/devam ettirme, online ↔ offline geçiş | Uçak modunda baştan sona sürüş; bağlantı kesilince navigasyonun devam etmesi | ⏳ |
 | 5 — Sürüş zekâsı | Hız sınırı (bilinmiyor/varsayılan ayrımıyla), kasis/tehlike/kamera uyarıları, kullanıcı işaretleri, şerit (veri varsa) | Uyarı zamanlaması testi; karşı yön filtresi; aynı uyarının tekrarlanmaması | ⏳ |
 | 6 — Premium deneyim | 3D navigasyon kamerası, hıza göre zoom, rota kartları, yatay mod, takip modunda yakınlaştırma | Ekran görüntüsü incelemesi; 60 FPS ölçümü (Instruments, cihazda) | ⏳ |
 | 7 — İleri özellikler | Live Activity / Dynamic Island, CarPlay (yetki gelirse), sürüş geçmişi, kişisel süre kalibrasyonu | Sürüş verisiyle kalibrasyon raporu | ⏳ |
 | 8 — Doğrulama | Pil, bellek sızıntısı, uzun sürüş, trafik doğruluğu, arayüz incelemesi | Ölçüm raporu; Google/Yandex karşılaştırması yalnızca ölçülmüş verilerle | ⏳ |
+
+## Faz 2 — TestFlight'ta ne denenecek
+
+Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururken etkileşime gir.
+
+1. **Arama:** "Ara" alanına bir yer, adres ya da koordinat yaz (örneğin "Kartal Adliyesi", "40.889, 29.19"). Sonuçlar mesafeli ve Türkçe adlı mı?
+2. **Haritadan seçme:** haritada bir noktaya uzun bas. Kartta adres çıkıyor mu? "…" menüsünden **Ev olarak kaydet**'e dokun. Sonra "Ara" sayfasında **Kısayollar → Ev**'e tek dokunuş doğrudan rota açmalı.
+3. **Rota:** kartta süre, mesafe, varış saati, ana yollar ve varsa alternatifler (16/19/18 dk gibi) görünmeli. Süreler **trafiksiz**; kartta bu açıkça yazıyor.
+4. **Navigasyon:** "Başlat"a bas. Şunları kontrol et:
+   - Mavi bantta Türkçe talimat ("300 m · Sola dön · Ankara Caddesi") görünüyor mu?
+   - Sesli uyarılar zamanında geliyor mu? Şehirde yaklaşık 400 m, 120 m ve dönüşte; hızlı yolda daha erken.
+   - Rotadan çıkınca "Yeni rota hesaplanıyor" denip yeni rota çiziliyor mu?
+5. **Ekran kilidi:** navigasyon sürerken ekranı kilitle. Sesli yönlendirme devam etmeli ve üstte mavi konum göstergesi görünmeli.
+6. **Hız göstergesi:** sol altta, araçla tutarlı mı?
+
+**Bilinen sınırlar:**
+
+- Canlı trafik yok (Faz 3, HERE).
+- Rota sunucusu FOSSGIS'in ortak sunucusu; arada yavaşlayabilir.
+- Şerit bilgisi çoğu yolda yok (OSM'de veri yok; sahte şerit çizilmiyor).
+- Hız sınırı, kasis ve kamera uyarıları Faz 5'te.
+- Offline çalışmıyor (Faz 4).
+- Ses kalitesi cihazdaki Türkçe sese bağlı. Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe yolundan "Geliştirilmiş" sesi indirirsen daha doğal okunur.
 
 ## Faz 1 — çalışan özellikler ve eksikler
 
