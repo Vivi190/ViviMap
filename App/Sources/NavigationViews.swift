@@ -147,14 +147,7 @@ struct HazardChip: View {
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
             if let limit = alert.maxspeed {
-                // A speed-limit sign: red ring, number inside.
-                Text("\(limit)")
-                    .font(.system(size: 13, weight: .heavy))
-                    .monospacedDigit()
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(.white))
-                    .overlay(Circle().stroke(Color.atlasCritical, lineWidth: 3))
-                    .foregroundStyle(.black)
+                SpeedLimitSign(limit: limit)
             }
         }
         .font(.headline)

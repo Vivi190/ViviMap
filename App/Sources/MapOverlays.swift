@@ -46,13 +46,15 @@ struct GPSStatusChip: View {
 /// Speed badge while moving; hidden when standing still or when there is no usable speed.
 struct SpeedOverlay: View {
     @Environment(LocationProvider.self) private var location
+    /// The road's limit while guiding, when known.
+    var limit: Int?
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let reading = location.speedReading(at: context.date)
             ZStack {
                 if let kmh = reading.kmh, kmh > 0 {
-                    SpeedometerView(kmh: kmh, isReliable: reading.isReliable)
+                    SpeedometerView(kmh: kmh, isReliable: reading.isReliable, limit: limit)
                         .transition(.scale(scale: 0.85).combined(with: .opacity))
                 }
             }

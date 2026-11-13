@@ -36,6 +36,9 @@ public final class NavigationSession {
     public private(set) var routeCoordinates: [CLLocationCoordinate2D] = []
     /// The next camera or bump within warning range, for the banner chip.
     public private(set) var hazardAlert: HazardAlert?
+    /// Speed limit of the road being driven, km/h, only when the map data has one (OSM `maxspeed` via
+    /// Valhalla); nil means unknown, and no sign is shown rather than a guessed one.
+    public private(set) var speedLimit: Int?
 
     public let voice = VoiceGuide()
     /// Which hazards to warn about (settings); takes effect from the next fix.
@@ -128,7 +131,23 @@ public final class NavigationSession {
         routeCoordinates = []
         routePath = nil
         hazardAlert = nil
+        speedLimit = nil
         hazardWatch = HazardWatch()
+    }
+
+    /// Ferrostar hands over the current segment's Valhalla annotation as JSON; its `maxspeed` is
+    /// `{"speed":50,"unit":"km/h"}`, `{"unknown":true}` or `{"none":true}` (no limit, not a sign either).
+    static func speedLimit(fromAnnotation json: String?) -> Int? {
+        guard let data = json?.data(using: .utf8),
+              let annotation = try? JSONDecoder().decode(ValhallaExtendedOSRMAnnotation.self, from: data),
+              case let .speed(value, unit: unit)? = annotation.speedLimit
+        else { return nil }
+        let kmh = switch unit {
+        case .kilometersPerHour: value
+        case .milesPerHour: value * 1.609344
+        case .knots: value * 1.852
+        }
+        return Int(kmh.rounded())
     }
 
     private func apply(_ state: NavigationState?) {
@@ -161,12 +180,15 @@ public final class NavigationSession {
             lanes = []
             thenSymbol = nil
             hazardAlert = nil
+            speedLimit = nil
             return
         }
         guard let progress = state.currentProgress else { return }
         distanceToManeuver = progress.distanceToNextManeuver
         distanceRemaining = progress.distanceRemaining
         durationRemaining = progress.durationRemaining
+        let limit = Self.speedLimit(fromAnnotation: state.currentAnnotationJSON)
+        if limit != speedLimit { speedLimit = limit }
 
         if let path = routePath {
             let (alert, sentence) = hazardWatch.update(travelled: max(0, path.length - progress.distanceRemaining), speed: lastSpeed)

@@ -68,6 +68,20 @@ struct HazardWatchTests {
 }
 
 @MainActor
+struct SpeedLimitTests {
+    // Annotation shapes as FOSSGIS Valhalla returned them on a Kartal route (14.11.2026): 50 and 110 km/h
+    // where OSM has maxspeed, {"unknown":true} on 88 of 180 segments.
+    @Test func onlyMappedLimitsBecomeASign() {
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"maxspeed":{"speed":50,"unit":"km/h"},"speed":13.9,"distance":21.3,"duration":1.5}"#) == 50)
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"maxspeed":{"speed":110,"unit":"km/h"}}"#) == 110)
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"maxspeed":{"unknown":true},"speed":8.0}"#) == nil)
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"maxspeed":{"none":true}}"#) == nil) // no limit is not a sign
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"speed":8.0}"#) == nil)
+        #expect(NavigationSession.speedLimit(fromAnnotation: nil) == nil)
+    }
+}
+
+@MainActor
 struct UserHazardStoreTests {
     @Test func marksPersistAndReplaceTheSameSpot() {
         let defaults = UserDefaults(suiteName: "atlas.test.\(UUID())")!

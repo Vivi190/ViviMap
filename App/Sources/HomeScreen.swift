@@ -382,7 +382,7 @@ struct HomeScreen: View {
             }
             Spacer(minLength: 0)
             HStack(alignment: .bottom) {
-                SpeedOverlay()
+                SpeedOverlay(limit: navigation.speedLimit)
                 Spacer(minLength: 0)
                 if simulatedPuck != nil {
                     // Always visible: a simulated drive must never pass for real guidance.
