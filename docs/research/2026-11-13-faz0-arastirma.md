@@ -286,6 +286,26 @@ Overpass API, 13.11.2026. Uzunluklar yol geometrisinden hesaplandı (km).
 
 ---
 
+## 11b. Faz 2 ön testleri (13.11.2026, canlı istek)
+
+**FOSSGIS Valhalla (`tr-TR`):**
+
+- Pendik → Kartal: 4,9 km, trafiksiz 8,0 dk, 15 manevra; yanıt süresi 0,3 sn.
+- Türkçe talimatlar **kullanılamaz durumda**:
+  - Tekrar eden sözcükler: "Kübra Sokak *caddesinde*", "23 Nisan Caddesi *caddesine*".
+  - Tek başına kalan "sol.".
+  - Yanlış hâl eki: "sol yönelin" (doğrusu "sola yönelin").
+  - → ADR-3 doğrulandı: Türkçe metin manevra verisinden bizim tarafımızda üretilecek.
+- Tuzla merkez → Kartal sahil: 17,3 km, trafiksiz 26,9 dk, sahil hattından. `alternates: 2` istendi ama **hiç alternatif dönmedi**.
+  - → ADR-5 doğrulandı: alternatifler Valhalla'nın kendi alternatiflerine bırakılmayacak, açık stratejilerle üretilecek (otoyol ağırlıklı / yerel sokak / koridor üzerinden ara nokta).
+- Aydınlı'daki bir nokta "No path could be found" (hata 442) döndü; nokta muhtemelen kapalı bir tesis alanına düştü. → Hedef noktasını kamuya açık bir yola yapıştırma ve anlaşılır hata mesajı gerekiyor.
+
+**Photon (public), 7 İstanbul sorgusu:**
+
+- 5'i doğru: Kartal Adliyesi → Anadolu Adalet Sarayı; Ankara Caddesi Kartal; **Bağdat Caddesi 300** (kapı numarasıyla); Sabiha Gökçen; ASCII yazılmış "Sehit Fethi Caddesi" → Şehit Fethi Caddesi.
+- 2'si sıralama hatası: "Pendik Marmaray" → Marmaray *Sokağı*; "Tuzla Belediyesi" → otobüs durağı.
+- → Uygulama içinde OSM etiketine göre yeniden sıralama yapılacak (örneğin belediye binası ve istasyon üstte).
+
 ## 12. Doğrulanamayanlar
 
 - Valhalla Türkiye karo boyutu, RAM ihtiyacı ve cihaz içi bellek kullanımı.
