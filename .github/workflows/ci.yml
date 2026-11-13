@@ -57,6 +57,20 @@ jobs:
           EOF
           cat "$GITHUB_OUTPUT"
 
+      # Two runs failed with "no location fix": the evidence screenshot had no alert, no denied chip and no
+      # location arrow, i.e. the permission was never granted. Granting it up front takes the system alert
+      # out of the UI test; if simctl refuses, the test still answers the alert itself.
+      - name: Grant location permission on the simulator
+        run: |
+          UDID="${{ steps.sim.outputs.udid }}"
+          xcrun simctl boot "$UDID" 2>/dev/null || true
+          xcrun simctl bootstatus "$UDID" -b > /dev/null
+          if xcrun simctl privacy "$UDID" grant location com.vivimap.atlas; then
+            echo "location granted"
+          else
+            echo "::warning::could not pre-grant location; the UI test will answer the alert"
+          fi
+
       - name: Build and test (unit + UI screenshots)
         run: |
           set -o pipefail
