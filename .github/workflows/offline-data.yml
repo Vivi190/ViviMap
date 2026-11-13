@@ -18,6 +18,8 @@ jobs:
     env:
       BBOX: "28.0,40.75,29.95,41.6" # west,south,east,north: greater Istanbul, same box as the hazard data
     steps:
+      - uses: actions/checkout@v5
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -51,6 +53,13 @@ jobs:
           java -Xmx5g -jar planetiler.jar --osm-path=istanbul.osm.pbf --output=istanbul.pmtiles \
             --download --maxzoom=14 --force
 
+      - name: Place search index
+        run: |
+          osmium tags-filter istanbul.osm.pbf nwr/name -o named.osm.pbf --overwrite
+          osmium export named.osm.pbf -f geojsonseq -o named.geojsonseq --overwrite
+          python3 Tools/search/build_index.py --self-test
+          python3 Tools/search/build_index.py named.geojsonseq places.sqlite
+
       - name: Map fonts (offline labels)
         run: |
           # The stacks our style uses; ranges for Latin, Turkish (ğ ı ş İ in 256-511) and punctuation (’ – …).
@@ -68,6 +77,7 @@ jobs:
             echo "OSM extract:          $(du -h istanbul.osm.pbf | cut -f1)"
             echo "Valhalla tiles (tar): $(du -h valhalla/valhalla_tiles.tar | cut -f1)"
             echo "Map tiles (pmtiles):  $(du -h istanbul.pmtiles | cut -f1)"
+            echo "Search index:         $(du -h places.sqlite | cut -f1)"
             gzip -9 -c valhalla/valhalla_tiles.tar > valhalla_tiles.tar.gz
             echo "Valhalla tiles (gz):  $(du -h valhalla_tiles.tar.gz | cut -f1)"
           } | tee sizes.txt
@@ -78,6 +88,6 @@ jobs:
         run: |
           tag="offline-data-$(date -u +%Y%m%d)-${{ github.run_number }}"
           cp valhalla/valhalla_tiles.tar .
-          gh release create "$tag" valhalla_tiles.tar istanbul.pmtiles fonts.zip sizes.txt \
+          gh release create "$tag" valhalla_tiles.tar istanbul.pmtiles places.sqlite fonts.zip sizes.txt \
             --repo "${{ github.repository }}" --prerelease --title "$tag" \
             --notes "Istanbul offline packages (Valhalla 3.9.0 tiles, OpenMapTiles PMTiles, fonts). Data © OpenStreetMap contributors, ODbL."

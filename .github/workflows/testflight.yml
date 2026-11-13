@@ -48,9 +48,10 @@ jobs:
             --jq '[.[] | select(.tagName | startswith("offline-data-"))][0].tagName // empty')
           if [ -z "$tag" ]; then echo "::warning::No offline-data release: building without offline packages"; exit 0; fi
           mkdir -p App/Resources/Offline
-          gh release download "$tag" --repo "${{ github.repository }}" --dir App/Resources/Offline \
-            --pattern valhalla_tiles.tar --pattern istanbul.pmtiles --pattern fonts.zip
-          (cd App/Resources/Offline && unzip -q fonts.zip -d fonts && rm fonts.zip)
+          # Every asset of the release (older ones may lack some, e.g. the search index); the app checks
+          # for each file on its own.
+          gh release download "$tag" --repo "${{ github.repository }}" --dir App/Resources/Offline
+          (cd App/Resources/Offline && rm -f sizes.txt && unzip -q fonts.zip -d fonts && rm fonts.zip)
           echo "$tag" > App/Resources/Offline/version.txt
           du -sh App/Resources/Offline/*
 

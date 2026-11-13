@@ -29,7 +29,10 @@ public final class SearchController {
     private static let recentsKey = "atlas.recentPlaces"
     private static let maxRecents = 12
 
-    public init(provider: any PlaceSearchProvider = PhotonSearchProvider(), defaults: UserDefaults = .standard) {
+    public init(
+        provider: any PlaceSearchProvider = FallbackSearchProvider(primary: PhotonSearchProvider(), fallback: OfflinePlaceIndex.bundled),
+        defaults: UserDefaults = .standard
+    ) {
         self.provider = provider
         self.defaults = defaults
         recents = defaults.data(forKey: Self.recentsKey).flatMap { try? JSONDecoder().decode([Place].self, from: $0) } ?? []
