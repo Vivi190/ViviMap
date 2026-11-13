@@ -1,5 +1,6 @@
 import AppCore
 import LocationEngine
+import RoutingEngine
 import SwiftUI
 
 @main
@@ -9,6 +10,7 @@ struct AtlasApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let startsTracking: Bool
     private let initiallyNight: Bool
+    private let planner = try? RoutePlanner()
 
     init() {
         let settings = AppSettings()
@@ -23,7 +25,7 @@ struct AtlasApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeScreen(startsTracking: startsTracking, initiallyNight: initiallyNight)
+            HomeScreen(startsTracking: startsTracking, initiallyNight: initiallyNight, planner: planner)
                 .environment(settings)
                 .environment(location)
         }

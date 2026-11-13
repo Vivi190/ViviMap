@@ -87,6 +87,7 @@ schemes:
         - package: AtlasKit/AppCoreTests
         - package: AtlasKit/LocationEngineTests
         - package: AtlasKit/SearchEngineTests
+        - package: AtlasKit/RoutingEngineTests
         - AtlasUITests
     archive:
       config: Release

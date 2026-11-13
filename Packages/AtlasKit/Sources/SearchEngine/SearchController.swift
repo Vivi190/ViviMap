@@ -13,6 +13,12 @@ public final class SearchController {
     public private(set) var isSearching = false
     public private(set) var errorMessage: String?
     public private(set) var recents: [Place]
+    public private(set) var home: Place?
+    public private(set) var work: Place?
+
+    public enum Slot: String, Sendable {
+        case home, work
+    }
 
     /// Biases results towards the user; read when a search starts.
     @ObservationIgnored public var origin: @MainActor () -> GeoPoint? = { nil }
@@ -27,6 +33,21 @@ public final class SearchController {
         self.provider = provider
         self.defaults = defaults
         recents = defaults.data(forKey: Self.recentsKey).flatMap { try? JSONDecoder().decode([Place].self, from: $0) } ?? []
+        home = Self.load(.home, from: defaults)
+        work = Self.load(.work, from: defaults)
+    }
+
+    /// Home / work shortcuts, kept on the device only.
+    public func save(_ place: Place, as slot: Slot) {
+        switch slot {
+        case .home: home = place
+        case .work: work = place
+        }
+        if let data = try? JSONEncoder().encode(place) { defaults.set(data, forKey: "atlas.saved.\(slot.rawValue)") }
+    }
+
+    private static func load(_ slot: Slot, from defaults: UserDefaults) -> Place? {
+        defaults.data(forKey: "atlas.saved.\(slot.rawValue)").flatMap { try? JSONDecoder().decode(Place.self, from: $0) }
     }
 
     /// Call when the user picks a place, so it shows up first next time.

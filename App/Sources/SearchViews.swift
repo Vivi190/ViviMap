@@ -1,6 +1,7 @@
 import AppCore
 import DesignSystem
 import LocationEngine
+import RoutingEngine
 import SearchEngine
 import SwiftUI
 
@@ -33,6 +34,8 @@ struct SearchBarButton: View {
 struct SearchSheet: View {
     @Bindable var search: SearchController
     let onSelect: (Place) -> Void
+    /// Home / work: one tap goes straight to the route.
+    let onShortcut: (Place) -> Void
     @Environment(LocationProvider.self) private var location
     @State private var isSearchPresented = true
 
@@ -44,14 +47,15 @@ struct SearchSheet: View {
         List {
             if hasQuery {
                 ForEach(search.results) { place in row(place) }
-            } else if !search.recents.isEmpty {
-                Section {
-                    ForEach(search.recents) { place in row(place) }
-                } header: {
-                    Text("Son aramalar")
-                } footer: {
-                    Button("Geçmişi temizle", role: .destructive) { search.clearRecents() }
-                        .font(.footnote)
+            } else {
+                if search.home != nil || search.work != nil {
+                    Section("Kısayollar") {
+                        if let home = search.home { shortcut("Ev", "house.fill", home) }
+                        if let work = search.work { shortcut("İş", "briefcase.fill", work) }
+                    }
+                }
+                if !search.recents.isEmpty {
+                    recentsSection
                 }
             }
         }
@@ -68,6 +72,39 @@ struct SearchSheet: View {
         .autocorrectionDisabled()
     }
 
+    private func shortcut(_ title: String, _ symbol: String, _ place: Place) -> some View {
+        Button { onShortcut(place) } label: {
+            HStack(spacing: Spacing.m) {
+                Image(systemName: symbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 32, height: 32)
+                    .background(Color.atlasAccent, in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).foregroundStyle(.primary)
+                    Text(place.name).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                    .foregroundStyle(Color.atlasAccent)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("\(title): rota"))
+    }
+
+    private var recentsSection: some View {
+        Section {
+            ForEach(search.recents) { place in row(place) }
+        } header: {
+            Text("Son aramalar")
+        } footer: {
+            Button("Geçmişi temizle", role: .destructive) { search.clearRecents() }
+                .font(.footnote)
+        }
+    }
+
     @ViewBuilder private var emptyState: some View {
         if hasQuery {
             if search.isSearching, search.results.isEmpty {
@@ -77,7 +114,7 @@ struct SearchSheet: View {
             } else if search.results.isEmpty {
                 ContentUnavailableView.search(text: search.query)
             }
-        } else if search.recents.isEmpty {
+        } else if search.recents.isEmpty, search.home == nil, search.work == nil {
             ContentUnavailableView(
                 "Nereye gidiyoruz?",
                 systemImage: "magnifyingglass",
@@ -124,13 +161,63 @@ struct SearchSheet: View {
     }
 }
 
-/// Bottom card for the selected place. Routing arrives in the next slice; until then the card only informs.
+/// Bottom card for the selected place: details, route request, home/work shortcut.
 struct PlaceCard: View {
     @Environment(LocationProvider.self) private var location
     let place: Place
+    let isPlanning: Bool
+    let error: String?
+    let onRoute: () -> Void
+    let onSave: (SearchController.Slot) -> Void
     let onClose: () -> Void
 
     var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            details
+            if let error {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(Color.atlasWarning)
+            }
+            HStack(spacing: Spacing.s) {
+                Button(action: onRoute) {
+                    HStack(spacing: Spacing.s) {
+                        if isPlanning {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
+                        }
+                        Text(isPlanning ? "Rota hesaplanıyor" : "Rota")
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .disabled(isPlanning)
+                .accessibilityIdentifier("place.route")
+
+                Menu {
+                    Button("Ev olarak kaydet", systemImage: "house.fill") { onSave(.home) }
+                    Button("İş olarak kaydet", systemImage: "briefcase.fill") { onSave(.work) }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.headline)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel(Text("Diğer seçenekler"))
+            }
+        }
+        .padding(Spacing.l)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("place.card")
+    }
+
+    private var details: some View {
         HStack(alignment: .top, spacing: Spacing.m) {
             Image(systemName: PlaceSymbol.name(for: place.category))
                 .font(.system(size: 17, weight: .semibold))
@@ -163,11 +250,75 @@ struct PlaceCard: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Kapat"))
         }
+    }
+}
+
+/// Route preview: time first (what a driver decides on), then distance, arrival, main roads, alternatives.
+struct RouteCard: View {
+    let place: Place
+    let routes: [RouteOption]
+    @Binding var selection: Int
+    let onClose: () -> Void
+
+    var body: some View {
+        let route = routes[min(selection, routes.count - 1)]
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
+                Text(Formatting.duration(seconds: route.duration))
+                    .font(.system(.largeTitle, weight: .bold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                Text(Formatting.distance(meters: route.distance))
+                    .font(.title3.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Spacer(minLength: 0)
+                Button(action: onClose) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 26))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Rotayı kapat"))
+            }
+            Text("Varış \(Date.now.addingTimeInterval(route.duration).formatted(date: .omitted, time: .shortened)) · \(place.name)")
+                .font(.subheadline.weight(.medium))
+                .lineLimit(1)
+            if !route.mainRoads.isEmpty {
+                Label(route.mainRoads.joined(separator: " → "), systemImage: "road.lanes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if routes.count > 1 {
+                HStack(spacing: Spacing.s) {
+                    ForEach(routes) { option in
+                        Button { selection = option.index } label: {
+                            Text(Formatting.duration(seconds: option.duration))
+                                .font(.subheadline.weight(.semibold))
+                                .monospacedDigit()
+                                .padding(.horizontal, Spacing.m)
+                                .frame(minHeight: 34)
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .tint(option.index == selection ? Color.atlasAccent : Color.secondary)
+                        .accessibilityLabel(Text("Alternatif \(option.index + 1): \(Formatting.duration(seconds: option.duration))"))
+                    }
+                }
+            }
+            // Honest about the source: the public Valhalla has no live traffic (Phase 3 adds HERE).
+            Label("Trafik dahil değil — trafiksiz tahmini süre", systemImage: "info.circle")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
         .padding(Spacing.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("place.card")
+        .accessibilityIdentifier("route.card")
+        .animation(.snappy(duration: 0.25), value: selection)
     }
 }
 

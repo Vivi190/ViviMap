@@ -4,6 +4,7 @@ import DesignSystem
 import Diagnostics
 import LocationEngine
 import MapEngine
+import RoutingEngine
 import SearchEngine
 import SwiftUI
 
@@ -47,13 +48,23 @@ struct HomeScreen: View {
     @State private var sheet: Sheet?
     @State private var search = SearchController()
     @State private var selectedPlace: Place?
+    @State private var routes: [RouteOption] = []
+    @State private var routeSelection = 0
+    @State private var isPlanning = false
+    @State private var routeError: String?
 
+    private let planner: RoutePlanner?
     private static let pitch3D: Double = 55
 
-    init(startsTracking: Bool, initiallyNight: Bool) {
+    init(startsTracking: Bool, initiallyNight: Bool, planner: RoutePlanner?) {
         _camera = State(initialValue: startsTracking ? .trackUserLocation(zoom: 15.5) : .center(Defaults.istanbul, zoom: 10))
         _awaitingFirstFix = State(initialValue: !startsTracking)
         _isNight = State(initialValue: initiallyNight)
+        self.planner = planner
+    }
+
+    private var activeRoute: RouteOption? {
+        routes.isEmpty ? nil : routes[min(routeSelection, routes.count - 1)]
     }
 
     var body: some View {
@@ -62,7 +73,8 @@ struct HomeScreen: View {
                 camera: $camera,
                 appearance: isNight ? .night : .day,
                 showsBuildings3D: is3D,
-                destination: selectedPlace?.point.coordinate
+                destination: selectedPlace?.point.coordinate,
+                route: activeRoute?.coordinates ?? []
             ) { proxy in
                 viewport.update(from: proxy)
             }
@@ -131,11 +143,27 @@ struct HomeScreen: View {
                 }
             }
             if let place = selectedPlace {
-                PlaceCard(place: place) { selectedPlace = nil }
+                if routes.isEmpty {
+                    PlaceCard(
+                        place: place,
+                        isPlanning: isPlanning,
+                        error: routeError,
+                        onRoute: { planRoute(to: place) },
+                        onSave: { search.save(place, as: $0) },
+                        onClose: clearPlace
+                    )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else {
+                    RouteCard(place: place, routes: routes, selection: $routeSelection) {
+                        routes = []
+                        camera = .center(place.point.coordinate, zoom: 16, pitch: is3D ? Self.pitch3D : 0)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
         }
         .animation(.snappy(duration: 0.3), value: selectedPlace)
+        .animation(.snappy(duration: 0.3), value: routes.isEmpty)
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)
     }
@@ -210,9 +238,47 @@ struct HomeScreen: View {
 
     private func select(_ place: Place) {
         search.remember(place)
+        routes = []
+        routeError = nil
         selectedPlace = place
         sheet = nil
         camera = .center(place.point.coordinate, zoom: max(viewport.zoom, 16), pitch: is3D ? Self.pitch3D : 0)
+    }
+
+    private func clearPlace() {
+        selectedPlace = nil
+        routes = []
+        routeError = nil
+    }
+
+    private func planRoute(to place: Place) {
+        guard let planner else {
+            routeError = "Rota servisi başlatılamadı."
+            return
+        }
+        guard let here = location.lastLocation else {
+            routeError = "Konumun henüz bilinmiyor."
+            return
+        }
+        isPlanning = true
+        routeError = nil
+        Task {
+            do {
+                let found = try await planner.routes(from: here, to: place.point)
+                routeSelection = 0
+                routes = found
+                if let first = found.first {
+                    camera = .fitting(
+                        southWest: first.southWest,
+                        northEast: first.northEast,
+                        padding: UIEdgeInsets(top: 150, left: 50, bottom: 320, right: 90)
+                    )
+                }
+            } catch {
+                routeError = error.localizedDescription
+            }
+            isPlanning = false
+        }
     }
 
     private func openSettings() {
@@ -222,7 +288,11 @@ struct HomeScreen: View {
     @ViewBuilder private func sheetContent(_ sheet: Sheet) -> some View {
         NavigationStack {
             switch sheet {
-            case .search: SearchSheet(search: search, onSelect: select)
+            case .search:
+                SearchSheet(search: search, onSelect: select) { place in
+                    select(place)
+                    planRoute(to: place)
+                }
             case .mapSettings: MapSettingsView(showDiagnostics: { self.sheet = .diagnostics })
             case .diagnostics: LocationDiagnosticsView()
             case .attribution: MapAttributionView()

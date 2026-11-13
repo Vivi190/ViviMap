@@ -12,6 +12,7 @@ public struct AtlasMapView: View {
     private let appearance: MapAppearance
     private let showsBuildings3D: Bool
     private let destination: CLLocationCoordinate2D?
+    private let route: [CLLocationCoordinate2D]
     private let onViewport: (MapViewProxy) -> Void
 
     public init(
@@ -19,18 +20,42 @@ public struct AtlasMapView: View {
         appearance: MapAppearance,
         showsBuildings3D: Bool,
         destination: CLLocationCoordinate2D? = nil,
+        route: [CLLocationCoordinate2D] = [],
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
     ) {
         _camera = camera
         self.appearance = appearance
         self.showsBuildings3D = showsBuildings3D
         self.destination = destination
+        self.route = route
         self.onViewport = onViewport
     }
 
     public var body: some View {
         let show3D = showsBuildings3D
         MapView(styleURL: appearance.styleURL, camera: $camera) {
+            if route.count > 1 {
+                let line = ShapeSource(identifier: "atlas-route") {
+                    MLNPolylineFeature(coordinates: route)
+                }
+                // Below the labels so street names stay readable on top of the route.
+                LineStyleLayer(identifier: "atlas-route-casing", source: line)
+                    .lineCap(.round)
+                    .lineJoin(.round)
+                    .lineColor(appearance == .night ? Self.routeCasingNight : .white)
+                    .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
+                               parameters: NSExpression(forConstantValue: 1.5),
+                               stops: NSExpression(forConstantValue: [10: 6, 14: 10, 18: 28]))
+                    .renderBelow(.symbols)
+                LineStyleLayer(identifier: "atlas-route", source: line)
+                    .lineCap(.round)
+                    .lineJoin(.round)
+                    .lineColor(Self.routeColor)
+                    .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
+                               parameters: NSExpression(forConstantValue: 1.5),
+                               stops: NSExpression(forConstantValue: [10: 3.5, 14: 6.5, 18: 20]))
+                    .renderBelow(.symbols)
+            }
             if let destination {
                 let pin = ShapeSource(identifier: "atlas-destination") {
                     MLNPointFeature(coordinate: destination)
@@ -66,6 +91,8 @@ public struct AtlasMapView: View {
     }
 
     private static let destinationColor = UIColor(Color.atlasCritical)
+    private static let routeColor = UIColor(Color.atlasAccent)
+    private static let routeCasingNight = UIColor(red: 0.04, green: 0.10, blue: 0.20, alpha: 1)
 
     private static let puckStyle = MapUserAnnotationStyle(
         approximateHaloBorderColor: .atlasAccent,

@@ -1,4 +1,7 @@
+import CoreLocation
+import MapLibre
 import MapLibreSwiftUI
+import UIKit
 
 public enum TrackingMode: Sendable {
     case none
@@ -14,6 +17,11 @@ public extension MapViewCamera {
         case .trackingUserLocationWithHeading, .trackingUserLocationWithCourse: .followDirection
         default: .none
         }
+    }
+
+    /// Frames a box (e.g. a route) with room for the floating chrome.
+    static func fitting(southWest: CLLocationCoordinate2D, northEast: CLLocationCoordinate2D, padding: UIEdgeInsets) -> MapViewCamera {
+        .boundingBox(MLNCoordinateBounds(sw: southWest, ne: northEast), edgePadding: padding)
     }
 
     /// Next state for the location button: free → follow → follow direction → follow.

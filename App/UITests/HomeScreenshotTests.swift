@@ -32,6 +32,13 @@ final class HomeScreenshotTests: XCTestCase {
         XCTAssertTrue(app.otherElements["place.card"].waitForExistence(timeout: 5), "place card missing")
         settle(6)
         capture("3-place")
+
+        // Route (live FOSSGIS Valhalla request) → route card + line.
+        app.buttons["place.route"].tap()
+        XCTAssertTrue(app.otherElements["route.card"].waitForExistence(timeout: 30), "route card missing")
+        settle(6)
+        capture("3b-route")
+        app.buttons["Rotayı kapat"].tap()
         app.buttons["Kapat"].tap()
 
         app.buttons["Üç boyutlu görünüm"].tap()

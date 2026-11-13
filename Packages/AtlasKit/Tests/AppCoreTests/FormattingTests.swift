@@ -13,4 +13,14 @@ struct FormattingTests {
     func distance(meters: Double, expected: String) {
         #expect(Formatting.distance(meters: meters) == expected)
     }
+
+    @Test(arguments: [
+        (10.0, "1 dk"),
+        (1_610.0, "27 dk"),
+        (3_600.0, "1 sa"),
+        (4_330.0, "1 sa 12 dk"),
+    ])
+    func duration(seconds: Double, expected: String) {
+        #expect(Formatting.duration(seconds: seconds) == expected)
+    }
 }
