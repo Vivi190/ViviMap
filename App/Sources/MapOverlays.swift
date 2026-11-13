@@ -34,7 +34,8 @@ struct GPSStatusChip: View {
         case .poor:
             let radius = Int(location.lastLocation?.horizontalAccuracy ?? 0)
             return StatusChip(systemImage: "antenna.radiowaves.left.and.right", title: "GPS zayıf · ±\(radius) m", tone: .warning)
-        case .unavailable where location.hasFix:
+        // Only while moving (e.g. a tunnel): a parked phone may legitimately stop receiving new fixes.
+        case .unavailable where (location.lastLocation?.speed ?? 0) > 2:
             return StatusChip(systemImage: "antenna.radiowaves.left.and.right.slash", title: "GPS sinyali yok", tone: .warning)
         default:
             return nil

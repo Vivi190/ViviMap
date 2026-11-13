@@ -28,6 +28,8 @@ public final class LocationProvider: NSObject {
         manager.activityType = .automotiveNavigation
         manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         manager.distanceFilter = kCLDistanceFilterNone
+        // Default pausing stops fixes during long red lights and never resumes them in the foreground.
+        manager.pausesLocationUpdatesAutomatically = false
         refreshAuthorization()
         // The cached fix lets the map open near the user before the first live update.
         lastLocation = manager.location
