@@ -9,7 +9,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.1.0"
+    # The first TestFlight upload went out as 1.0 (1); stay on the 1.0 train, builds count up from the run number.
+    MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     # Overridden by the TestFlight workflow from the provisioning profile / team secrets.
     ATLAS_BUNDLE_ID: com.vivimap.atlas
@@ -34,6 +35,9 @@ targets:
       properties:
         CFBundleDisplayName: Atlas
         CFBundleDevelopmentRegion: tr
+        # XcodeGen otherwise hard-codes 1.0 / 1, which made App Store Connect ignore the build settings.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
