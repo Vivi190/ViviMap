@@ -24,6 +24,8 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "limit", value: "12"),
             URLQueryItem(name: "bbox", value: Self.turkeyBBox),
+            // Without it Photon follows Accept-Language: an English device got "Anadolu Palace of Justice".
+            URLQueryItem(name: "lang", value: "default"),
         ]
         if let near {
             items.append(URLQueryItem(name: "lat", value: String(near.latitude)))
