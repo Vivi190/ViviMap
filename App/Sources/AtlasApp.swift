@@ -33,7 +33,9 @@ struct AtlasApp: App {
                 .environment(settings)
                 .environment(location)
         }
-        .onChange(of: scenePhase) { _, phase in
+        // initial: true — without it a launch that is already `.active` never started our location
+        // manager (seen in CI: MapLibre's puck had a fix, the speedometer/navigation stream had none).
+        .onChange(of: scenePhase, initial: true) { _, phase in
             switch phase {
             case .active: location.start()
             // Keep guiding with the screen locked; otherwise release GPS to save battery.
