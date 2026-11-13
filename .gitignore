@@ -29,4 +29,5 @@ __pycache__/
 .claude/
 
 # Offline packages are pulled from the offline-data release at TestFlight build time, never committed
-App/Resources/Offline/
+App/Resources/Offline/*
+!App/Resources/Offline/README.md
