@@ -13,6 +13,7 @@ public struct AtlasMapView: View {
     private let showsBuildings3D: Bool
     private let destination: CLLocationCoordinate2D?
     private let route: [CLLocationCoordinate2D]
+    private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
 
     public init(
@@ -21,6 +22,7 @@ public struct AtlasMapView: View {
         showsBuildings3D: Bool,
         destination: CLLocationCoordinate2D? = nil,
         route: [CLLocationCoordinate2D] = [],
+        onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
     ) {
         _camera = camera
@@ -28,6 +30,7 @@ public struct AtlasMapView: View {
         self.showsBuildings3D = showsBuildings3D
         self.destination = destination
         self.route = route
+        self.onLongPress = onLongPress
         self.onViewport = onViewport
     }
 
@@ -76,6 +79,10 @@ public struct AtlasMapView: View {
             }
             .mapUserAnnotationStyle(Self.puckStyle)
             .onMapViewProxyUpdate(updateMode: .realtime, onViewProxyChanged: onViewport)
+            .onLongPressMapGesture { context in
+                // Fire once when the press is recognised, not on every movement after it.
+                if context.state == .began { onLongPress?(context.coordinate) }
+            }
             .onMapStyleLoaded { style in
                 // A day/night switch reloads the style, which resets layer visibility to the JSON default.
                 style.layer(withIdentifier: MapLayerID.buildings3D)?.isVisible = show3D

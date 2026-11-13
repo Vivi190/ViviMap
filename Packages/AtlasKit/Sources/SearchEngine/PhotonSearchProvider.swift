@@ -41,6 +41,23 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
         guard status == 200 else { throw HTTPError(status: status) }
         return PlaceRanking.rank(try PhotonParser.places(from: data), query: query)
     }
+
+    /// Nearest named place or address for a point picked on the map.
+    public func reverse(_ point: GeoPoint) async throws -> Place? {
+        var components = URLComponents(url: baseURL.appending(path: "reverse"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "lat", value: String(point.latitude)),
+            URLQueryItem(name: "lon", value: String(point.longitude)),
+            URLQueryItem(name: "lang", value: "default"),
+            URLQueryItem(name: "limit", value: "1"),
+        ]
+        var request = URLRequest(url: components.url!)
+        request.setValue("Atlas-iOS/1.0 (personal navigation app)", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return try PhotonParser.places(from: data).first
+    }
 }
 
 /// Photon GeoJSON → `Place`, de-duplicated (Photon returns one hit per OSM way of the same street).

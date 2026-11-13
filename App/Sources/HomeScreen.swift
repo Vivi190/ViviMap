@@ -72,6 +72,18 @@ struct HomeScreen: View {
 
     private var isNavigating: Bool { navigation?.isActive == true }
 
+    // Explicitly typed: a `cond ? nil : method` ternary inside the view builder broke the type checker
+    // ("failed to produce diagnostic for expression").
+    private var longPressHandler: ((CLLocationCoordinate2D) -> Void)? {
+        if isNavigating { return nil }
+        return { pick($0) }
+    }
+
+    private var startHandler: (() -> Void)? {
+        if navigation == nil { return nil }
+        return { startNavigation() }
+    }
+
     /// During guidance the session's geometry wins: it changes after a reroute.
     private var displayedRoute: [CLLocationCoordinate2D] {
         if isNavigating, let coordinates = navigation?.routeCoordinates, coordinates.count > 1 { return coordinates }
@@ -85,7 +97,8 @@ struct HomeScreen: View {
                 appearance: isNight ? .night : .day,
                 showsBuildings3D: is3D,
                 destination: selectedPlace?.point.coordinate,
-                route: displayedRoute
+                route: displayedRoute,
+                onLongPress: longPressHandler
             ) { proxy in
                 viewport.update(from: proxy)
             }
@@ -98,6 +111,7 @@ struct HomeScreen: View {
             }
         }
         .preferredColorScheme(isNight ? .dark : .light)
+        .sensoryFeedback(.impact(weight: .medium), trigger: selectedPlace?.point)
         .sheet(item: $sheet) { sheet in
             sheetContent(sheet)
                 .environment(settings)
@@ -159,26 +173,9 @@ struct HomeScreen: View {
             }
             if let place = selectedPlace {
                 if routes.isEmpty {
-                    PlaceCard(
-                        place: place,
-                        isPlanning: isPlanning,
-                        error: routeError,
-                        onRoute: { planRoute(to: place) },
-                        onSave: { search.save(place, as: $0) },
-                        onClose: clearPlace
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    placeCard(place)
                 } else {
-                    RouteCard(
-                        place: place,
-                        routes: routes,
-                        selection: $routeSelection,
-                        onStart: navigation == nil ? nil : startNavigation
-                    ) {
-                        routes = []
-                        camera = .center(place.point.coordinate, zoom: 16, pitch: is3D ? Self.pitch3D : 0)
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    routeCard(place)
                 }
             }
         }
@@ -258,11 +255,52 @@ struct HomeScreen: View {
 
     private func select(_ place: Place) {
         search.remember(place)
+        show(place)
+        camera = .center(place.point.coordinate, zoom: max(viewport.zoom, 16), pitch: is3D ? Self.pitch3D : 0)
+    }
+
+    /// Long press on the map: drop a pin there (address filled in when Photon knows it).
+    /// Not added to recents and the camera stays put.
+    private func pick(_ coordinate: CLLocationCoordinate2D) {
+        let point = GeoPoint(coordinate)
+        show(Place(id: "picked", name: "Seçilen konum", subtitle: "Adres aranıyor…", point: point, category: nil))
+        Task {
+            let place = await search.place(at: point)
+            if selectedPlace?.point == point { selectedPlace = place }
+        }
+    }
+
+    private func show(_ place: Place) {
         routes = []
         routeError = nil
         selectedPlace = place
         sheet = nil
-        camera = .center(place.point.coordinate, zoom: max(viewport.zoom, 16), pitch: is3D ? Self.pitch3D : 0)
+    }
+
+    private func placeCard(_ place: Place) -> some View {
+        PlaceCard(
+            place: place,
+            isPlanning: isPlanning,
+            error: routeError,
+            onRoute: { planRoute(to: place) },
+            onSave: { search.save(place, as: $0) },
+            onClose: { clearPlace() }
+        )
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private func routeCard(_ place: Place) -> some View {
+        RouteCard(
+            place: place,
+            routes: routes,
+            selection: $routeSelection,
+            onStart: startHandler,
+            onClose: {
+                routes = []
+                camera = .center(place.point.coordinate, zoom: 16, pitch: is3D ? Self.pitch3D : 0)
+            }
+        )
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     private func navigationOverlay(_ navigation: NavigationSession) -> some View {
@@ -281,7 +319,7 @@ struct HomeScreen: View {
                 SpeedOverlay()
                 Spacer(minLength: 0)
             }
-            NavigationBottomBar(navigation: navigation, onEnd: endNavigation)
+            NavigationBottomBar(navigation: navigation, onEnd: { endNavigation() })
         }
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)

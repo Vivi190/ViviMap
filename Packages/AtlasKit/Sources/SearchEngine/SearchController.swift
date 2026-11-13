@@ -50,6 +50,15 @@ public final class SearchController {
         defaults.data(forKey: "atlas.saved.\(slot.rawValue)").flatMap { try? JSONDecoder().decode(Place.self, from: $0) }
     }
 
+    /// A point picked on the map: the address there if Photon knows one, otherwise just the coordinate.
+    /// The place keeps the exact picked point either way.
+    public func place(at point: GeoPoint) async -> Place {
+        let coordinates = String(format: "%.5f, %.5f", point.latitude, point.longitude)
+        let nearest = try? await PhotonSearchProvider().reverse(point)
+        let subtitle = nearest.map { $0.subtitle.isEmpty ? $0.name : "\($0.name), \($0.subtitle)" } ?? coordinates
+        return Place(id: "picked:\(coordinates)", name: "Seçilen konum", subtitle: subtitle, point: point, category: nil)
+    }
+
     /// Call when the user picks a place, so it shows up first next time.
     public func remember(_ place: Place) {
         recents.removeAll { $0.id == place.id }
