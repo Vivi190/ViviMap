@@ -20,6 +20,12 @@ const issuer = args.issuer;
 const bundle = args.bundle ?? "com.vivimap.atlas";
 const out = args.out ?? ".";
 const steps = (args.steps ?? "bundle,cert,profile").split(",");
+// The widget extension (Live Activity) has its own bundle id and profile:
+//   --bundle com.vivimap.atlas.widgets --bundle-name "Atlas Widgets" --profile-prefix "Atlas Widgets AppStore"
+//   --profile-file Atlas_Widgets_AppStore.mobileprovision --steps bundle,profile
+const bundleName = args["bundle-name"] ?? "Atlas";
+const profilePrefix = args["profile-prefix"] ?? "Atlas AppStore";
+const profileFile = args["profile-file"] ?? "Atlas_AppStore.mobileprovision";
 if (!keyPath || !keyId || !issuer) {
   console.error("usage: --key AuthKey_<KEYID>.p8 --issuer <issuer-id> [--csr dist.csr] [--out dir] [--steps ...]");
   process.exit(2);
@@ -56,7 +62,7 @@ async function ensureBundleId() {
     return exact.id;
   }
   const created = await api("POST", "/v1/bundleIds", {
-    data: { type: "bundleIds", attributes: { identifier: bundle, name: "Atlas", platform: "IOS" } },
+    data: { type: "bundleIds", attributes: { identifier: bundle, name: bundleName, platform: "IOS" } },
   });
   console.log(`bundle id registered: ${bundle} (${created.data.id})`);
   return created.data.id;
@@ -73,8 +79,19 @@ async function createCertificate() {
   return created.data.id;
 }
 
+/// The newest distribution certificate that is still valid, when no new one is made in this run.
+async function existingCertificate() {
+  const found = await api("GET", "/v1/certificates?filter[certificateType]=DISTRIBUTION&limit=20");
+  const valid = found.data
+    .filter((c) => new Date(c.attributes.expirationDate) > new Date())
+    .sort((a, b) => new Date(b.attributes.expirationDate) - new Date(a.attributes.expirationDate));
+  if (!valid.length) throw new Error("no valid distribution certificate; run with --steps cert first");
+  console.log(`using distribution certificate ${valid[0].attributes.name} (${valid[0].id}), expires ${valid[0].attributes.expirationDate}`);
+  return valid[0].id;
+}
+
 async function createProfile(bundleId, certificateId) {
-  const name = `Atlas AppStore ${new Date().toISOString().slice(0, 10)}`;
+  const name = `${profilePrefix} ${new Date().toISOString().slice(0, 10)}`;
   const created = await api("POST", "/v1/profiles", {
     data: {
       type: "profiles",
@@ -85,7 +102,7 @@ async function createProfile(bundleId, certificateId) {
       },
     },
   });
-  const path = join(out, "Atlas_AppStore.mobileprovision");
+  const path = join(out, profileFile);
   writeFileSync(path, Buffer.from(created.data.attributes.profileContent, "base64"));
   console.log(`profile created: ${name} (${created.data.id}) -> ${path}`);
 }
@@ -128,5 +145,7 @@ let bundleId;
 let certificateId;
 if (steps.includes("bundle")) bundleId = await ensureBundleId();
 if (steps.includes("cert")) certificateId = await createCertificate();
-if (steps.includes("profile")) await createProfile(bundleId ?? (await ensureBundleId()), certificateId ?? args["cert-id"]);
+if (steps.includes("profile")) {
+  await createProfile(bundleId ?? (await ensureBundleId()), certificateId ?? args["cert-id"] ?? (await existingCertificate()));
+}
 if (steps.includes("testflight")) await setUpTestFlight();

@@ -12,8 +12,11 @@ let package = Package(
             targets: [
                 "AppCore", "DesignSystem", "LocationEngine", "MapEngine", "Diagnostics",
                 "SearchEngine", "RoutingEngine", "NavigationEngine", "TrafficEngine", "RoadHazards", "TripHistory",
+                "NavigationActivity",
             ]
         ),
+        // The widget extension links only the Live Activity attributes, not the map or routing stack.
+        .library(name: "AtlasActivity", targets: ["NavigationActivity"]),
     ],
     dependencies: [
         .package(url: "https://github.com/maplibre/maplibre-gl-native-distribution.git", from: "7.0.0"),
@@ -60,6 +63,7 @@ let package = Package(
         // Cameras and bumps from OSM, refreshed with Tools/hazards/fetch_hazards.py.
         .target(name: "RoadHazards", resources: [.copy("Resources/hazards-istanbul.json")]),
         .target(name: "TripHistory"),
+        .target(name: "NavigationActivity"),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),
         .testTarget(name: "LocationEngineTests", dependencies: ["LocationEngine"]),
         .testTarget(name: "SearchEngineTests", dependencies: ["SearchEngine"], resources: [.copy("Fixtures")]),

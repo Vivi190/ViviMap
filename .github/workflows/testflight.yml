@@ -13,6 +13,8 @@ jobs:
       DIST_P12_BASE64: ${{ secrets.DIST_P12_BASE64 }}
       DIST_P12_PASSWORD: ${{ secrets.DIST_P12_PASSWORD }}
       PROFILE_BASE64: ${{ secrets.PROFILE_BASE64 }}
+      # The Live Activity widget extension (com.vivimap.atlas.widgets) has its own profile.
+      WIDGETS_PROFILE_BASE64: ${{ secrets.WIDGETS_PROFILE_BASE64 }}
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
@@ -22,7 +24,7 @@ jobs:
       - name: Check secrets
         run: |
           missing=0
-          for name in DIST_P12_BASE64 DIST_P12_PASSWORD PROFILE_BASE64 ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8_BASE64; do
+          for name in DIST_P12_BASE64 DIST_P12_PASSWORD PROFILE_BASE64 WIDGETS_PROFILE_BASE64 ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8_BASE64; do
             if [ -z "${!name}" ]; then echo "::error::Missing secret $name (see docs/setup-testflight.md)"; missing=1; fi
           done
           # Fingerprints (length + 8 hex of SHA-256) to compare with the local files when a secret looks wrong.
@@ -94,9 +96,18 @@ jobs:
           for dir in "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" "$HOME/Library/MobileDevice/Provisioning Profiles"; do
             mkdir -p "$dir" && cp "$PROFILE" "$dir/$UUID.mobileprovision"
           done
+          WIDGETS="$RUNNER_TEMP/widgets.mobileprovision"
+          echo "$WIDGETS_PROFILE_BASE64" | base64 --decode > "$WIDGETS"
+          security cms -D -i "$WIDGETS" > "$RUNNER_TEMP/widgets.plist"
+          WIDGETS_UUID=$($PB -c 'Print :UUID' "$RUNNER_TEMP/widgets.plist")
+          WIDGETS_NAME=$($PB -c 'Print :Name' "$RUNNER_TEMP/widgets.plist")
+          for dir in "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" "$HOME/Library/MobileDevice/Provisioning Profiles"; do
+            cp "$WIDGETS" "$dir/$WIDGETS_UUID.mobileprovision"
+          done
           {
             echo "TEAM_ID=$TEAM"
             echo "PROFILE_NAME=$NAME"
+            echo "WIDGETS_PROFILE_NAME=$WIDGETS_NAME"
             echo "BUNDLE_ID=${APP_ID#"$TEAM".}"
             echo "KEYCHAIN=$KEYCHAIN"
           } >> "$GITHUB_ENV"
@@ -119,6 +130,7 @@ jobs:
             ATLAS_BUNDLE_ID="$BUNDLE_ID" \
             ATLAS_TEAM_ID="$TEAM_ID" \
             ATLAS_PROFILE_NAME="$PROFILE_NAME" \
+            ATLAS_WIDGETS_PROFILE_NAME="$WIDGETS_PROFILE_NAME" \
             HERE_API_KEY="$HERE_API_KEY" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             | xcbeautify --renderer github-actions
@@ -136,7 +148,10 @@ jobs:
             <key>signingStyle</key><string>manual</string>
             <key>signingCertificate</key><string>Apple Distribution</string>
             <key>provisioningProfiles</key>
-            <dict><key>${BUNDLE_ID}</key><string>${PROFILE_NAME}</string></dict>
+            <dict>
+              <key>${BUNDLE_ID}</key><string>${PROFILE_NAME}</string>
+              <key>${BUNDLE_ID}.widgets</key><string>${WIDGETS_PROFILE_NAME}</string>
+            </dict>
             <key>manageAppVersionAndBuildNumber</key><false/>
             <key>uploadSymbols</key><true/>
           </dict>
@@ -154,4 +169,5 @@ jobs:
         if: always()
         run: |
           [ -n "$KEYCHAIN" ] && security delete-keychain "$KEYCHAIN" || true
-          rm -rf "$RUNNER_TEMP/asc" "$RUNNER_TEMP/app.mobileprovision" "$RUNNER_TEMP/profile.plist"
+          rm -rf "$RUNNER_TEMP/asc" "$RUNNER_TEMP/app.mobileprovision" "$RUNNER_TEMP/profile.plist" \
+            "$RUNNER_TEMP/widgets.mobileprovision" "$RUNNER_TEMP/widgets.plist"
