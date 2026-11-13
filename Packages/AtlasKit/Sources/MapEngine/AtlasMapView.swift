@@ -5,6 +5,21 @@ import MapLibreSwiftDSL
 import MapLibreSwiftUI
 import SwiftUI
 
+/// A stretch of the route drawn in a traffic colour (MapEngine stays independent of the traffic provider).
+public struct TrafficLine: Sendable {
+    public enum Level: Hashable, Sendable {
+        case slow, heavy, stopped
+    }
+
+    public let level: Level
+    public let coordinates: [CLLocationCoordinate2D]
+
+    public init(level: Level, coordinates: [CLLocationCoordinate2D]) {
+        self.level = level
+        self.coordinates = coordinates
+    }
+}
+
 /// Full-screen Atlas map. Holds no state of its own: camera, appearance and 3D mode come from the caller,
 /// and MapLibre's built-in ornaments are hidden because the app draws its own controls.
 public struct AtlasMapView: View {
@@ -13,6 +28,7 @@ public struct AtlasMapView: View {
     private let showsBuildings3D: Bool
     private let destination: CLLocationCoordinate2D?
     private let route: [CLLocationCoordinate2D]
+    private let traffic: [TrafficLine]
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
@@ -26,6 +42,7 @@ public struct AtlasMapView: View {
         showsBuildings3D: Bool,
         destination: CLLocationCoordinate2D? = nil,
         route: [CLLocationCoordinate2D] = [],
+        traffic: [TrafficLine] = [],
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
@@ -36,6 +53,7 @@ public struct AtlasMapView: View {
         self.showsBuildings3D = showsBuildings3D
         self.destination = destination
         self.route = route
+        self.traffic = traffic
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.onLongPress = onLongPress
@@ -45,6 +63,8 @@ public struct AtlasMapView: View {
     public var body: some View {
         let show3D = showsBuildings3D
         let guiding = isGuiding
+        let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
+        let slow = byLevel[.slow] ?? [], heavy = byLevel[.heavy] ?? [], stopped = byLevel[.stopped] ?? []
         MapView(styleURL: appearance.styleURL, camera: $camera, locationManager: puckSource) {
             if route.count > 1 {
                 let line = ShapeSource(identifier: "atlas-route") {
@@ -67,6 +87,16 @@ public struct AtlasMapView: View {
                                parameters: NSExpression(forConstantValue: 1.5),
                                stops: NSExpression(forConstantValue: [10: 3.5, 14: 6.5, 18: 20]))
                     .renderBelow(.symbols)
+            }
+            // Traffic colours over the route line, worst on top.
+            if !slow.isEmpty {
+                Self.trafficLayer("slow", slow, Self.trafficSlow)
+            }
+            if !heavy.isEmpty {
+                Self.trafficLayer("heavy", heavy, Self.trafficHeavy)
+            }
+            if !stopped.isEmpty {
+                Self.trafficLayer("stopped", stopped, Self.trafficStopped)
             }
             if let destination {
                 let pin = ShapeSource(identifier: "atlas-destination") {
@@ -116,6 +146,24 @@ public struct AtlasMapView: View {
             }
     }
 
+    /// Same width as the route's inner line, so a slow stretch reads as the route turning orange or red.
+    private static func trafficLayer(_ name: String, _ lines: [[CLLocationCoordinate2D]], _ color: UIColor) -> some StyleLayerDefinition {
+        let source = ShapeSource(identifier: "atlas-traffic-\(name)") {
+            lines.map { MLNPolylineFeature(coordinates: $0) as MLNShape }
+        }
+        return LineStyleLayer(identifier: "atlas-traffic-\(name)", source: source)
+            .lineCap(.round)
+            .lineJoin(.round)
+            .lineColor(color)
+            .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
+                       parameters: NSExpression(forConstantValue: 1.5),
+                       stops: NSExpression(forConstantValue: [10: 3.5, 14: 6.5, 18: 20]))
+            .renderBelow(.symbols)
+    }
+
+    private static let trafficSlow = UIColor(red: 0.96, green: 0.62, blue: 0.04, alpha: 1)
+    private static let trafficHeavy = UIColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 1)
+    private static let trafficStopped = UIColor(red: 0.50, green: 0.11, blue: 0.11, alpha: 1)
     private static let destinationColor = UIColor(Color.atlasCritical)
     private static let routeColor = UIColor(Color.atlasAccent)
     private static let routeCasingNight = UIColor(red: 0.04, green: 0.10, blue: 0.20, alpha: 1)

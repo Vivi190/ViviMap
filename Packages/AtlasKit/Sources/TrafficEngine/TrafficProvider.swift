@@ -39,4 +39,6 @@ public enum TrafficError: LocalizedError, Equatable {
 
 public protocol TrafficProvider: Sendable {
     func estimate(_ route: [CLLocationCoordinate2D]) async throws -> TrafficEstimate
+    /// Live flow on the roads along the route (it also returns cross streets; see RouteTraffic.sections).
+    func flow(along route: [CLLocationCoordinate2D]) async throws -> [FlowSegment]
 }

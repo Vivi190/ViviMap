@@ -9,6 +9,7 @@ import Foundation
 /// stored beyond the session (research §6).
 public struct HERETrafficProvider: TrafficProvider {
     static let importURL = URL(string: "https://router.hereapi.com/v8/import")!
+    static let flowURL = URL(string: "https://data.traffic.hereapi.com/v7/flow")!
 
     private let apiKey: String
     private let session: URLSession
@@ -50,8 +51,46 @@ public struct HERETrafficProvider: TrafficProvider {
         return request
     }
 
+    /// Traffic v7 flow in a 20 m corridor around the route (POST: a long corridor overflows the URL).
+    /// https://docs.here.com/traffic-api/docs/geospatial-filters-here-traffic-api-v7-concepts
+    public func flow(along route: [CLLocationCoordinate2D]) async throws -> [FlowSegment] {
+        guard route.count >= 2 else { return [] }
+        guard budget.spend(.flow) else { throw TrafficError.budgetExhausted }
+        let (data, response) = try await session.data(for: flowRequest(for: route))
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200 ..< 300).contains(status) else { throw TrafficError.service(status: status) }
+        return try HEREFlowResponse.segments(from: data)
+    }
+
+    func flowRequest(for route: [CLLocationCoordinate2D]) throws -> URLRequest {
+        var components = URLComponents(url: Self.flowURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "apiKey", value: apiKey)]
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // HERE caps a corridor at 300 points.
+        let corridor = HERETrace.points(route, limit: 300).map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
+        request.httpBody = try JSONEncoder().encode(FlowBody(
+            in: .init(type: "corridor", corridor: FlexiblePolyline.encode(corridor), radius: 20),
+            locationReferencing: ["shape"]
+        ))
+        return request
+    }
+
     private struct ImportBody: Encodable {
         let trace: [HERETrace.Point]
+    }
+
+    private struct FlowBody: Encodable {
+        struct Area: Encodable {
+            let type: String
+            let corridor: String
+            let radius: Int
+        }
+
+        let `in`: Area
+        let locationReferencing: [String]
     }
 }
 

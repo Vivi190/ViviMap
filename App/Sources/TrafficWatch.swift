@@ -6,8 +6,9 @@ import SearchEngine
 import TrafficEngine
 
 /// Live traffic while guiding (docs/architecture.md, ADR-5). Each round re-measures what is left of the
-/// route and fresh alternatives with the same provider, then lets RerouteAdvisor decide whether a switch
-/// is worth suggesting. About three paid requests per round, one round every few minutes.
+/// route (time and slow stretches) and fresh alternatives with the same provider, then lets RerouteAdvisor
+/// decide whether a switch is worth suggesting. Up to three imports and one flow request per round, one
+/// round every few minutes.
 @MainActor
 @Observable
 final class TrafficWatch {
@@ -21,6 +22,8 @@ final class TrafficWatch {
     /// Arrival with traffic as of the last round; nil means no traffic data, and the bar says so.
     private(set) var arrival: Date?
     private(set) var suggestion: Suggestion?
+    /// Slow stretches of the rest of the route, as of the last round.
+    private(set) var sections: [TrafficSection] = []
 
     @ObservationIgnored private var lastChange = Date.now
     @ObservationIgnored private let advisor = RerouteAdvisor()
@@ -28,6 +31,7 @@ final class TrafficWatch {
     func reset() {
         arrival = nil
         suggestion = nil
+        sections = []
         lastChange = .now
     }
 
@@ -41,6 +45,9 @@ final class TrafficWatch {
         let remaining = navigation.remainingRoute()
         guard remaining.count > 1, let current = try? await traffic.estimate(remaining), navigation.isActive else { return }
         arrival = Date.now.addingTimeInterval(current.duration)
+        if let flow = try? await traffic.flow(along: remaining), navigation.isActive {
+            sections = RouteTraffic.sections(route: remaining, flow: flow)
+        }
 
         // Fresh candidates from here; one running along the current road (≥ 85 %) is the same route.
         guard let options = try? await planner.routes(from: position, to: destination) else { return }
@@ -76,8 +83,9 @@ final class TrafficWatch {
         } catch {
             return nil
         }
-        // Re-measured on the next round; the old arrival belonged to the old route.
+        // Re-measured on the next round; the old arrival and colours belonged to the old route.
         arrival = nil
+        sections = []
         return option
     }
 

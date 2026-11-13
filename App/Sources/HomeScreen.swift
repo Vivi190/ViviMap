@@ -59,6 +59,8 @@ struct HomeScreen: View {
     @State private var simulatedPuck: StaticLocationManager?
     @State private var trafficEstimates: [Int: TrafficEstimate] = [:]
     @State private var trafficStatus = RouteCard.TrafficStatus.unavailable
+    /// Slow stretches per route alternative, fetched for the one on screen.
+    @State private var previewTraffic: [Int: [TrafficSection]] = [:]
     /// Bumped per route request so a late traffic answer never lands on newer routes.
     @State private var planGeneration = 0
     @State private var trafficWatch = TrafficWatch()
@@ -112,6 +114,18 @@ struct HomeScreen: View {
         return activeRoute?.coordinates ?? []
     }
 
+    private var displayedTraffic: [TrafficLine] {
+        let sections = isNavigating ? trafficWatch.sections : activeRoute.flatMap { previewTraffic[$0.index] } ?? []
+        return sections.map { section in
+            let level: TrafficLine.Level = switch section.level {
+            case .slow: .slow
+            case .heavy: .heavy
+            case .stopped: .stopped
+            }
+            return TrafficLine(level: level, coordinates: section.coordinates)
+        }
+    }
+
     var body: some View {
         ZStack {
             AtlasMapView(
@@ -120,6 +134,7 @@ struct HomeScreen: View {
                 showsBuildings3D: is3D,
                 destination: selectedPlace?.point.coordinate,
                 route: displayedRoute,
+                traffic: displayedTraffic,
                 puckSource: simulatedPuck,
                 isGuiding: isNavigating,
                 onLongPress: longPressHandler
@@ -155,6 +170,9 @@ struct HomeScreen: View {
             search.origin = { [location] in location.lastLocation.map { GeoPoint($0.coordinate) } }
         }
         .task(id: isNavigating) { await watchTraffic() }
+        .onChange(of: routeSelection) { _, index in
+            if let option = routes.first(where: { $0.index == index }) { loadFlow(for: option, generation: planGeneration) }
+        }
         .onChange(of: location.hasFix) { _, hasFix in
             // First fix after a cold start: jump to the user unless they already moved the map.
             guard hasFix, awaitingFirstFix else { return }
@@ -484,6 +502,7 @@ struct HomeScreen: View {
     /// when all of them were measured: mixing traffic and free-flow times would compare different scales.
     private func scoreTraffic(_ options: [RouteOption], generation: Int) {
         trafficEstimates = [:]
+        previewTraffic = [:]
         guard let traffic else {
             trafficStatus = .unavailable
             return
@@ -508,9 +527,21 @@ struct HomeScreen: View {
             }
             trafficEstimates = measured
             trafficStatus = .ready
-            if routeSelection == 0, let fastest = measured.min(by: { $0.value.duration < $1.value.duration })?.key {
-                routeSelection = fastest
+            if routeSelection == 0, let fastest = measured.min(by: { $0.value.duration < $1.value.duration })?.key, fastest != 0 {
+                routeSelection = fastest // onChange loads its colours
+            } else if let shown = options.first(where: { $0.index == routeSelection }) {
+                loadFlow(for: shown, generation: generation)
             }
+        }
+    }
+
+    /// Slow stretches of one alternative, once per route request (one paid flow request each).
+    private func loadFlow(for option: RouteOption, generation: Int) {
+        guard let traffic, trafficStatus == .ready, previewTraffic[option.index] == nil else { return }
+        let coordinates = option.coordinates
+        Task {
+            guard let flow = try? await traffic.flow(along: coordinates), generation == planGeneration else { return }
+            previewTraffic[option.index] = RouteTraffic.sections(route: coordinates, flow: flow)
         }
     }
 

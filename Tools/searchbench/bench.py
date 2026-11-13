@@ -11,6 +11,7 @@ This measures ranking and recall on OSM data, not whether OSM itself is right.
 """
 import json
 import math
+import os
 import sys
 import time
 import urllib.parse
@@ -19,7 +20,8 @@ from pathlib import Path
 
 UA = "Atlas-iOS/1.0 (personal navigation app; search benchmark)"
 PHOTON = "https://photon.komoot.io/api/"
-OVERPASS = "https://overpass-api.de/api/interpreter"
+# Public instances take turns being overloaded (502); another one can be set with OVERPASS_URL.
+OVERPASS = os.environ.get("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
 TURKEY_BBOX = "25.6,35.8,44.9,42.2"
 ISTANBUL = "(40.75,28.0,41.6,29.95)"  # south, west, north, east
 KARTAL = (40.8890, 29.1905)  # the app biases results towards the user; benchmark user stands here
@@ -58,11 +60,11 @@ def app_rank(features, query):
     return [f for _, f in sorted(enumerate(features), key=lambda e: (bucket(e[1]), e[0]))]
 
 
-def get_json(url, data=None):
+def get_json(url, data=None, timeout=90):
     req = urllib.request.Request(url, data=data, headers={"User-Agent": UA})
     for attempt in range(4):
         try:
-            with urllib.request.urlopen(req, timeout=90) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.load(r)
         except Exception as error:  # rate limits / timeouts on public servers
             if attempt == 3:
@@ -75,22 +77,28 @@ def photon(query):
     return get_json(PHOTON + "?" + urllib.parse.urlencode(params)).get("features", [])
 
 
-def overpass_targets(cases):
-    """All targets in one request (the public server throttles per request): each case's elements are
-    followed by a synthetic `sep` element carrying the case number."""
-    parts = [
-        f'nwr{case["osm"]}{case.get("bbox", ISTANBUL)};out geom;make sep case="{i}";out;'
-        for i, case in enumerate(cases)
-    ]
-    query = "[out:json][timeout:300];" + "".join(parts)
-    elements = get_json(OVERPASS, data=urllib.parse.urlencode({"data": query}).encode()).get("elements", [])
-    targets, current = {}, []
-    for element in elements:
-        if element.get("type") == "sep":
-            targets[int(element["tags"]["case"])] = current
-            current = []
-        else:
-            current.append(element)
+def overpass_targets(cases, chunk=8):
+    """Targets in a few batched requests (the public servers throttle per request): each case's elements
+    are followed by a synthetic `sep` element carrying the case number. A case with no `sep` was never
+    answered (the server cut the batch short, see its `remark`), which is not the same as "not in OSM"."""
+    targets = {}
+    for start in range(0, len(cases), chunk):
+        part = cases[start:start + chunk]
+        query = "[out:json][timeout:180];" + "".join(
+            f'nwr{case["osm"]}{case.get("bbox", ISTANBUL)};out geom;make sep case="{start + i}";out;'
+            for i, case in enumerate(part)
+        )
+        body = get_json(OVERPASS, data=urllib.parse.urlencode({"data": query}).encode(), timeout=200)
+        if body.get("remark"):
+            print(f"overpass remark for cases {start}-{start + len(part) - 1}: {body['remark']}", file=sys.stderr)
+        current = []
+        for element in body.get("elements", []):
+            if element.get("type") == "sep":
+                targets[int(element["tags"]["case"])] = current
+                current = []
+            else:
+                current.append(element)
+        time.sleep(5)
     return targets
 
 
@@ -144,7 +152,10 @@ def main():
     rows, hits1, hits3, scored = [], 0, 0, 0
     all_targets = overpass_targets(cases)
     for number, case in enumerate(cases):
-        targets = all_targets.get(number, [])
+        if number not in all_targets:
+            rows.append((case["query"], "—", "Overpass yanıt vermedi (ölçülmedi)", ""))
+            continue
+        targets = all_targets[number]
         if not targets:
             rows.append((case["query"], "—", "hedef OSM'de bulunamadı (ölçüm dışı)", ""))
             continue
