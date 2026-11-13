@@ -39,6 +39,21 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
 
+      - name: Offline packages (Istanbul)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Newest release from the "Offline data" workflow; without one the app ships online-only.
+          tag=$(gh release list --repo "${{ github.repository }}" --limit 30 --json tagName \
+            --jq '[.[] | select(.tagName | startswith("offline-data-"))][0].tagName // empty')
+          if [ -z "$tag" ]; then echo "::warning::No offline-data release: building without offline packages"; exit 0; fi
+          mkdir -p App/Resources/Offline
+          gh release download "$tag" --repo "${{ github.repository }}" --dir App/Resources/Offline \
+            --pattern valhalla_tiles.tar --pattern istanbul.pmtiles --pattern fonts.zip
+          (cd App/Resources/Offline && unzip -q fonts.zip -d fonts && rm fonts.zip)
+          echo "$tag" > App/Resources/Offline/version.txt
+          du -sh App/Resources/Offline/*
+
       - name: Generate Xcode project
         run: |
           brew install xcodegen

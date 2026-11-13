@@ -61,7 +61,8 @@ public final class NavigationSession {
     /// Measured geometry of the current route; rebuilt when the route changes.
     @ObservationIgnored private var routePath: RoutePath?
 
-    public init() throws {
+    /// - Parameter routes: also answers reroutes, so they fall back to the device without a connection.
+    public init(routes: RoutePlanner) {
         let bridge = FerrostarLocationBridge()
         self.bridge = bridge
         let config = SwiftNavigationControllerConfig(
@@ -73,8 +74,8 @@ public final class NavigationSession {
             routeDeviationTracking: .staticThreshold(minimumHorizontalAccuracy: 25, maxAcceptableDeviation: 50),
             snappedLocationCourseFiltering: .snapToRoute
         )
-        core = try FerrostarCore(
-            wellKnownRouteProvider: RoutePlanner.valhallaProvider(),
+        core = FerrostarCore(
+            customRouteProvider: routes,
             locationProvider: bridge,
             navigationControllerConfig: config,
             networkSession: IdentifiedLoader(),

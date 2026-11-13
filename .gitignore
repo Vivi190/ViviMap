@@ -27,3 +27,6 @@ __pycache__/
 
 # Local Claude Code state (e.g. Ralph Loop)
 .claude/
+
+# Offline packages are pulled from the offline-data release at TestFlight build time, never committed
+App/Resources/Offline/

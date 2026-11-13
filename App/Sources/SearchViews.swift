@@ -340,7 +340,14 @@ struct RouteCard: View {
                     }
                 }
             }
-            trafficSource
+            if route.isOffline {
+                // No connection: computed on the phone from the shipped Istanbul tiles, so no traffic either.
+                Label("Çevrimdışı rota · cihazdaki İstanbul verisiyle, trafiksiz", systemImage: "wifi.slash")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                trafficSource
+            }
             if let onStart {
                 HStack(spacing: Spacing.s) {
                     Button(action: onStart) {

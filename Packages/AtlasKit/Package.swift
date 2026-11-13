@@ -22,6 +22,8 @@ let package = Package(
         // Only FerrostarCore is used (routing + navigation state); its MapLibre UI is not, so the
         // swiftui-dsl 0.26 vs 0.27 question (docs/architecture.md, ADR-3) does not arise.
         .package(url: "https://github.com/stadiamaps/ferrostar", exact: "0.59.0"),
+        // On-device Valhalla 3.9.0 for offline routing (MIT); its tiles come from .github/workflows/offline-data.yml.
+        .package(url: "https://github.com/Rallista/valhalla-mobile.git", exact: "0.6.4"),
     ],
     targets: [
         .target(name: "AppCore"),
@@ -41,7 +43,11 @@ let package = Package(
         .target(name: "SearchEngine"),
         .target(
             name: "RoutingEngine",
-            dependencies: ["SearchEngine", .product(name: "FerrostarCore", package: "ferrostar")]
+            dependencies: [
+                "SearchEngine",
+                .product(name: "FerrostarCore", package: "ferrostar"),
+                .product(name: "Valhalla", package: "valhalla-mobile"),
+            ]
         ),
         .target(
             name: "NavigationEngine",
@@ -54,7 +60,11 @@ let package = Package(
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),
         .testTarget(name: "LocationEngineTests", dependencies: ["LocationEngine"]),
         .testTarget(name: "SearchEngineTests", dependencies: ["SearchEngine"], resources: [.copy("Fixtures")]),
-        .testTarget(name: "RoutingEngineTests", dependencies: ["RoutingEngine"]),
+        .testTarget(
+            name: "RoutingEngineTests",
+            dependencies: ["RoutingEngine", "SearchEngine", .product(name: "FerrostarCore", package: "ferrostar")],
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(name: "TrafficEngineTests", dependencies: ["TrafficEngine"], resources: [.copy("Fixtures")]),
         .testTarget(name: "TripHistoryTests", dependencies: ["TripHistory"]),
         .testTarget(

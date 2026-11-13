@@ -16,12 +16,16 @@ struct AtlasApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let startsTracking: Bool
     private let initiallyNight: Bool
-    private let planner = try? RoutePlanner()
-    private let navigation = try? NavigationSession()
+    private let planner: RoutePlanner?
+    /// Shares the planner, so reroutes fall back to the device's Istanbul tiles without a connection too.
+    private let navigation: NavigationSession?
     /// nil without a HERE key in the build: routes then stay labelled "Trafik dahil değil".
     private let traffic = HERETrafficProvider()
 
     init() {
+        let planner = try? RoutePlanner()
+        self.planner = planner
+        navigation = planner.map { NavigationSession(routes: $0) }
         let settings = AppSettings()
         let location = LocationProvider()
         _settings = State(initialValue: settings)

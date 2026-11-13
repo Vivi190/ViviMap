@@ -14,11 +14,14 @@ public final class RoutePlanner {
     public enum PlanningError: LocalizedError {
         case noRoute
         case service(status: Int)
+        /// No connection, and the tiles on the device could not route it either (e.g. outside Istanbul).
+        case offlineUnavailable
 
         public var errorDescription: String? {
             switch self {
             case .noRoute: "Bu hedefe rota bulunamadı. Hedef kapalı bir alanda olabilir."
             case let .service(status): "Rota servisi yanıt vermedi (\(status)). Biraz sonra tekrar dene."
+            case .offlineUnavailable: "İnternet yok; cihazdaki İstanbul verisiyle de rota bulunamadı. Hedef İstanbul dışında olabilir."
             }
         }
     }
@@ -30,12 +33,21 @@ public final class RoutePlanner {
     let provider: WellKnownRouteProvider
     private let adapter: RouteAdapter
     private let session: URLSession
+    /// Answers the same request on the device (bundled Istanbul tiles); nil in builds without them.
+    private let offline: (@Sendable (Data) async throws -> Data)?
 
-    public init(session: URLSession = .shared) throws {
+    public init(
+        session: URLSession = .shared,
+        offline: (@Sendable (Data) async throws -> Data)? = OfflineRouter.bundled.map { router in { try await router.route($0) } }
+    ) throws {
         provider = try Self.valhallaProvider()
         adapter = try RouteAdapter.fromWellKnownRouteProvider(wellKnownRouteProvider: provider)
         self.session = session
+        self.offline = offline
     }
+
+    /// Whether this build can route without a connection.
+    public var canRouteOffline: Bool { offline != nil }
 
     /// Shared with the navigation session so reroutes use the same engine and options.
     public static func valhallaProvider() throws -> WellKnownRouteProvider {
@@ -51,7 +63,29 @@ public final class RoutePlanner {
             coordinate: GeographicCoordinate(lat: destination.latitude, lng: destination.longitude),
             kind: .break
         )
-        let request = try Self.urlRequest(for: adapter.generateRequest(userLocation: UserLocation(clLocation: location), waypoints: [waypoint]))
+        let found = try await fetch(userLocation: UserLocation(clLocation: location), waypoints: [waypoint])
+        return found.routes.enumerated().map { RouteOption(index: $0.offset, route: $0.element, isOffline: found.offline) }
+    }
+
+    /// Online first; with no connection or a failing server, the same request answered on the device.
+    func fetch(userLocation: UserLocation, waypoints: [Waypoint]) async throws -> (routes: [Route], offline: Bool) {
+        let request = try Self.urlRequest(for: adapter.generateRequest(userLocation: userLocation, waypoints: waypoints))
+        do {
+            return (try await online(request), false)
+        } catch where Self.worthTryingOffline(error) {
+            guard let offline, let body = request.httpBody else { throw error }
+            let routes: [Route]
+            do {
+                routes = try adapter.parseResponse(response: try await offline(body))
+            } catch {
+                throw PlanningError.offlineUnavailable
+            }
+            guard !routes.isEmpty else { throw PlanningError.offlineUnavailable }
+            return (routes, true)
+        }
+    }
+
+    private func online(_ request: URLRequest) async throws -> [Route] {
         let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         // Valhalla answers "no path" (error 442) with 400; anything else non-2xx is a service problem.
@@ -59,7 +93,15 @@ public final class RoutePlanner {
         guard (200 ..< 300).contains(status) else { throw PlanningError.service(status: status) }
         let routes = try adapter.parseResponse(response: data)
         guard !routes.isEmpty else { throw PlanningError.noRoute }
-        return routes.enumerated().map { RouteOption(index: $0.offset, route: $0.element) }
+        return routes
+    }
+
+    /// No connection, or the public server failing (busy, down): the device can answer. "No path" cannot:
+    /// the same tiles would say the same.
+    static func worthTryingOffline(_ error: any Error) -> Bool {
+        if error is URLError { return true }
+        if case let PlanningError.service(status) = error { return status == 429 || status >= 500 || status == 0 }
+        return false
     }
 
     private static func urlRequest(for request: RouteRequest) throws -> URLRequest {
@@ -96,10 +138,19 @@ public struct IdentifiedLoader: URLRequestLoading {
     }
 }
 
+/// Reroutes during guidance take the same path as planning: online first, the device without a connection.
+extension RoutePlanner: @preconcurrency CustomRouteProvider {
+    public func getRoutes(userLocation: UserLocation, waypoints: [Waypoint]) async throws -> [Route] {
+        try await fetch(userLocation: userLocation, waypoints: waypoints).routes
+    }
+}
+
 /// One route alternative, flattened for the UI.
 public struct RouteOption: Identifiable {
     public let index: Int
     public let route: Route
+    /// Computed on the device from the bundled Istanbul tiles (no connection): no live traffic for it.
+    public var isOffline = false
 
     public var id: Int { index }
     public var distance: Double { route.distance }

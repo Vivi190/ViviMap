@@ -8,6 +8,9 @@ name: Offline data
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write # publishes the packages as a release of this (private) repo; TestFlight builds pull them
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -48,6 +51,17 @@ jobs:
           java -Xmx5g -jar planetiler.jar --osm-path=istanbul.osm.pbf --output=istanbul.pmtiles \
             --download --maxzoom=14 --force
 
+      - name: Map fonts (offline labels)
+        run: |
+          # The stacks our style uses; ranges for Latin, Turkish (ğ ı ş İ in 256-511) and punctuation (’ – …).
+          for stack in "Noto Sans Regular" "Noto Sans Bold" "Noto Sans Italic"; do
+            mkdir -p "fonts/$stack"
+            for range in 0-255 256-511 8192-8447; do
+              curl -fsSL -o "fonts/$stack/$range.pbf" "https://tiles.openfreemap.org/fonts/${stack// /%20}/$range.pbf"
+            done
+          done
+          (cd fonts && zip -qr ../fonts.zip .)
+
       - name: Sizes
         run: |
           {
@@ -58,12 +72,12 @@ jobs:
             echo "Valhalla tiles (gz):  $(du -h valhalla_tiles.tar.gz | cut -f1)"
           } | tee sizes.txt
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: offline-istanbul-${{ github.run_number }}
-          path: |
-            sizes.txt
-            valhalla/valhalla.json
-            valhalla/valhalla_tiles.tar
-            istanbul.pmtiles
-          retention-days: 14
+      - name: Publish as a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="offline-data-$(date -u +%Y%m%d)-${{ github.run_number }}"
+          cp valhalla/valhalla_tiles.tar .
+          gh release create "$tag" valhalla_tiles.tar istanbul.pmtiles fonts.zip sizes.txt \
+            --repo "${{ github.repository }}" --prerelease --title "$tag" \
+            --notes "Istanbul offline packages (Valhalla 3.9.0 tiles, OpenMapTiles PMTiles, fonts). Data © OpenStreetMap contributors, ODbL."

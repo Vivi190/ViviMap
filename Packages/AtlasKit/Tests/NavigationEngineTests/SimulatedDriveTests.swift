@@ -35,7 +35,7 @@ struct SimulatedDriveTests {
     }
 
     private func makeSession(logging log: PromptLog) throws -> NavigationSession {
-        let session = try NavigationSession()
+        let session = NavigationSession(routes: try RoutePlanner())
         session.voice.isMuted = true
         session.voice.onPrompt = { log.lines.append($0) }
         return session
