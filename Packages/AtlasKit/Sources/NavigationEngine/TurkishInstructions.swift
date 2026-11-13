@@ -49,14 +49,16 @@ public enum TurkishInstructions {
     }
 
     /// The maneuver after the next one, worth announcing together when it comes within `window` metres
-    /// (dense Istanbul streets). Road-name changes and "keep straight" are noise, so they return nil.
+    /// (dense Istanbul streets). Road-name changes and "keep straight" are noise, so they return nil, and so
+    /// is a roundabout exit: Valhalla follows every roundabout entry with one, and "Göbekten sağa çık"
+    /// already says which exit to take.
     public static func followUp(
         type: ManeuverType?, modifier: ManeuverModifier?, roundaboutExitDegrees: UInt16?,
         after distance: Double, window: Double = 150
     ) -> String? {
         guard distance <= window, let type else { return nil }
         switch type {
-        case .continue, .newName, .notification, .depart: return nil
+        case .continue, .newName, .notification, .depart, .exitRoundabout, .exitRotary: return nil
         case .turn where modifier == .straight || modifier == nil: return nil
         default: return action(type: type, modifier: modifier, roundaboutExitDegrees: roundaboutExitDegrees)
         }

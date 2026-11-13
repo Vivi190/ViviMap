@@ -46,6 +46,7 @@ struct TurkishInstructionsTests {
         #expect(TurkishInstructions.followUp(type: .newName, modifier: .straight, roundaboutExitDegrees: nil, after: 50) == nil)
         #expect(TurkishInstructions.followUp(type: .continue, modifier: .slightLeft, roundaboutExitDegrees: nil, after: 50) == nil)
         #expect(TurkishInstructions.followUp(type: .turn, modifier: .straight, roundaboutExitDegrees: nil, after: 50) == nil)
+        #expect(TurkishInstructions.followUp(type: .exitRoundabout, modifier: .right, roundaboutExitDegrees: nil, after: 30) == nil)
         #expect(TurkishInstructions.followUp(type: nil, modifier: nil, roundaboutExitDegrees: nil, after: 50) == nil)
     }
 }
