@@ -1,5 +1,7 @@
 import CoreLocation
 @preconcurrency import FerrostarCore
+// The UniFFI types (Route, RouteAdapter, WellKnownRouteProvider …) live here; FerrostarCore does not re-export them.
+@preconcurrency import FerrostarCoreFFI
 import Foundation
 import SearchEngine
 
