@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**.md"]
+  pull_request:
+    paths-ignore: ["docs/**", "**.md"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    # App Store Connect only accepts Xcode 26+ builds; pin the Xcode version so upgrades are deliberate.
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      XCODE_VERSION: "26.6"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
+          xcodebuild -version
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .spm
+          key: spm-${{ runner.os }}-${{ env.XCODE_VERSION }}-${{ hashFiles('project.yml', 'Packages/AtlasKit/Package.swift') }}
+
+      - name: Pick simulator
+        id: sim
+        run: |
+          xcrun simctl list devices available --json > devices.json
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json
+          devices = json.load(open("devices.json"))["devices"]
+          runtimes = sorted((r for r in devices if ".iOS-" in r),
+                            key=lambda r: [int(x) for x in r.split(".iOS-")[1].split("-")])
+          for runtime in reversed(runtimes):
+              phones = [d for d in devices[runtime] if d["name"].startswith("iPhone")]
+              if phones:
+                  pick = ([d for d in phones if d["name"].endswith(" Pro")] or phones)[0]
+                  print(f"udid={pick['udid']}")
+                  print(f"name={pick['name']} ({runtime.split('.')[-1]})")
+                  break
+          EOF
+          cat "$GITHUB_OUTPUT"
+
+      - name: Build and test (unit + UI screenshots)
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Atlas.xcodeproj \
+            -scheme Atlas \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -clonedSourcePackagesDirPath .spm \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            -resultBundlePath build/Atlas.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify --renderer github-actions
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          mkdir -p build/screenshots
+          if [ -d build/Atlas.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/Atlas.xcresult --output-path build/screenshots || true
+          fi
+          ls -la build/screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ github.run_number }}
+          path: build/screenshots
+          if-no-files-found: ignore
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult-${{ github.run_number }}
+          path: build/Atlas.xcresult
+          if-no-files-found: ignore
