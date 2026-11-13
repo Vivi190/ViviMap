@@ -5,7 +5,7 @@ import XCTest
 /// CI exports them so design changes can be reviewed without a device.
 final class HomeScreenshotTests: XCTestCase {
     @MainActor
-    func testHomeScreenDayNightAnd3D() throws {
+    func testHomeSearchAnd3DNight() throws {
         continueAfterFailure = false
         // Kartal coast: the D-100 side roads, the coastal road and dense streets in one frame.
         // One launch only: on relaunch the simulator fell back to its default location (Apple Park).
@@ -20,22 +20,32 @@ final class HomeScreenshotTests: XCTestCase {
         settle(10)
         capture("1-home-day")
 
+        // Search (live Photon request) → pick the first result → place card + pin.
+        app.buttons["search.open"].tap()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "search field missing")
+        field.typeText("Kartal Adliyesi")
+        let result = app.buttons.matching(identifier: "search.result").firstMatch
+        XCTAssertTrue(result.waitForExistence(timeout: 20), "no search result")
+        capture("2-search-results")
+        result.tap()
+        XCTAssertTrue(app.otherElements["place.card"].waitForExistence(timeout: 5), "place card missing")
+        settle(6)
+        capture("3-place")
+        app.buttons["Kapat"].tap()
+
         app.buttons["Üç boyutlu görünüm"].tap()
         settle(6)
-        capture("2-home-day-3d")
+        capture("4-home-day-3d")
 
         // Switch to night at runtime: exercises the style reload and the 3D layer re-applied after it.
         app.buttons["Harita ayarları"].tap()
         XCTAssertTrue(app.navigationBars["Harita"].waitForExistence(timeout: 5), "map settings sheet did not open")
-        capture("3-map-settings")
+        capture("5-map-settings")
         app.buttons["Gece"].tap()
-        app.navigationBars["Harita"].swipeDown(velocity: .fast)
+        app.buttons["Bitti"].tap()
         settle(6)
-        capture("4-home-night-3d")
-
-        app.buttons["Üç boyutlu görünüm"].tap()
-        settle(5)
-        capture("5-home-night")
+        capture("6-home-night-3d")
     }
 
     private func settle(_ seconds: TimeInterval) {

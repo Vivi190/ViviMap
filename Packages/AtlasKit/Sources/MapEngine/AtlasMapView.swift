@@ -1,3 +1,4 @@
+import CoreLocation
 import DesignSystem
 import MapLibre
 import MapLibreSwiftDSL
@@ -10,23 +11,41 @@ public struct AtlasMapView: View {
     @Binding private var camera: MapViewCamera
     private let appearance: MapAppearance
     private let showsBuildings3D: Bool
+    private let destination: CLLocationCoordinate2D?
     private let onViewport: (MapViewProxy) -> Void
 
     public init(
         camera: Binding<MapViewCamera>,
         appearance: MapAppearance,
         showsBuildings3D: Bool,
+        destination: CLLocationCoordinate2D? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
     ) {
         _camera = camera
         self.appearance = appearance
         self.showsBuildings3D = showsBuildings3D
+        self.destination = destination
         self.onViewport = onViewport
     }
 
     public var body: some View {
         let show3D = showsBuildings3D
-        MapView(styleURL: appearance.styleURL, camera: $camera)
+        MapView(styleURL: appearance.styleURL, camera: $camera) {
+            if let destination {
+                let pin = ShapeSource(identifier: "atlas-destination") {
+                    MLNPointFeature(coordinate: destination)
+                }
+                CircleStyleLayer(identifier: "atlas-destination-halo", source: pin)
+                    .radius(18)
+                    .color(Self.destinationColor)
+                    .circleOpacity(0.18)
+                CircleStyleLayer(identifier: "atlas-destination", source: pin)
+                    .radius(8)
+                    .color(Self.destinationColor)
+                    .strokeWidth(3)
+                    .strokeColor(.white)
+            }
+        }
             .mapControls {
                 // Empty: compass, logo and attribution are drawn by the app (attribution stays one tap away).
             }
@@ -45,6 +64,8 @@ public struct AtlasMapView: View {
                 }
             }
     }
+
+    private static let destinationColor = UIColor(Color.atlasCritical)
 
     private static let puckStyle = MapUserAnnotationStyle(
         approximateHaloBorderColor: .atlasAccent,

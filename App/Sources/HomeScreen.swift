@@ -4,6 +4,7 @@ import DesignSystem
 import Diagnostics
 import LocationEngine
 import MapEngine
+import SearchEngine
 import SwiftUI
 
 enum Defaults {
@@ -30,7 +31,7 @@ final class MapViewport {
 
 struct HomeScreen: View {
     enum Sheet: String, Identifiable {
-        case mapSettings, diagnostics, attribution
+        case search, mapSettings, diagnostics, attribution
         var id: String { rawValue }
     }
 
@@ -44,6 +45,8 @@ struct HomeScreen: View {
     @State private var is3D = false
     @State private var awaitingFirstFix: Bool
     @State private var sheet: Sheet?
+    @State private var search = SearchController()
+    @State private var selectedPlace: Place?
 
     private static let pitch3D: Double = 55
 
@@ -55,7 +58,12 @@ struct HomeScreen: View {
 
     var body: some View {
         ZStack {
-            AtlasMapView(camera: $camera, appearance: isNight ? .night : .day, showsBuildings3D: is3D) { proxy in
+            AtlasMapView(
+                camera: $camera,
+                appearance: isNight ? .night : .day,
+                showsBuildings3D: is3D,
+                destination: selectedPlace?.point.coordinate
+            ) { proxy in
                 viewport.update(from: proxy)
             }
             .ignoresSafeArea()
@@ -78,6 +86,9 @@ struct HomeScreen: View {
                 try? await Task.sleep(for: .seconds(60))
             }
         }
+        .onAppear {
+            search.origin = { [location] in location.lastLocation.map { GeoPoint($0.coordinate) } }
+        }
         .onChange(of: location.hasFix) { _, hasFix in
             // First fix after a cold start: jump to the user unless they already moved the map.
             guard hasFix, awaitingFirstFix else { return }
@@ -91,10 +102,12 @@ struct HomeScreen: View {
     // MARK: Overlay
 
     private var overlay: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Spacing.s) {
             HStack(alignment: .top, spacing: Spacing.m) {
-                GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
-                Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: Spacing.s) {
+                    SearchBarButton { sheet = .search }
+                    GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
+                }
                 VStack(spacing: Spacing.m) {
                     controls
                     CompassButton(viewport: viewport, action: resetNorth)
@@ -104,18 +117,25 @@ struct HomeScreen: View {
             HStack(alignment: .bottom) {
                 SpeedOverlay()
                 Spacer(minLength: 0)
-                Button { sheet = .attribution } label: {
-                    Text("© OpenStreetMap")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, Spacing.s)
-                        .padding(.vertical, Spacing.xs)
-                        .atlasFloatingSurface(in: Capsule())
+                if selectedPlace == nil {
+                    Button { sheet = .attribution } label: {
+                        Text("© OpenStreetMap")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, Spacing.s)
+                            .padding(.vertical, Spacing.xs)
+                            .atlasFloatingSurface(in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Harita kaynakları"))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Harita kaynakları"))
+            }
+            if let place = selectedPlace {
+                PlaceCard(place: place) { selectedPlace = nil }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.snappy(duration: 0.3), value: selectedPlace)
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)
     }
@@ -188,6 +208,13 @@ struct HomeScreen: View {
         }
     }
 
+    private func select(_ place: Place) {
+        search.remember(place)
+        selectedPlace = place
+        sheet = nil
+        camera = .center(place.point.coordinate, zoom: max(viewport.zoom, 16), pitch: is3D ? Self.pitch3D : 0)
+    }
+
     private func openSettings() {
         if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
     }
@@ -195,12 +222,13 @@ struct HomeScreen: View {
     @ViewBuilder private func sheetContent(_ sheet: Sheet) -> some View {
         NavigationStack {
             switch sheet {
+            case .search: SearchSheet(search: search, onSelect: select)
             case .mapSettings: MapSettingsView(showDiagnostics: { self.sheet = .diagnostics })
             case .diagnostics: LocationDiagnosticsView()
             case .attribution: MapAttributionView()
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents(sheet == .search ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
     }
 }

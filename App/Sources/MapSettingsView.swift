@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MapSettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(\.dismiss) private var dismiss
     let showDiagnostics: () -> Void
 
     var body: some View {
@@ -24,10 +25,15 @@ struct MapSettingsView: View {
             Section {
                 Button("GPS tanılama", systemImage: "antenna.radiowaves.left.and.right", action: showDiagnostics)
             } footer: {
-                Text("Arama, rota ve sesli yönlendirme sonraki fazda eklenecek.")
+                Text("Rota ve sesli yönlendirme sonraki adımda eklenecek.")
             }
         }
         .navigationTitle("Harita")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Bitti") { dismiss() }
+            }
+        }
     }
 }

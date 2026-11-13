@@ -9,7 +9,7 @@ let package = Package(
     products: [
         .library(
             name: "AtlasKit",
-            targets: ["AppCore", "DesignSystem", "LocationEngine", "MapEngine", "Diagnostics"]
+            targets: ["AppCore", "DesignSystem", "LocationEngine", "MapEngine", "Diagnostics", "SearchEngine"]
         ),
     ],
     dependencies: [
@@ -32,7 +32,9 @@ let package = Package(
             resources: [.copy("Styles")]
         ),
         .target(name: "Diagnostics", dependencies: ["DesignSystem", "LocationEngine"]),
+        .target(name: "SearchEngine"),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),
         .testTarget(name: "LocationEngineTests", dependencies: ["LocationEngine"]),
+        .testTarget(name: "SearchEngineTests", dependencies: ["SearchEngine"], resources: [.copy("Fixtures")]),
     ]
 )
