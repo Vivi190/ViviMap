@@ -238,8 +238,7 @@ struct HomeScreen: View {
         if camera.trackingMode == .none {
             camera = .center(viewport.center, zoom: zoom, pitch: pitch, direction: viewport.bearing)
         } else {
-            camera.setZoom(zoom)
-            camera.setPitch(pitch)
+            camera = camera.retracked(zoom: zoom, pitch: pitch)
         }
     }
 
@@ -310,7 +309,7 @@ struct HomeScreen: View {
                 Spacer(minLength: 0)
                 MapControlGroup {
                     MapControlButton(systemImage: "location.north.line.fill", label: "Konumumu göster", isActive: true) {
-                        camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D)
+                        camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
                     }
                 }
             }
@@ -334,7 +333,7 @@ struct HomeScreen: View {
             try navigation.start(route, from: here)
             location.setNavigating(true)
             is3D = true
-            camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D)
+            camera = .trackUserLocationWithCourse(zoom: 17, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
         } catch {
             routeError = "Navigasyon başlatılamadı."
         }
@@ -345,7 +344,7 @@ struct HomeScreen: View {
         location.setNavigating(false)
         clearPlace()
         is3D = false
-        camera = .trackUserLocation(zoom: 15.5)
+        camera = .trackUserLocation(zoom: 15.5, pitch: 0, pitchRange: .fixed(0))
     }
 
     private func clearPlace() {

@@ -73,11 +73,15 @@ struct NavigationBottomBar: View {
                     Text(Date.now.addingTimeInterval(remaining).formatted(date: .omitted, time: .shortened))
                         .font(.title2.weight(.bold))
                         .monospacedDigit()
-                    Text("\(Formatting.duration(seconds: remaining)) · \(Formatting.distance(meters: navigation.distanceRemaining ?? 0)) · trafik hariç")
+                    Text("\(Formatting.duration(seconds: remaining)) · \(Formatting.distance(meters: navigation.distanceRemaining ?? 0))")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                         .lineLimit(1)
+                    // Kept visible on its own line: the estimate has no live traffic yet (Phase 3).
+                    Text("Trafik hariç")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
                 } else {
                     Text(navigation.hasArrived ? "Vardın" : "Rota hazırlanıyor")
                         .font(.title3.weight(.semibold))

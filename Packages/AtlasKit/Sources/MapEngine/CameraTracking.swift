@@ -29,11 +29,27 @@ public extension MapViewCamera {
     func nextTrackingCamera(zoom: Double, pitch: Double, isDriving: Bool) -> MapViewCamera {
         switch trackingMode {
         case .none, .followDirection:
-            .trackUserLocation(zoom: zoom, pitch: pitch)
+            .trackUserLocation(zoom: zoom, pitch: pitch, pitchRange: .fixed(pitch))
         case .follow:
             isDriving
-                ? .trackUserLocationWithCourse(zoom: zoom, pitch: pitch)
-                : .trackUserLocationWithHeading(zoom: zoom, pitch: pitch)
+                ? .trackUserLocationWithCourse(zoom: zoom, pitch: pitch, pitchRange: .fixed(pitch))
+                : .trackUserLocationWithHeading(zoom: zoom, pitch: pitch, pitchRange: .fixed(pitch))
+        }
+    }
+
+    /// The same tracking mode with a new zoom and pitch. The pitch is pinned with a fixed range: for
+    /// tracking cameras the DSL only sets pitch bounds, so a pitch inside free bounds never moved
+    /// (navigation stayed top-down in CI screenshots).
+    func retracked(zoom: Double, pitch: Double) -> MapViewCamera {
+        switch state {
+        case let .trackingUserLocation(_, _, _, direction):
+            .trackUserLocation(zoom: zoom, pitch: pitch, pitchRange: .fixed(pitch), direction: direction)
+        case .trackingUserLocationWithHeading:
+            .trackUserLocationWithHeading(zoom: zoom, pitch: pitch, pitchRange: .fixed(pitch))
+        case .trackingUserLocationWithCourse:
+            .trackUserLocationWithCourse(zoom: zoom, pitch: pitch, pitchRange: .fixed(pitch))
+        default:
+            self
         }
     }
 }
