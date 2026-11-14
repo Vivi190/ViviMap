@@ -29,6 +29,10 @@ struct OfflinePlaceIndexTests {
             ("Çanakkale Caddesi", "", "highway=secondary", 40.9005, 29.1722), // Kartal
             ("Çanakkale Caddesi", "", "highway=residential", 41.0400, 28.9000), // across the city
             ("Kartal", "", "place=town", 40.8890, 29.1905),
+            // Nearest from the Kartal coast in the real index (14.11.2026): BP 189 m, Shell 785 m; Opet across the city.
+            ("Opet", "", "amenity=fuel", 41.0500, 28.9500),
+            ("BP", "", "amenity=fuel", 40.8905, 29.1910),
+            ("Shell", "", "amenity=fuel", 40.8950, 29.1920),
         ]
         var sql = """
         CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL, category TEXT, lat REAL NOT NULL, lon REAL NOT NULL);
@@ -60,6 +64,14 @@ struct OfflinePlaceIndexTests {
 
     @Test func punctuationOnlyFindsNothing() async throws {
         #expect(try await index().search(" - ' ", near: nil).isEmpty)
+    }
+
+    @Test func nearbyListsOneKindNearestFirst() throws {
+        let kartal = GeoPoint(latitude: 40.8890, longitude: 29.1905)
+        let index = try index()
+        #expect(try index.nearby(.fuel, near: kartal).map(\.name) == ["BP", "Shell", "Opet"])
+        #expect(try index.nearby(.fuel, near: kartal, limit: 1).map(\.name) == ["BP"])
+        #expect(try index.nearby(.charging, near: kartal).isEmpty)
     }
 }
 

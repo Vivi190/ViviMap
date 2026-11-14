@@ -50,6 +50,9 @@ struct SearchSheet: View {
             if hasQuery {
                 ForEach(search.results) { place in row(place) }
             } else {
+                if search.canShowNearby {
+                    Section("Yakında") { nearbyButtons }
+                }
                 if search.home != nil || search.work != nil {
                     Section("Kısayollar") {
                         if let home = search.home { shortcut("Ev", "house.fill", home) }
@@ -94,6 +97,27 @@ struct SearchSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("\(title): rota"))
+    }
+
+    /// Nearest fuel, parking, pharmacy, charger from the shipped Istanbul index: instant, and offline too.
+    /// Bordered buttons, so each one takes its own tap inside the shared list row.
+    private var nearbyButtons: some View {
+        HStack(spacing: Spacing.s) {
+            ForEach(NearbyKind.allCases, id: \.self) { kind in
+                Button { search.showNearby(kind) } label: {
+                    VStack(spacing: Spacing.xs) {
+                        Image(systemName: kind.systemImage)
+                            .font(.system(size: 17, weight: .semibold))
+                        Text(kind.title)
+                            .font(.caption.weight(.medium))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.atlasAccent)
+            }
+        }
     }
 
     private var recentsSection: some View {
