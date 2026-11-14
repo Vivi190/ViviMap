@@ -98,8 +98,9 @@ Gerekçelerin ve kaynakların ayrıntısı: [research/2026-11-13-faz0-arastirma.
 
 - **Karar:**
   - Online arama Photon ile yapılır. Geliştirmede public sunucu kullanılır, sonra kendi sunucumuz.
-  - Ters geocoding Nominatim ile yapılır; saniyede en fazla 1 istek, autocomplete yok.
-  - Offline: CI'da üretilen SQLite FTS5 indeksi; Türkçe kısaltmalar eşanlamlı olarak eklenir.
+  - Sorguda yer türü kelimesi varsa (durak, istasyon/metro/marmaray, AVM, iskele), kelimesi çıkarılmış ikinci bir istek Photon'un `osm_tag` filtresiyle eşzamanlı gönderilir. Ölçüm: [2026-11-14-arama-olcumu.md](research/2026-11-14-arama-olcumu.md).
+  - Ters geocoding (haritadan seçme) de Photon ile yapılır; Nominatim kullanılmıyor.
+  - Offline: CI'da üretilen SQLite FTS4 indeksi (İstanbul, Türkçe katlama: "çanakkale" = "canakkale"). Photon'a ulaşılamazsa devreye girer.
 - **Neden Apple araması yok:** DPLA Ek 6 §2.4.
 - **Bilinen sınır:** OSM'de kapı numarası kapsaması düşük. Bulunamazsa sokağa düşülür ve sonuç "yaklaşık" olarak gösterilir.
 
@@ -141,12 +142,13 @@ Her modül `Packages/AtlasKit` içinde bir hedef olarak yaşar. Sağlayıcıya b
 | MapEngine | MapLibre görünümü, stiller, kamera takibi, atıf | 1 | ✅ |
 | LocationEngine | CoreLocation, hız tahmini, GPS kalitesi | 1 | ✅ (map matching Faz 2) |
 | Diagnostics | Canlı GPS tanılama ekranı | 1 | ✅ |
-| SearchEngine | `SearchProvider`: Photon, Nominatim, FTS5 | 2 / 4 | — |
-| RoutingEngine | `RouteProvider`: Valhalla online/offline, aday üretimi | 2 / 3 / 4 | — |
-| NavigationEngine | Ferrostar sarmalayıcı, rota takibi, rota değiştirme kararı | 2 / 3 | — |
-| VoiceGuidance | Türkçe talimat üretimi, AVSpeech, ses oturumu | 2 | — |
-| TrafficEngine | `TrafficProvider`: HERE, trafik katmanı | 3 | 🟡 HERE route import puanlama + kota bekçisi; anahtar bekliyor |
-| OfflineEngine | Bölge paketleri, indirme/devam ettirme, bütünlük | 4 | — |
-| RoadHazards | Kasis/kamera/tehlike verisi, kullanıcı işaretleri, uyarı zamanlaması | 5 | 🟡 OSM verisi + rota uyarıları; kullanıcı işaretleri sırada |
-| TripHistory | Sürüş kayıtları, süre kalibrasyonu | 6 / 7 | — |
-| Settings | Ayarlar ekranları (şimdilik AppCore + harita sayfası) | 2+ | — |
+| SearchEngine | Photon arama ve ters arama, tür kelimesi için filtreli ikinci istek; çevrimdışı İstanbul dizini (FTS4) | 2 / 4 | ✅ ölçüm: ilk sonuç 57/57, bakılmamış 8 sorgu dahil (14.11.2026) |
+| RoutingEngine | Valhalla: FOSSGIS online, cihaz içi Valhalla 3.9.0 (çevrimdışı yedek), aday üretimi | 2 / 3 / 4 | ✅ |
+| NavigationEngine | Ferrostar sarmalayıcı, rota takibi, yeniden rota, Türkçe talimat ve ses, kasis/kamera uyarıları, hız sınırı, hıza göre yakınlık | 2 / 3 / 5 / 6 | ✅ |
+| VoiceGuidance | Türkçe talimat üretimi, AVSpeech, ses oturumu | 2 | ✅ NavigationEngine içinde (TurkishInstructions, VoiceGuide) |
+| TrafficEngine | `TrafficProvider` (HERE): rota süreleri, rota boyunca akış (rota renkleri), alan akışı (şehir trafik katmanı), histerezisli öneri, ayrı aylık kotalar | 3 | ✅ |
+| OfflineEngine | Bölge paketleri, indirme/devam ettirme, bütünlük | 4 | Ayrı modül yok: tek bölge build'e gömülü (OfflineRouter, OfflineMap, OfflinePlaceIndex) |
+| RoadHazards | Kasis/kamera verisi, kullanıcı işaretleri, uyarı zamanlaması | 5 | ✅ |
+| TripHistory | Sürüş kayıtları, süre kalibrasyonu | 6 / 7 | ✅ |
+| NavigationActivity | Live Activity içeriği (uygulama ve widget uzantısı paylaşır) | 7 | ✅ |
+| Settings | Ayarlar ekranları (AppCore + harita sayfası) | 2+ | ✅ görünüm, uyarılar, işaretler, sürüşler, test |

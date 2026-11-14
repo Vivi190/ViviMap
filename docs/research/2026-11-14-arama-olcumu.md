@@ -27,9 +27,88 @@ Hatalar ve nedenleri:
 
 **Düzeltme** (`PlaceRanking.focus`): sorguda bir yer türü kelimesi varsa (durak, istasyon/metro/marmaray/tren/gar, AVM, iskele), uygulama eşzamanlı ikinci bir istek atar. Bu istekte o kelime çıkarılır ve Photon'un `osm_tag` filtresi kullanılır ("kartal" + `railway:station`, "akasya" + `shop:mall`). Gelen sonuçlar başa konur. Durak kuralı istasyon kuralından önce gelir: "kartal metro durağı" bir istasyon değil, "Kartal Metro" adlı bir duraktır.
 
-Yerel kontrolde beş sorgunun hepsinde ilk sonuç doğru türdeki doğru yer çıktı (Kartal ve Tavşantepe istasyonları, Kadıköy iskelesi, Akasya AVM, Kartal Metro durağı). Bunun resmî ölçümü 2. ölçümdür.
+Yerel kontrolde beş sorgunun hepsinde ilk sonuç doğru türdeki doğru yer çıktı (Kartal ve Tavşantepe istasyonları, Kadıköy iskelesi, Akasya AVM, Kartal Metro durağı).
 
-### 1. ölçümün tam tablosu
+## 2. ölçüm — 14.11.2026, düzeltmeden sonra (aynı 51 sorgu)
+
+**İlk sonuç doğru: 49/49 · ilk 3'te: 49/49.**
+
+Düzeltme bu sorgulardan çıkarıldığı için bu sonuç kısmen kendi verisine uyum olabilir. Bu yüzden 3. ölçüm yapıldı.
+
+## 3. ölçüm — 14.11.2026, bakılmamış 9 sorgu eklendi (toplam 60)
+
+Düzeltmeyi tasarlarken hiç bakılmamış istasyon, iskele, AVM ve durak sorguları eklendi: Maltepe, Bostancı, Kozyatağı, Üsküdar istasyonları; Kartal ve Üsküdar iskeleleri; Optimum ve Capitol AVM; Pendik Metro durağı.
+
+**İlk sonuç doğru: 57/57 · ilk 3'te: 57/57.** Bakılmamış 8 ölçülebilir sorgunun 8'i doğru. Ölçüm dışı kalan 3 sorgunun hedefi OSM'de yok: Kartal Koşuyolu Hastanesi, Viaport ve Capitol AVM (`shop=mall` olarak işli değil).
+
+Sınır: bu ölçüm sıralamayı ve bulmayı ölçer. Kapı numaralı adres araması OSM'deki numara verisine bağlıdır ve burada ölçülmedi.
+
+### 3. ölçümün tam tablosu
+
+| Sorgu | Sonuç | Uygulamanın ilk sonucu | İlk sonucun hedefe uzaklığı |
+|---|---|---|---|
+| pendik devlet hastanesi | ✅ 1. | Pendik Devlet Hastanesi | 0 m |
+| lütfi kırdar şehir hastanesi | ✅ 1. | Dr. Lütfi Kırdar Şehir Hastanesi | 0 m |
+| kartal koşuyolu hastanesi | — | hedef OSM'de bulunamadı (ölçüm dışı) |  |
+| tuzla devlet hastanesi | ✅ 1. | Tuzla Devlet Hastanesi | 0 m |
+| marmara üniversitesi pendik hastanesi | ✅ 1. | Marmara Üniversitesi Pendik Eğitim ve Araştırma Hastanesi | 0 m |
+| siyami ersek hastanesi | ✅ 1. | Dr. Siyami Ersek Göğüs Kalp ve Damar Cerrahisi Eğitim ve Araştırma Hastanesi | 0 m |
+| sabiha gökçen havalimanı | ✅ 1. | Sabiha Gökçen Havalimanı (SAW) | 0 m |
+| istanbul havalimanı | ✅ 1. | İstanbul Havalimanı | 0 m |
+| pendik tren garı | ✅ 1. | Pendik | 0 m |
+| kartal metro istasyonu | ✅ 1. | Kartal | 0 m |
+| tavşantepe metro | ✅ 1. | Tavşantepe | 0 m |
+| bostancı iskelesi | ✅ 1. | Bostancı | 0 m |
+| kadıköy iskelesi | ✅ 1. | Kadıköy | 0 m |
+| harem otogarı | ✅ 1. | Harem Otogarı | 0 m |
+| kartal belediyesi | ✅ 1. | Kartal Belediyesi | 0 m |
+| pendik belediyesi | ✅ 1. | Pendik Belediyesi | 0 m |
+| tuzla belediyesi | ✅ 1. | Tuzla Belediyesi | 0 m |
+| maltepe belediyesi | ✅ 1. | Maltepe Belediyesi | 0 m |
+| kartal adliyesi | ✅ 1. | İstanbul Anadolu Adalet Sarayı | 0 m |
+| viaport | — | hedef OSM'de bulunamadı (ölçüm dışı) |  |
+| hilltown avm | ✅ 1. | Hilltown AVM | 0 m |
+| pendorya avm | ✅ 1. | Pendorya AVM | 0 m |
+| neomarin avm | ✅ 1. | Neomarin | 0 m |
+| akasya avm | ✅ 1. | Akasya Alışveriş Merkezi | 0 m |
+| emaar square | ✅ 1. | Emaar Square AVM | 11 m |
+| sabancı üniversitesi | ✅ 1. | Sabancı Üniversitesi | 0 m |
+| yeditepe üniversitesi | ✅ 1. | Yeditepe Üniversitesi | 0 m |
+| boğaziçi üniversitesi | ✅ 1. | Boğaziçi Üniversitesi Güney Yerleşkesi | 0 m |
+| ankara caddesi kartal | ✅ 1. | Ankara Caddesi | 0 m |
+| bağdat caddesi | ✅ 1. | Bağdat Caddesi | 0 m |
+| çanakkale caddesi kartal | ✅ 1. | Çanakkale Caddesi | 0 m |
+| turgut özal bulvarı kartal | ✅ 1. | Turgut Özal Bulvarı | 0 m |
+| ihlas sokağı kartal | ✅ 1. | İhlas Sokağı | 0 m |
+| şehzade caddesi kartal | ✅ 1. | Şehzade Caddesi | 0 m |
+| meşeli ayazma caddesi | ✅ 1. | Meşeli Ayazma Caddesi | 0 m |
+| hürriyet caddesi kartal | ✅ 1. | Hürriyet Caddesi | 0 m |
+| atatürk caddesi pendik | ✅ 1. | Atatürk Caddesi | 0 m |
+| istasyon caddesi tuzla | ✅ 1. | İstasyon Caddesi | 0 m |
+| esentepe kartal | ✅ 1. | Esentepe | 0 m |
+| soğanlık | ✅ 1. | Soğanlık | 486 m |
+| yakacık | ✅ 1. | Yakacık | 0 m |
+| kurtköy | ✅ 1. | Kurtköy | 563 m |
+| aydınlı tuzla | ✅ 1. | Aydınlı | 0 m |
+| velibaba pendik | ✅ 1. | Velibaba | 0 m |
+| gümüşpınar kartal | ✅ 1. | Gümüşpınar | 0 m |
+| taksim meydanı | ✅ 1. | Taksim Meydanı | 0 m |
+| galata kulesi | ✅ 1. | Galata Kulesi | 0 m |
+| ayasofya | ✅ 1. | Ayasofya | 0 m |
+| kız kulesi | ✅ 1. | Kız Kulesi | 0 m |
+| çamlıca camii | ✅ 1. | Çamlıca Camii Zemin Altı Otoparkı | 33 m |
+| kartal metro durağı | ✅ 1. | Kartal Metro | 0 m |
+| maltepe metro istasyonu | ✅ 1. | Maltepe | 0 m |
+| bostancı marmaray | ✅ 1. | Bostancı | 0 m |
+| kozyatağı metro | ✅ 1. | Kozyatağı | 0 m |
+| üsküdar marmaray | ✅ 1. | Üsküdar | 0 m |
+| kartal iskelesi | ✅ 1. | İDO Kartal Terminali | 0 m |
+| üsküdar iskelesi | ✅ 1. | Üsküdar | 0 m |
+| optimum avm | ✅ 1. | Optimum Premium Outlet | 0 m |
+| capitol avm | — | hedef OSM'de bulunamadı (ölçüm dışı) |  |
+| pendik metro durağı | ✅ 1. | Pendik Metro Minibüs Durağı | 0 m |
+
+### 1. ölçümün tam tablosu (düzeltmeden önce)
 
 | Sorgu | Sonuç | Uygulamanın ilk sonucu | İlk sonucun hedefe uzaklığı |
 |---|---|---|---|
