@@ -47,6 +47,7 @@ public struct AtlasMapView: View {
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
     private let isGuiding: Bool
+    private let guidanceZoom: Double?
     private let isOffline: Bool
 
     /// `puckSource` replaces CoreLocation for the user puck (simulated drive); nil = real GPS.
@@ -63,6 +64,7 @@ public struct AtlasMapView: View {
         marks: [MapMark] = [],
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
+        guidanceZoom: Double? = nil,
         isOffline: Bool = false,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
@@ -78,6 +80,7 @@ public struct AtlasMapView: View {
         self.marks = marks
         self.puckSource = puckSource
         self.isGuiding = isGuiding
+        self.guidanceZoom = guidanceZoom
         self.isOffline = isOffline
         self.onLongPress = onLongPress
         self.onViewport = onViewport
@@ -95,6 +98,7 @@ public struct AtlasMapView: View {
     private func map(size: CGSize) -> some View {
         let show3D = showsBuildings3D
         let guiding = isGuiding
+        let zoom = guidanceZoom
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
         let slow = byLevel[.slow] ?? [], heavy = byLevel[.heavy] ?? [], stopped = byLevel[.stopped] ?? []
         let area = Dictionary(grouping: areaTraffic, by: \.level).mapValues { $0.map(\.coordinates) }
@@ -219,6 +223,12 @@ public struct AtlasMapView: View {
                 if mapView.contentInset != inset {
                     mapView.automaticallyAdjustsContentInset = false
                     mapView.setContentInset(inset, animated: true, completionHandler: nil)
+                }
+                // Closer before a turn, farther on fast roads: eased here, because swiftui-dsl's course
+                // tracking sets the zoom without animation and the map jumped. Only while it follows the car;
+                // a driver who moved the map keeps their view.
+                if guiding, let zoom, mapView.userTrackingMode == .followWithCourse, abs(mapView.zoomLevel - zoom) > 0.05 {
+                    mapView.setZoomLevel(zoom, animated: true)
                 }
             }
     }

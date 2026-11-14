@@ -184,6 +184,7 @@ struct HomeScreen: View {
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 puckSource: simulatedPuck,
                 isGuiding: isNavigating,
+                guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,
                 isOffline: !connectivity.isOnline,
                 onLongPress: longPressHandler
             ) { proxy in
@@ -229,10 +230,6 @@ struct HomeScreen: View {
                 recordTrip(arrived: true)
                 guidanceActivity.end()
             }
-        }
-        .onChange(of: navigation?.guidanceZoom) { _, zoom in
-            // Only while the camera follows the car; a driver who panned the map keeps their view.
-            if let zoom, isNavigating, camera.trackingMode == .followDirection { followCourse(zoom: zoom) }
         }
         .onChange(of: routeSelection) { _, index in
             if let option = routes.first(where: { $0.index == index }) { loadFlow(for: option, generation: planGeneration) }
