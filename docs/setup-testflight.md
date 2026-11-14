@@ -76,4 +76,4 @@ Kota: uygulama her cihazda ayda en fazla 1.200 rota içe aktarma ve 2.400 trafik
 
 - **Windows'taki OpenSSL çıktısı CRLF ile biter.** Parola üretirken `tr -d '\r\n'` kullan. Sondaki görünmez `\r`, .p12'yi şifrelerken parolanın içinde kalıyor; `gh secret set` ise yüklerken onu kırpıyor. Sonuç: CI'da "passphrase not correct" hatası.
 - Git Bash'te OpenSSL'e `file:/c/...` biçiminde yol verilemez. Parolayı `env:` veya `stdin` ile geçir.
-- Bir secret'tan şüphelenirsen TestFlight iş akışının "Check secrets" adımı her secret'ın uzunluğunu ve SHA-256 önekini yazdırır. Bunları yerel dosyalarla karşılaştır.
+- Depo herkese açık olduğundan iş akışı log'ları da açıktır. Bu yüzden "Check secrets" adımı yalnızca eksik secret'ları söyler; uzunluk ve özet yazdırmaz. İmza kimliği de, geliştiricinin adını taşıdığı için log'a yazılmaz. Bir secret'tan şüphelenirsen yerelde karşılaştır, log'a yazdırma.
