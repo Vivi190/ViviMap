@@ -84,19 +84,19 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
             .filter { $0 != address.houseNumber }
         guard !words.isEmpty else { return [] }
         var found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
-        var near = near
+        var center = near
         // "ankara caddesi kartal": the index holds names only, so a district named last finds nothing. Without
         // it, and nearest to that district first.
         if found.isEmpty, words.count > 1, let area = try place(named: words[words.count - 1]) {
             words.removeLast()
             found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
-            near = area.point
+            center = area.point
         }
         let wanted = words.joined(separator: " ")
         func rank(_ place: Place) -> (Int, Double) {
             let name = TurkishFold.fold(place.name)
             let match = name == wanted ? 0 : name.hasPrefix(wanted) ? 1 : 2
-            return (match, near.map { place.point.distance(to: $0) } ?? 0)
+            return (match, center.map { place.point.distance(to: $0) } ?? 0)
         }
         return Array(found.sorted { rank($0) < rank($1) }.prefix(12))
     }

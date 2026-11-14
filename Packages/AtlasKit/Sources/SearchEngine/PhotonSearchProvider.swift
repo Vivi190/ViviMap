@@ -25,17 +25,17 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
             if !nearest.isEmpty { return nearest }
         }
         // "Atatürk Cad. No:12" as OSM spells it (PlaceRanking.address); other queries go as typed.
-        let query = PlaceRanking.address(query).text
+        let text = PlaceRanking.address(query).text
         // A query naming a kind of place also asks for that kind alone, by name (PlaceRanking.focus).
-        guard let focus = PlaceRanking.focus(query) else {
-            return PlaceRanking.rank(try await places(request(query, near: near)), query: query)
+        guard let focus = PlaceRanking.focus(text) else {
+            return PlaceRanking.rank(try await places(request(text, near: near)), query: text)
         }
         async let focused = places(request(focus.name, near: near, tags: focus.tags))
-        let general = try await places(request(query, near: near))
+        let general = try await places(request(text, near: near))
         // Its hits lead; a failure there only costs the extra hits.
         let first = (try? await focused) ?? []
         let shown = Set(first.map(\.id))
-        return PlaceRanking.rank(first + general.filter { !shown.contains($0.id) }, query: query)
+        return PlaceRanking.rank(first + general.filter { !shown.contains($0.id) }, query: text)
     }
 
     func request(_ query: String, near: GeoPoint?, tags: [String] = []) -> URLRequest {
