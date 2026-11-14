@@ -138,13 +138,22 @@ struct SearchSheet: View {
             } else if let message = search.errorMessage {
                 ContentUnavailableView("Arama yapılamadı", systemImage: "wifi.exclamationmark", description: Text(message))
             } else if search.results.isEmpty {
-                ContentUnavailableView.search(text: search.query)
+                if search.query.lowercased(with: Locale(identifier: "tr")).contains("nöbetçi") {
+                    // Searched often, and OSM has no duty roster: say so instead of a bare "no results".
+                    ContentUnavailableView(
+                        "Nöbet bilgisi yok",
+                        systemImage: "cross.case",
+                        description: Text("Haritada eczanelerin nöbet çizelgesi yok. En yakın eczaneler için \"eczane\" yaz; açık olup olmadığını gitmeden önce kontrol et.")
+                    )
+                } else {
+                    ContentUnavailableView.search(text: search.query)
+                }
             }
         } else if search.recents.isEmpty, search.home == nil, search.work == nil {
             ContentUnavailableView(
                 "Nereye gidiyoruz?",
                 systemImage: "magnifyingglass",
-                description: Text("Adres, mahalle, işletme ya da koordinat yaz.")
+                description: Text("Adres, mahalle, işletme, koordinat ya da benzinlik gibi bir tür yaz.")
             )
         }
     }
