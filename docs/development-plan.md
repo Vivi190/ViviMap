@@ -16,11 +16,11 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 
 ## TestFlight'ta ne denenecek
 
-**Son işlenen: build 19 (14.11.2026); build 20 yükleniyor.** Depo herkese açık olduğu için GitHub Actions dakikaları artık ücretsiz ([setup-testflight.md](setup-testflight.md#github-actions-ve-açık-depo)).
+**Son yüklenen: build 20 (14.11.2026, işlendi).** Depo herkese açık olduğu için GitHub Actions dakikaları artık ücretsiz ([setup-testflight.md](setup-testflight.md#github-actions-ve-açık-depo)).
 - Build 17: trafik katmanı, tür kelimeli arama düzeltmesi.
 - Build 18: ücretli yollardan kaçınma, varışımı paylaş, Siri kısayolu, hız sınırı uyarısı, "Yakında" düğmeleri.
 - Build 19: yenilenen rota kartı ve navigasyon alt çubuğu, havalimanı/hastane/AVM rotalarının alanın önündeki yolda bitmesi, telefondaki en kaliteli Türkçe ses, navigasyonda yumuşak yakınlaşma.
-- Build 20 (yükleniyor): mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik", çevrimdışı da), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku, rota üzerinde dönüş oku, alt çubuğun üstünde şu anki yolun adı, haritaya bakıldıktan sonra görünümün kendiliğinden araca dönmesi, hedefin yakınındaki otoparklar, çevrimdışı "sokak + ilçe" araması, Photon sunucusu çökünce aramanın cihazdaki dizine geçmesi, arama hatasında nedenin doğru söylenmesi.
+- Build 20: mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik", çevrimdışı da), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku, rota üzerinde dönüş oku, alt çubuğun üstünde şu anki yolun adı, haritaya bakıldıktan sonra görünümün kendiliğinden araca dönmesi, hedefin yakınındaki otoparklar, çevrimdışı "sokak + ilçe" araması, Photon sunucusu çökünce aramanın cihazdaki dizine geçmesi, arama hatasında nedenin doğru söylenmesi.
 
 Sıradaki build'de gelecekler (main'de): yerle işi bitince aramanın baştan (son aramalar, kısayollar, "Yakında") açılması, göbekte dönüş okunun çıkış yoluna kadar uzaması.
 
