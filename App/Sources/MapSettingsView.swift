@@ -1,6 +1,8 @@
+import AVFoundation
 import AppCore
 import DesignSystem
 import MapEngine
+import NavigationEngine
 import RoadHazards
 import SwiftUI
 import TripHistory
@@ -122,6 +124,25 @@ struct MapSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     let showDiagnostics: () -> Void
 
+    /// Which Turkish voice guidance uses, and how to get a better one when only the compact voice is there.
+    private var voiceSection: some View {
+        let voice = VoiceGuide.bestTurkishVoice()
+        let quality = switch voice?.quality {
+        case .premium: "Premium"
+        case .enhanced: "Geliştirilmiş"
+        default: "Standart"
+        }
+        return Section {
+            LabeledContent("Ses", value: voice.map { "\($0.name) · \(quality)" } ?? "Türkçe ses yok")
+        } header: {
+            Text("Sesli yönlendirme")
+        } footer: {
+            if voice?.quality != .enhanced, voice?.quality != .premium {
+                Text("Daha doğal bir ses için: Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe'den bir sesin \"Geliştirilmiş\" sürümünü indir. Atlas indirileni kendiliğinden kullanır.")
+            }
+        }
+    }
+
     var body: some View {
         @Bindable var settings = settings
         Form {
@@ -145,6 +166,8 @@ struct MapSettingsView: View {
             } footer: {
                 Text("Köprü, tünel ve otoyol gişelerinden geçmeyen rota. Boğaz'ı geçerken araba vapuruna yönlendirebilir; daha uzun sürebilir.")
             }
+
+            voiceSection
 
             Section {
                 Toggle("Hız kamerası uyarıları", isOn: $settings.warnsCameras)

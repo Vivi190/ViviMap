@@ -9,7 +9,17 @@ public final class VoiceGuide: NSObject {
     public var onPrompt: (@MainActor (String) -> Void)?
 
     private let synthesizer = AVSpeechSynthesizer()
-    private let voice = AVSpeechSynthesisVoice(language: "tr-TR")
+    private let voice = VoiceGuide.bestTurkishVoice()
+
+    /// The best Turkish voice on the phone. `AVSpeechSynthesisVoice(language:)` gives the compact default even
+    /// when an enhanced or premium one is installed (Settings → Accessibility → Spoken Content → Voices →
+    /// Turkish); novelty and personal voices are left out. Shown in the map settings too.
+    public static func bestTurkishVoice() -> AVSpeechSynthesisVoice? {
+        AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language == "tr-TR" && !$0.voiceTraits.contains(.isNoveltyVoice) && !$0.voiceTraits.contains(.isPersonalVoice) }
+            .max { $0.quality.rawValue < $1.quality.rawValue }
+            ?? AVSpeechSynthesisVoice(language: "tr-TR")
+    }
 
     override public init() {
         super.init()
