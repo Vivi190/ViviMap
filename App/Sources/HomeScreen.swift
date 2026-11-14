@@ -85,6 +85,8 @@ struct HomeScreen: View {
     @State private var cityTraffic = CityTraffic()
     /// Kept across drives, like the system's own navigation mute.
     @State private var isMuted = false
+    /// Returns a guided map to the car after the driver looked around (see `.onChange(of: camera)`).
+    @State private var recenterTask: Task<Void, Never>?
     @State private var guidanceActivity = GuidanceActivity()
     /// What the driver was told when a real (not simulated) drive started, for the trip log.
     @State private var tripStart: TripStart?
@@ -243,6 +245,17 @@ struct HomeScreen: View {
             awaitingFirstFix = false
             if camera.trackingMode == .none, !userMovedMap {
                 camera = .trackUserLocation(zoom: 15.5)
+            }
+        }
+        .onChange(of: camera) { _, newCamera in
+            // While guiding, a driver who moved the map or looked at the whole route gets the road ahead back
+            // by itself 12 s after the last change, as in Waze; every gesture restarts the wait.
+            recenterTask?.cancel()
+            guard isNavigating, newCamera.trackingMode == .none, let navigation else { return }
+            recenterTask = Task {
+                try? await Task.sleep(for: .seconds(12))
+                guard !Task.isCancelled, isNavigating else { return }
+                recenterOnCourse(zoom: navigation.guidanceZoom)
             }
         }
     }

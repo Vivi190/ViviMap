@@ -21,7 +21,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 18: ücretli yollardan kaçınma, varışımı paylaş, Siri kısayolu, hız sınırı uyarısı, "Yakında" düğmeleri.
 - Build 19: yenilenen rota kartı ve navigasyon alt çubuğu, havalimanı/hastane/AVM rotalarının alanın önündeki yolda bitmesi, telefondaki en kaliteli Türkçe ses, navigasyonda yumuşak yakınlaşma.
 
-Sıradaki build'de gelecekler (main'de): mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik"), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku, rota üzerinde dönüş oku ve alt çubuğun üstünde şu anki yolun adı; çevrimdışı "sokak + ilçe" araması; Photon sunucusu çökünce aramanın cihazdaki dizine geçmesi.
+Sıradaki build'de gelecekler (main'de): mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik"), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku, rota üzerinde dönüş oku ve alt çubuğun üstünde şu anki yolun adı, haritaya bakıldıktan sonra görünümün kendiliğinden araca dönmesi; çevrimdışı "sokak + ilçe" araması; Photon sunucusu çökünce aramanın cihazdaki dizine geçmesi.
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -64,7 +64,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 18. **Ses (build 19+):** Harita ayarları → Sesli yönlendirme, kullanılan Türkçe sesi ve kalitesini gösterir. "Geliştirilmiş" bir ses indirirsen Atlas kendiliğinden onu kullanır.
 19. **Adres (sıradaki build):** bir adresi mesajda yazıldığı gibi yapıştır, örneğin "Sanayi Cad. No:1 Kartal" ya da "Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul". İlk sonuç o adresteki yer olmalı; numarası OSM'de yoksa o sokak.
 20. **En yakınlar (sıradaki build):** yalnızca "benzinlik", "eczane", "market", "hastane", "otopark" ya da "en yakın ATM" yaz. En yakınlar mesafeleriyle listelenmeli.
-21. **Konum oku, dönüş oku, yol adı (sıradaki build):** navigasyonda konum oku binaların arasında da mavi çizginin üstünde kalmalı; rotadan gerçekten çıkınca çizgiden ayrılır ve yeni rota hesaplanır. Bir sonraki dönüş, rotanın üstünde beyaz bir okla görünmeli; göbekte ok çıkışa kadar uzanır. Alt çubuğun hemen üstünde, o an üzerinde olduğun yolun adı yazmalı.
+21. **Konum oku, dönüş oku, yol adı (sıradaki build):** navigasyonda konum oku binaların arasında da mavi çizginin üstünde kalmalı; rotadan gerçekten çıkınca çizgiden ayrılır ve yeni rota hesaplanır. Bir sonraki dönüş, rotanın üstünde beyaz bir okla görünmeli; göbekte ok çıkışa kadar uzanır. Alt çubuğun hemen üstünde, o an üzerinde olduğun yolun adı yazmalı. Haritayı elle kaydırır ya da "Rotanın tamamı"na dokunursan, 12 saniye sonra görünüm kendiliğinden araca dönmeli.
 
 **Bilinen sınırlar:**
 
@@ -100,15 +100,13 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 - **Birim testleri:** hız tahmini, GPS kalitesi, güneş hesabı (güneş hesabı Python'a birebir aktarılarak ayrıca doğrulandı).
 - **CI'da UI testi:** simülatörde Kartal'da gündüz ve gece ekran görüntüsü.
 
-### Bilinçli olarak eksik bırakılanlar
+### Faz 1'de eksik bırakılanlar (sonra tamamlandı)
 
-Hiçbiri arayüzde gösterilmiyor.
-
-- Arama, rota ve ses (Faz 2).
-- Arka planda konum: Faz 1 uygulama arka plana geçince GPS'i kapatıyor.
-- Hız sınırı (veri Faz 5'te).
-- Harita jestinin kamera takibini bırakması: swiftui-dsl'in mevcut davranışı, Faz 6'da iyileştirilecek.
-- Yatay mod.
+- Arama, rota ve ses: Faz 2'de geldi.
+- Arka planda konum: navigasyon sürerken arka planda da çalışır (Faz 2).
+- Hız sınırı: OSM'de işli yollarda gösterilir (Faz 5).
+- Harita jestinin kamera takibini bırakması: navigasyonda harita elle kaydırılınca ya da rotanın tamamına bakılınca, son dokunuştan 12 sn sonra görünüm kendiliğinden araca döner (sıradaki build).
+- Yatay mod: Faz 6'da geldi.
 
 ### Cihazda doğrulaman gerekenler
 
