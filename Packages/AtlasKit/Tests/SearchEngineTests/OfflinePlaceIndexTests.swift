@@ -82,6 +82,22 @@ struct OfflinePlaceIndexTests {
         #expect(try await index().search("en yakın benzinlik", near: kartal).map(\.name) == ["BP", "Shell", "Opet"])
     }
 
+    /// "Yakındaki otoparklar" on a destination's card: the nearest around the destination, not around the user.
+    @MainActor
+    @Test func nearestAroundAPlaceNotTheUser() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "atlas-tests-\(UUID())"))
+        let shipped = try index()
+        let search = SearchController(provider: Fixed(), nearbyIndex: shipped, defaults: defaults)
+        search.origin = { GeoPoint(latitude: 41.05, longitude: 28.95) } // the user, by Opet across the city
+        let destination = Place(id: "d", name: "Hedef", subtitle: "", point: GeoPoint(latitude: 40.8890, longitude: 29.1905), category: nil)
+        search.showNearby(.fuel, around: destination)
+        #expect(search.nearbyCenter == destination)
+        for _ in 0 ..< 40 where search.results.isEmpty { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(search.results.map(\.name) == ["BP", "Shell", "Opet"])
+        search.query = "kartal" // typing searches around the user again
+        #expect(search.nearbyCenter == nil)
+    }
+
     @Test func punctuationOnlyFindsNothing() async throws {
         #expect(try await index().search(" - ' ", near: nil).isEmpty)
     }

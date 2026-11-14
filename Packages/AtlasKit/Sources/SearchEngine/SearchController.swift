@@ -12,6 +12,8 @@ public final class SearchController {
     public private(set) var results: [Place] = []
     public private(set) var isSearching = false
     public private(set) var errorMessage: String?
+    /// The place "Yakındaki otoparklar" listed around; distances are measured from it. nil: from the user.
+    public private(set) var nearbyCenter: Place?
     public private(set) var recents: [Place]
     public private(set) var home: Place?
     public private(set) var work: Place?
@@ -84,11 +86,13 @@ public final class SearchController {
     /// "Yakında: Benzinlik": the field shows the kind, the nearest ones come from the shipped index instead of
     /// a text search (Photon matches names, and fuel stations are called "Shell", not "benzinlik").
     /// Editing the field afterwards searches as usual.
-    public func showNearby(_ kind: NearbyKind) {
+    /// With `place`: the nearest ones around it instead ("Yakındaki otoparklar" on a destination's card).
+    public func showNearby(_ kind: NearbyKind, around place: Place? = nil) {
         guard let index = nearbyIndex else { return }
         query = kind.title
         task?.cancel() // the text search the line above scheduled
-        guard let origin = origin() else {
+        nearbyCenter = place
+        guard let center = place?.point ?? origin() else {
             results = []
             isSearching = false
             errorMessage = "Konumun henüz bilinmiyor."
@@ -96,7 +100,7 @@ public final class SearchController {
         }
         isSearching = true
         task = Task {
-            let found = await Task.detached { (try? index.nearby(kind, near: origin)) ?? [] }.value
+            let found = await Task.detached { (try? index.nearby(kind, near: center)) ?? [] }.value
             guard !Task.isCancelled else { return }
             results = found
             isSearching = false
@@ -105,6 +109,7 @@ public final class SearchController {
 
     private func scheduleSearch() {
         task?.cancel()
+        nearbyCenter = nil // typing searches around the user again
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         errorMessage = nil
         guard text.count >= 2 else {

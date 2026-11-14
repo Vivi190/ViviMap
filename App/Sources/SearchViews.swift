@@ -48,7 +48,13 @@ struct SearchSheet: View {
     var body: some View {
         List {
             if hasQuery {
-                ForEach(search.results) { place in row(place) }
+                if let center = search.nearbyCenter {
+                    Section("\(center.name) yakınında") {
+                        ForEach(search.results) { place in row(place) }
+                    }
+                } else {
+                    ForEach(search.results) { place in row(place) }
+                }
             } else {
                 if search.canShowNearby {
                     Section("Yakında") { nearbyButtons }
@@ -190,9 +196,10 @@ struct SearchSheet: View {
         .accessibilityIdentifier("search.result")
     }
 
+    /// From the user, or from the place the list is around ("Yakındaki otoparklar").
     private func distanceText(to place: Place) -> String? {
-        guard let here = location.lastLocation?.coordinate else { return nil }
-        return Formatting.distance(meters: GeoPoint(here).distance(to: place.point))
+        guard let from = search.nearbyCenter?.point ?? location.lastLocation.map({ GeoPoint($0.coordinate) }) else { return nil }
+        return Formatting.distance(meters: from.distance(to: place.point))
     }
 }
 
@@ -206,6 +213,8 @@ struct PlaceCard: View {
     let onSave: (SearchController.Slot) -> Void
     /// Marks a camera or bump at this place (OSM barely maps cameras around Pendik/Kartal/Tuzla).
     let onMark: (Hazard.Kind) -> Void
+    /// Car parks around this place, from the shipped index; nil in builds without it (the item is hidden).
+    let onParking: (() -> Void)?
     let onClose: () -> Void
 
     var body: some View {
@@ -235,6 +244,9 @@ struct PlaceCard: View {
                 .accessibilityIdentifier("place.route")
 
                 Menu {
+                    if let onParking {
+                        Button("Yakındaki otoparklar", systemImage: "parkingsign", action: onParking)
+                    }
                     Button("Ev olarak kaydet", systemImage: "house.fill") { onSave(.home) }
                     Button("İş olarak kaydet", systemImage: "briefcase.fill") { onSave(.work) }
                     Section("Uyarı noktası") {

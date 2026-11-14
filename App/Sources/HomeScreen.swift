@@ -445,6 +445,10 @@ struct HomeScreen: View {
             onRoute: { planRoute(to: place) },
             onSave: { search.save(place, as: $0) },
             onMark: { userHazards.mark($0, latitude: place.point.latitude, longitude: place.point.longitude) },
+            onParking: search.canShowNearby ? {
+                search.showNearby(.parking, around: place)
+                sheet = .search
+            } : nil,
             onClose: { clearPlace() }
         )
         .transition(.move(edge: .bottom).combined(with: .opacity))
