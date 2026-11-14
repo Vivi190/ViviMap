@@ -79,6 +79,23 @@ Eski kurallarla ölçülebilir 7 sorgunun yalnızca 1'i doğruydu ("ihlas sk. ka
 
 Uygulama artık "benzinlik", "en yakın eczane", "marketler" gibi sorguları ters aramayla arar. Çevrimdışıyken benzinlik, otopark, eczane ve şarj için en yakınları cihazdaki dizinden verir. "Nöbetçi eczane" bilerek bu yola girmez, çünkü OSM'de nöbet çizelgesi yok.
 
+Ölçüm aracında artık bunun için ayrı bir bölüm var (`bench.py --kinds-only`). İsabet ölçütü: ilk sonuç o türden ve Kartal'daki kullanıcıya 3 km'den yakın.
+
+**Metin araması (eski): 0/8 · en yakınlar (şimdi): 7/8.**
+
+| Sorgu | Metin araması (eski) | En yakınlar (şimdi) |
+|---|---|---|
+| benzinlik | ❌ Benzinlik (amenity=fuel, 148,1 km) | ✅ BP (amenity=fuel, 0,2 km) |
+| eczane | ❌ Eczane. (amenity=pharmacy, 18,9 km) | ✅ Nurdan Eczanesi (amenity=pharmacy, 0,2 km) |
+| otopark | ❌ otopark (amenity=parking, 24,8 km) | ✅ İspark (amenity=parking, 0,1 km) |
+| hastane | ❌ Hastane (landuse=construction, 1,3 km) | ✅ Kartal Kızılay Hastanesi (amenity=hospital, 0,7 km) |
+| market | ❌ Market (shop=convenience, 25,9 km) | ✅ Evrim Tekel (shop=convenience, 0,1 km) |
+| en yakın atm | ❌ En yakın lastikci (shop=car_repair, 10,7 km) | ✅ Türkiye İş Bankası (amenity=atm, 1,3 km) |
+| şarj istasyonu | ❌ Tekerlekli Sandalye Şarj istasyonu (amenity=charging_station, 3,5 km) | ❌ Asf Otomotiv (amenity=charging_station, 3,3 km) |
+| kafe | ❌ Kafe (amenity=cafe, 77,6 km) | ✅ Dozze Coffee Kartal (amenity=cafe, 0,1 km) |
+
+"Şarj istasyonu" ölçütü geçemedi, çünkü Kartal kıyısına en yakın şarj noktası 3,3 km uzakta: bölgede OSM'de çok az şarj noktası var (cihazdaki dizinde İstanbul'un tamamında 87). Sıralama doğru, ölçütün 3 km sınırı burada sıkı. Eski metin araması bu sorguda bir tekerlekli sandalye şarj noktası buluyordu; Photon'un tür filtresi araç ve tekerlekli sandalye şarjını ayıramaz.
+
 ### 3. ölçümün tam tablosu
 
 | Sorgu | Sonuç | Uygulamanın ilk sonucu | İlk sonucun hedefe uzaklığı |

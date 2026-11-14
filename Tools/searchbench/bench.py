@@ -24,6 +24,7 @@ from pathlib import Path
 
 UA = "Atlas-iOS/1.0 (personal navigation app; search benchmark)"
 PHOTON = "https://photon.komoot.io/api/"
+PHOTON_REVERSE = "https://photon.komoot.io/reverse"
 # Public instances take turns being overloaded (502); another one can be set with OVERPASS_URL.
 OVERPASS = os.environ.get("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
 TURKEY_BBOX = "25.6,35.8,44.9,42.2"
@@ -48,6 +49,35 @@ FOCUS = [
     ({"iskele", "iskelesi"}, ["amenity:ferry_terminal"]),
     ({"otopark", "otoparkı"}, ["amenity:parking"]),
 ]
+# Mirrors PlaceRanking.kinds.
+KINDS = {word: tags for words, tags in [
+    (["benzinlik", "benzin istasyonu", "akaryakıt", "akaryakıt istasyonu", "petrol istasyonu"], ["amenity:fuel"]),
+    (["eczane"], ["amenity:pharmacy"]),
+    (["otopark", "park yeri"], ["amenity:parking"]),
+    (["şarj", "şarj istasyonu", "şarj noktası"], ["amenity:charging_station"]),
+    (["hastane"], ["amenity:hospital"]),
+    (["market", "süpermarket"], ["shop:supermarket", "shop:convenience"]),
+    (["atm", "bankamatik"], ["amenity:atm"]),
+    (["banka"], ["amenity:bank"]),
+    (["kafe", "cafe"], ["amenity:cafe"]),
+    (["restoran", "restaurant", "lokanta"], ["amenity:restaurant"]),
+    (["fırın"], ["shop:bakery"]),
+    (["avm", "alışveriş merkezi"], ["shop:mall"]),
+    (["polis", "karakol"], ["amenity:police"]),
+    (["durak", "otobüs durağı"], ["highway:bus_stop"]),
+    (["metro", "istasyon", "metro istasyonu", "tren istasyonu"], ["railway:station"]),
+    (["iskele", "vapur iskelesi"], ["amenity:ferry_terminal"]),
+    (["taksi", "taksi durağı"], ["amenity:taxi"]),
+    (["oto yıkama", "otoyıkama"], ["amenity:car_wash"]),
+    (["lastikçi"], ["shop:tyres"]),
+    (["ptt", "postane"], ["amenity:post_office"]),
+    (["tuvalet", "wc"], ["amenity:toilets"]),
+    (["otel"], ["tourism:hotel"]),
+] for word in words}
+KIND_PREFIXES = ["en yakın ", "yakınımdaki ", "yakındaki ", "yakınımda ", "yakında "]
+# Bare kinds measured apart: the target is "the right kind, close by", not one OSM object.
+KIND_CASES = ["benzinlik", "eczane", "otopark", "hastane", "market", "en yakın atm", "şarj istasyonu", "kafe"]
+KIND_RADIUS_KM = 3
 # Mirrors PlaceRanking.lines.
 LINES = {"railway=rail", "railway=subway", "railway=light_rail", "railway=tram", "railway=monorail", "railway=narrow_gauge",
          "railway=funicular", "railway=construction", "railway=proposed", "railway=abandoned", "railway=disused",
@@ -151,8 +181,29 @@ def focus(query):
     return None
 
 
+def kind(query):
+    """PlaceRanking.kind: the Photon tags of a bare kind of place ("benzinlik", "en yakın eczane"), else None."""
+    text = " ".join(turkish_lower(query).split())
+    prefix = next((p for p in KIND_PREFIXES if text.startswith(p)), "")
+    text = text[len(prefix):]
+    singular = text[:-3] if text.endswith(("ler", "lar")) else text
+    return KINDS.get(text) or KINDS.get(singular)
+
+
+def photon_nearest(tags):
+    """PhotonSearchProvider.reverseRequest with tags: the nearest 12 of a kind within 15 km, nearest first."""
+    params = {"lat": KARTAL[0], "lon": KARTAL[1], "limit": "12", "radius": "15", "lang": "default", "osm_tag": list(tags)}
+    return get_json(PHOTON_REVERSE + "?" + urllib.parse.urlencode(params, doseq=True)).get("features", [])
+
+
 def app_search(query):
-    """PhotonSearchProvider.search: the focused hits first, then the general answer without repeats."""
+    """PhotonSearchProvider.search: a bare kind lists the nearest; otherwise the focused hits first, then the
+    general answer without repeats."""
+    tags = kind(query)
+    if tags:
+        nearest = photon_nearest(tags)
+        if nearest:
+            return nearest
     query = address(query)[0]
     general = photon(query)
     focused = focus(query)
@@ -309,6 +360,9 @@ def self_test():
     assert address("Ankara Caddesi 5 Kartal") == ("Ankara Caddesi 5 Kartal", "5")
     assert address("Kartal 5 Nolu Aile Sağlığı Merkezi") == ("Kartal 5 Nolu Aile Sağlığı Merkezi", None)
     assert focus("istasyon caddesi tuzla") is None and focus("istanbul havalimanı otopark") == ("istanbul havalimanı", ["amenity:parking"])
+    assert kind("benzinlik") == ["amenity:fuel"] and kind("En yakın eczane") == ["amenity:pharmacy"]
+    assert kind("marketler") == ["shop:supermarket", "shop:convenience"] and kind("yakındaki otoparklar") == ["amenity:parking"]
+    assert kind("akasya avm") is None and kind("nöbetçi eczane") is None
     square = {"type": "Polygon", "coordinates": [[[29.0, 41.0], [29.01, 41.0], [29.01, 41.01], [29.0, 41.01], [29.0, 41.0]]]}
     assert distance_to(as_elements(square), (41.005, 29.005)) == 0.0  # inside an area
     assert 100 < distance_to(as_elements(square), (41.005, 29.0115)) < 200  # ~126 m east of it
@@ -355,7 +409,41 @@ def main():
     print("|---|---|---|---|")
     for query, verdict, first, distance in rows:
         print(f"| {query} | {verdict} | {first} | {distance} |")
+    measure_kinds()
+
+
+def measure_kinds():
+    """Bare kinds: is the first result of that kind and within KIND_RADIUS_KM of the user? The text search the
+    app used before 14.11.2026 next to the nearest-of-kind search it uses now."""
+    def verdict(features, wanted):
+        if not features:
+            return False, "(sonuç yok)"
+        p, (lon, lat) = features[0]["properties"], features[0]["geometry"]["coordinates"][:2]
+        category = f"{p.get('osm_key')}={p.get('osm_value')}"
+        km = metres(KARTAL, (lat, lon)) / 1000
+        return category in wanted and km <= KIND_RADIUS_KM, f"{p.get('name') or '?'} ({category}, {km:.1f} km)"
+
+    rows, before, after = [], 0, 0
+    for query in KIND_CASES:
+        wanted = {tag.replace(":", "=") for tag in kind(query)}
+        old_ok, old = verdict(app_rank(photon(query), query), wanted)
+        time.sleep(1.2)
+        new_ok, new = verdict(app_search(query), wanted)
+        time.sleep(1.2)
+        before, after = before + old_ok, after + new_ok
+        rows.append((query, ("✅ " if old_ok else "❌ ") + old, ("✅ " if new_ok else "❌ ") + new))
+        print(f"{query}: {old_ok} → {new_ok}", file=sys.stderr)
+    print("\n## Yalnızca tür yazılan sorgular\n")
+    print(f"İsabet: ilk sonuç o türden ve kullanıcıya {KIND_RADIUS_KM} km'den yakın. "
+          f"**Metin araması: {before}/{len(KIND_CASES)} · en yakınlar: {after}/{len(KIND_CASES)}**\n")
+    print("| Sorgu | Metin araması (eski) | En yakınlar (şimdi) |")
+    print("|---|---|---|")
+    for query, old, new in rows:
+        print(f"| {query} | {old} | {new} |")
 
 
 if __name__ == "__main__":
-    main()
+    if "--kinds-only" in sys.argv:  # live Photon only, no OSM targets needed
+        measure_kinds()
+    else:
+        main()
