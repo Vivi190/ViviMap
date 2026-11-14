@@ -57,7 +57,7 @@ let package = Package(
         ),
         .target(
             name: "NavigationEngine",
-            dependencies: ["RoutingEngine", "RoadHazards", .product(name: "FerrostarCore", package: "ferrostar")]
+            dependencies: ["RoutingEngine", "RoadHazards", "SearchEngine", .product(name: "FerrostarCore", package: "ferrostar")]
         ),
         .target(name: "TrafficEngine"),
         // Cameras and bumps from OSM, refreshed with Tools/hazards/fetch_hazards.py.

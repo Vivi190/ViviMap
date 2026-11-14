@@ -166,10 +166,16 @@ public struct RouteOption: Identifiable {
 enum RouteSummary {
     /// The two roads carrying most of the distance, in driving order ("Sahil Bulvarı, Ankara Caddesi").
     static func mainRoads(_ steps: [(name: String?, distance: Double)], limit: Int = 2) -> [String] {
+        let named = steps.compactMap { step -> (name: String, distance: Double)? in
+            guard let name = step.name?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return nil }
+            return (name, step.distance)
+        }
+        // One road spelled two ways in OSM counts once, shown with its Turkish letters.
+        let spelling = TurkishFold.preferredSpellings(named.map(\.name))
         var total: [String: Double] = [:]
         var order: [String] = []
-        for step in steps {
-            guard let name = step.name?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { continue }
+        for step in named {
+            let name = spelling[TurkishFold.fold(step.name)] ?? step.name
             if total[name] == nil { order.append(name) }
             total[name, default: 0] += step.distance
         }

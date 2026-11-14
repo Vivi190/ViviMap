@@ -8,6 +8,13 @@ struct TurkishFoldTests {
     @Test func matchesTheIndexBuilder() {
         #expect(TurkishFold.fold("İstanbul Çanakkale Iğdır Şişli Gümüşpınar") == "istanbul canakkale igdir sisli gumuspinar")
     }
+
+    @Test func prefersTheSpellingWithTurkishLetters() {
+        let spellings = TurkishFold.preferredSpellings(["Canakkale Caddesi", "Çanakkale Caddesi", "Canakkale Caddesi", "Ankara Caddesi"])
+        #expect(spellings[TurkishFold.fold("Canakkale Caddesi")] == "Çanakkale Caddesi")
+        #expect(spellings[TurkishFold.fold("Ankara Caddesi")] == "Ankara Caddesi")
+        #expect(spellings.count == 2)
+    }
 }
 
 struct OfflinePlaceIndexTests {

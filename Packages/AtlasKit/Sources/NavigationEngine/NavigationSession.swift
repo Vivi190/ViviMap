@@ -6,6 +6,7 @@ import Foundation
 import Observation
 import RoadHazards
 import RoutingEngine
+import SearchEngine
 
 /// Turn-by-turn guidance: Ferrostar follows the route (snapping, step advance, deviation and automatic
 /// reroute through the same Valhalla); this class turns its state into UI values and Turkish prompts.
@@ -60,6 +61,8 @@ public final class NavigationSession {
     @ObservationIgnored private var hazardWatch = HazardWatch()
     /// Measured geometry of the current route; rebuilt when the route changes.
     @ObservationIgnored private var routePath: RoutePath?
+    /// Road names of the current route by folded name, in their Turkish spelling (TurkishFold.preferredSpellings).
+    @ObservationIgnored private var spellings: [String: String] = [:]
 
     /// - Parameter routes: also answers reroutes, so they fall back to the device without a connection.
     public init(routes: RoutePlanner) {
@@ -167,6 +170,9 @@ public final class NavigationSession {
             routePath = path
             hazardWatch = HazardWatch(hazards: RouteHazards.along(path, hazards: hazards + userHazards))
             hazardWatch.kinds = hazardKinds
+            spellings = TurkishFold.preferredSpellings((state.remainingSteps ?? []).flatMap { step in
+                [step.roadName].compactMap { $0 } + step.visualInstructions.map(\.primaryContent.text)
+            })
         }
 
         if case .complete = state.tripState {
@@ -214,6 +220,7 @@ public final class NavigationSession {
         ) ?? content?.text
         // The banner text from Valhalla is the next road's name for most maneuvers.
         nextRoad = content.flatMap { $0.maneuverType == .arrive ? nil : $0.text }
+            .map { spellings[TurkishFold.fold($0)] ?? $0 }
 
         // remainingSteps[0] is the current step; the step after it ends at the follow-up maneuver.
         let following = state.remainingSteps.flatMap { $0.count > 1 ? $0[1] : nil }

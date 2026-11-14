@@ -10,6 +10,22 @@ public enum TurkishFold {
         let map: [Character: Character] = ["ç": "c", "ğ": "g", "ı": "i", "ö": "o", "ş": "s", "ü": "u", "â": "a", "î": "i", "û": "u"]
         return String(lowered.map { map[$0] ?? $0 })
     }
+
+    /// Folded name → the spelling to show, for names that differ only in Turkish letters or case. The one
+    /// with the most Turkish letters wins: OSM has "Canakkale Caddesi" next to "Çanakkale Caddesi" on one road.
+    public static func preferredSpellings(_ names: [String]) -> [String: String] {
+        var best: [String: String] = [:]
+        for name in names {
+            let key = fold(name)
+            if let current = best[key], turkishLetters(current) >= turkishLetters(name) { continue }
+            best[key] = name
+        }
+        return best
+    }
+
+    private static func turkishLetters(_ text: String) -> Int {
+        text.filter { "çğıöşüÇĞİÖŞÜ".contains($0) }.count
+    }
 }
 
 /// Place search without a connection: the Istanbul index shipped with the app (Tools/search/build_index.py,
