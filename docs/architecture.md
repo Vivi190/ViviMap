@@ -99,8 +99,11 @@ Gerekçelerin ve kaynakların ayrıntısı: [research/2026-11-13-faz0-arastirma.
 - **Karar:**
   - Online arama Photon ile yapılır. Geliştirmede public sunucu kullanılır, sonra kendi sunucumuz.
   - Sorguda yer türü kelimesi varsa (durak, istasyon/metro/marmaray, AVM, iskele), kelimesi çıkarılmış ikinci bir istek Photon'un `osm_tag` filtresiyle eşzamanlı gönderilir. Ölçüm: [2026-11-14-arama-olcumu.md](research/2026-11-14-arama-olcumu.md).
+  - Adresler mesajda yazıldığı gibi gelir ("Atatürk Cad. No:12 D:5 Kartal/İstanbul"); istekten önce OSM'in yazımına çevrilir (Caddesi, 12; daire/kat atılır). Sıralamada önce sokağı ve numarası tutan yer, sonra o sokak gelir.
+  - Yalnızca tür yazılırsa ("benzinlik", "en yakın eczane") metin araması yapılmaz: Photon'un ters araması `osm_tag` filtresiyle en yakınları mesafe sırasıyla verir.
+  - Raylı hatlar ve yapım aşamasındaki/planlanan yollar sonuçların sonuna iner.
   - Ters geocoding (haritadan seçme) de Photon ile yapılır; Nominatim kullanılmıyor.
-  - Offline: CI'da üretilen SQLite FTS4 indeksi (İstanbul, Türkçe katlama: "çanakkale" = "canakkale"). Photon'a ulaşılamazsa devreye girer.
+  - Offline: CI'da üretilen SQLite FTS4 indeksi (İstanbul, Türkçe katlama: "çanakkale" = "canakkale"). Photon'a ulaşılamazsa ya da sunucu hata verirse (5xx, 429) devreye girer.
 - **Neden Apple araması yok:** DPLA Ek 6 §2.4.
 - **Bilinen sınır:** OSM'de kapı numarası kapsaması düşük. Bulunamazsa sokağa düşülür ve sonuç "yaklaşık" olarak gösterilir.
 
@@ -142,9 +145,9 @@ Her modül `Packages/AtlasKit` içinde bir hedef olarak yaşar. Sağlayıcıya b
 | MapEngine | MapLibre görünümü, stiller, kamera takibi, atıf | 1 | ✅ |
 | LocationEngine | CoreLocation, hız tahmini, GPS kalitesi | 1 | ✅ (map matching Faz 2) |
 | Diagnostics | Canlı GPS tanılama ekranı | 1 | ✅ |
-| SearchEngine | Photon arama ve ters arama, tür kelimesi için filtreli ikinci istek; çevrimdışı İstanbul dizini (FTS4) | 2 / 4 | ✅ ölçüm: ilk sonuç 57/57, bakılmamış 8 sorgu dahil (14.11.2026) |
+| SearchEngine | Photon arama ve ters arama, tür kelimesi için filtreli ikinci istek, adres yazımı, tek başına tür için en yakınlar; çevrimdışı İstanbul dizini (FTS4) | 2 / 4 | ✅ ölçüm: ilk sonuç 64/64, mesajda yazıldığı gibi 7 adres dahil (14.11.2026) |
 | RoutingEngine | Valhalla: FOSSGIS online, cihaz içi Valhalla 3.9.0 (çevrimdışı yedek), aday üretimi | 2 / 3 / 4 | ✅ |
-| NavigationEngine | Ferrostar sarmalayıcı, rota takibi, yeniden rota, Türkçe talimat ve ses, kasis/kamera uyarıları, hız sınırı, hıza göre yakınlık | 2 / 3 / 5 / 6 | ✅ |
+| NavigationEngine | Ferrostar sarmalayıcı, rota takibi, yeniden rota, Türkçe talimat ve ses, kasis/kamera uyarıları, hız sınırı, hıza göre yakınlık, yola oturtulmuş konum oku, dönüş oku, şu anki yol | 2 / 3 / 5 / 6 | ✅ |
 | VoiceGuidance | Türkçe talimat üretimi, AVSpeech, ses oturumu | 2 | ✅ NavigationEngine içinde (TurkishInstructions, VoiceGuide) |
 | TrafficEngine | `TrafficProvider` (HERE): rota süreleri, rota boyunca akış (rota renkleri), alan akışı (şehir trafik katmanı), histerezisli öneri, ayrı aylık kotalar | 3 | ✅ |
 | OfflineEngine | Bölge paketleri, indirme/devam ettirme, bütünlük | 4 | Ayrı modül yok: tek bölge build'e gömülü (OfflineRouter, OfflineMap, OfflinePlaceIndex) |
