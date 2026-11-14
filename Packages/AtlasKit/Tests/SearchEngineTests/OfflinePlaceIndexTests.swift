@@ -70,6 +70,13 @@ struct OfflinePlaceIndexTests {
         #expect(found.first?.point.latitude == 40.9005)
     }
 
+    @Test func aDistrictNamedLastSaysWhereToLook() async throws {
+        // Names only in the index: "Kartal" matches no street, so it ranks the streets by distance from Kartal.
+        let found = try await index().search("Çanakkale Caddesi Kartal", near: nil)
+        #expect(found.count == 2)
+        #expect(found.first?.point.latitude == 40.9005)
+    }
+
     @Test func aBareKindListsTheNearest() async throws {
         let kartal = GeoPoint(latitude: 40.8890, longitude: 29.1905)
         #expect(try await index().search("en yakın benzinlik", near: kartal).map(\.name) == ["BP", "Shell", "Opet"])

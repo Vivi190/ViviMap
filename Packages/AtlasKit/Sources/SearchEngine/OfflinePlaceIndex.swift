@@ -80,10 +80,18 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         }
         // "Çanakkale Cad. No:5" spelled out; the index has no house numbers, so it looks for the street.
         let address = PlaceRanking.address(query)
-        let words = TurkishFold.fold(address.text).split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        var words = TurkishFold.fold(address.text).split { !$0.isLetter && !$0.isNumber }.map(String.init)
             .filter { $0 != address.houseNumber }
         guard !words.isEmpty else { return [] }
-        let found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
+        var found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
+        var near = near
+        // "ankara caddesi kartal": the index holds names only, so a district named last finds nothing. Without
+        // it, and nearest to that district first.
+        if found.isEmpty, words.count > 1, let area = try place(named: words[words.count - 1]) {
+            words.removeLast()
+            found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
+            near = area.point
+        }
         let wanted = words.joined(separator: " ")
         func rank(_ place: Place) -> (Int, Double) {
             let name = TurkishFold.fold(place.name)
@@ -108,6 +116,18 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
             sqlite3_bind_double(statement, 4, cos(point.latitude * .pi / 180))
             sqlite3_bind_int(statement, 5, Int32(limit))
         }
+    }
+
+    /// A district or neighbourhood (`place=*`) whose whole folded name is `word`.
+    private func place(named word: String) throws -> Place? {
+        let sql = """
+        SELECT p.id, p.name, p.subtitle, p.category, p.lat, p.lon
+        FROM place_fts JOIN place p ON p.id = place_fts.docid
+        WHERE place_fts MATCH ?1 AND place_fts.folded = ?1 AND p.category LIKE 'place=%' LIMIT 1
+        """
+        return try rows(sql) { statement in
+            sqlite3_bind_text(statement, 1, word, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+        }.first
     }
 
     private func rows(matching expression: String) throws -> [Place] {
