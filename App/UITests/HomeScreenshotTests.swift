@@ -29,6 +29,11 @@ final class HomeScreenshotTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5), "search field missing")
         field.typeText("Kartal Adliyesi")
         let result = app.buttons.matching(identifier: "search.result").firstMatch
+        // Photon is a shared public server and failed once in CI (14.11.2026): one retry, with the evidence kept.
+        if !result.waitForExistence(timeout: 20) {
+            capture("2-search-retry")
+            field.typeText(" ") // the same text once trimmed: searches again
+        }
         XCTAssertTrue(result.waitForExistence(timeout: 20), "no search result")
         // A fresh simulator shows the slide-to-type tip over the keyboard on first use; it covered the results.
         let tip = app.buttons["Continue"]
