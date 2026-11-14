@@ -126,6 +126,14 @@ private struct Fixed: PlaceSearchProvider {
     }
 }
 
+struct SearchErrorMessageTests {
+    @Test func blamesTheConnectionOnlyWhenThereIsNone() {
+        #expect(SearchController.message(for: URLError(.notConnectedToInternet)).hasPrefix("İnternet bağlantısı yok"))
+        #expect(SearchController.message(for: PhotonSearchProvider.HTTPError(status: 502)).hasPrefix("Arama sunucusu"))
+        #expect(SearchController.message(for: URLError(.timedOut)).hasPrefix("Arama sunucusu"))
+    }
+}
+
 struct FallbackSearchProviderTests {
     @Test func offlineAnswersOnlyWhenTheNetworkFails() async throws {
         let offline = FallbackSearchProvider(primary: Failing(error: URLError(.notConnectedToInternet)), fallback: Fixed())

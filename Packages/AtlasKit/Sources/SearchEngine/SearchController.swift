@@ -135,9 +135,19 @@ public final class SearchController {
             } catch {
                 guard !Task.isCancelled else { return }
                 results = []
-                errorMessage = "Arama yapılamadı. İnternet bağlantını kontrol et."
+                errorMessage = Self.message(for: error)
             }
             isSearching = false
         }
+    }
+
+    /// The cause in plain words: no connection, or a search server that did not answer (the public Photon
+    /// failed once while the connection was fine, CI 14.11.2026, and the old text blamed the connection).
+    nonisolated static func message(for error: any Error) -> String {
+        let offline: [URLError.Code] = [.notConnectedToInternet, .networkConnectionLost, .dataNotAllowed]
+        if let url = error as? URLError, offline.contains(url.code) {
+            return "İnternet bağlantısı yok. Bağlantını kontrol et."
+        }
+        return "Arama sunucusu şu an yanıt vermiyor. Biraz sonra yeniden dene."
     }
 }
