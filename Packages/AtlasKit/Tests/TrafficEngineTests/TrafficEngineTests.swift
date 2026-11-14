@@ -3,17 +3,16 @@ import Foundation
 import Testing
 @testable import TrafficEngine
 
-// The inline shapes follow HERE's documented Route Import examples (docs.here.com, routing-v8-route-import);
-// here-import-kartal.json is a real response.
+// The inline shapes follow HERE's documented Route Import examples (docs.here.com, routing-v8-route-import).
+// here-import-sample.json has the full answer shape with made-up values: HERE's own data is not kept in this
+// (public) repository.
 struct HEREImportResponseTests {
-    @Test func parsesARealResponse() throws {
-        // Recorded 14.11.2026 01:22 (Istanbul): a 5.2 km FOSSGIS Valhalla route in Kartal sent to Route Import
-        // with the app's exact request; HERE matched it as 5 169 m.
-        let url = try #require(Bundle.module.url(forResource: "here-import-kartal", withExtension: "json", subdirectory: "Fixtures"))
+    @Test func parsesARouteImportAnswer() throws {
+        let url = try #require(Bundle.module.url(forResource: "here-import-sample", withExtension: "json", subdirectory: "Fixtures"))
         let estimate = try HEREImportResponse.estimate(from: Data(contentsOf: url))
-        #expect(estimate.duration == 480)
-        #expect(estimate.baseDuration == 458)
-        #expect(estimate.typicalDuration == 453)
+        #expect(estimate.duration == 500)
+        #expect(estimate.baseDuration == 470)
+        #expect(estimate.typicalDuration == 485)
     }
 
     @Test func sumsSectionsWithTraffic() throws {

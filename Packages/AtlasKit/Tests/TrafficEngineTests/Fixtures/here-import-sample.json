@@ -1,0 +1,42 @@
+{
+ "routes": [
+  {
+   "id": "sample-route",
+   "sections": [
+    {
+     "id": "sample-section",
+     "type": "vehicle",
+     "departure": {
+      "time": "2026-11-14T01:22:00+03:00",
+      "place": {
+       "type": "place",
+       "location": {
+        "lat": 40.889,
+        "lng": 29.1905
+       }
+      }
+     },
+     "arrival": {
+      "time": "2026-11-14T01:30:20+03:00",
+      "place": {
+       "type": "place",
+       "location": {
+        "lat": 40.905,
+        "lng": 29.21
+       }
+      }
+     },
+     "summary": {
+      "duration": 500,
+      "length": 5200,
+      "baseDuration": 470,
+      "typicalDuration": 485
+     },
+     "transport": {
+      "mode": "car"
+     }
+    }
+   ]
+  }
+ ]
+}

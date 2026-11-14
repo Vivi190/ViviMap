@@ -20,14 +20,15 @@ struct FlexiblePolylineTests {
 }
 
 struct HEREFlowResponseTests {
-    @Test func joinsLinksOfARealCorridorResponse() throws {
-        // First three results of a live corridor query along a Kartal route (14.11.2026, 01:30 Istanbul).
-        let url = try #require(Bundle.module.url(forResource: "here-flow-kartal", withExtension: "json", subdirectory: "Fixtures"))
+    @Test func joinsTheLinksOfEachResult() throws {
+        // Flow answer shape with made-up values (HERE's own data is not kept in this public repository): links
+        // share their joining points, 3 + 2, 2 + 1 + 2 and 4 of them.
+        let url = try #require(Bundle.module.url(forResource: "here-flow-sample", withExtension: "json", subdirectory: "Fixtures"))
         let segments = try HEREFlowResponse.segments(from: Data(contentsOf: url))
-        #expect(segments.map(\.points.count) == [8, 12, 29])
+        #expect(segments.map(\.points.count) == [5, 5, 4])
         #expect(segments[0].jamFactor == 0.6)
         #expect(segments.allSatisfy { !$0.isClosed })
-        #expect(segments[0].points.first?.latitude == 40.90602)
+        #expect(segments[0].points.first?.latitude == 40.9)
     }
 
     @Test func closedAndUnknown() throws {

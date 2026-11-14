@@ -27,13 +27,8 @@ jobs:
           for name in DIST_P12_BASE64 DIST_P12_PASSWORD PROFILE_BASE64 WIDGETS_PROFILE_BASE64 ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8_BASE64; do
             if [ -z "${!name}" ]; then echo "::error::Missing secret $name (see docs/setup-testflight.md)"; missing=1; fi
           done
-          # Fingerprints (length + 8 hex of SHA-256) to compare with the local files when a secret looks wrong.
-          fp() { printf '%s\t%s\t%s\n' "$1" "$(printf '%s' "$2" | wc -c | tr -d ' ')" "$(printf '%s' "$2" | shasum -a 256 | cut -c1-8)"; }
-          fp DIST_P12_PASSWORD "$DIST_P12_PASSWORD"
-          fp DIST_P12_BASE64 "$DIST_P12_BASE64"
-          fp PROFILE_BASE64 "$PROFILE_BASE64"
-          fp ASC_KEY_P8_BASE64 "$ASC_KEY_P8_BASE64"
-          if [ -n "$HERE_API_KEY" ]; then fp HERE_API_KEY "$HERE_API_KEY"; else echo "HERE_API_KEY not set: build without live traffic"; fi
+          # No fingerprints of the secrets: the repository's logs are public.
+          if [ -z "$HERE_API_KEY" ]; then echo "HERE_API_KEY not set: build without live traffic"; fi
           exit $missing
 
       - uses: actions/checkout@v5
@@ -80,7 +75,8 @@ jobs:
           security import "$P12" -P "$DIST_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
           rm -f "$P12"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
-          security find-identity -v -p codesigning "$KEYCHAIN" | tee "$RUNNER_TEMP/identities.txt"
+          # Not printed: the identity carries the developer's name, and the repository's logs are public.
+          security find-identity -v -p codesigning "$KEYCHAIN" > "$RUNNER_TEMP/identities.txt"
           grep -q "Apple Distribution" "$RUNNER_TEMP/identities.txt" \
             || { echo "::error::No Apple Distribution signing identity in the keychain"; exit 1; }
 
