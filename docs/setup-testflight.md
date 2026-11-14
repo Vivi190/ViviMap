@@ -20,22 +20,22 @@ gh run watch -R Vivi190/ViviMap
 
 Apple build'i işledikten sonra (genellikle birkaç dakika) iPhone'daki TestFlight uygulamasında görünür. Dahili test için Beta App Review gerekmez.
 
-## GitHub Actions dakikaları
+## GitHub Actions ve açık depo
 
-Depo özel olduğu için macOS dakikaları 10 kat sayılır. GitHub Free ayda 2.000 dakika verir; bu yaklaşık 200 gerçek macOS dakikası eder.
+Depo 14.11.2026'dan beri herkese açık. Önceden özelken macOS dakikaları 10 kat sayılıyordu ve GitHub Free'nin aylık 2.000 dakikası bir gecede doldu. Açık depoda standart runner'lar ücretsiz.
 
-| İş | Süre | Sayılan |
-|---|---|---|
-| CI (derleme, birim + UI testleri) | ~8 dk | ~80 dk |
-| TestFlight yüklemesi | ~3 dk | ~30 dk |
+| İş | Süre |
+|---|---|
+| CI (derleme, birim ve UI testleri) | ~8 dk |
+| TestFlight yüklemesi | ~3 dk |
 
-14.11.2026'da bu ayın kotası doldu: yeni işler "spending limit" uyarısıyla başlamıyor. Seçenekler senin kararın:
+Açık depoda üç kural geçerli:
 
-- **Ay başını beklemek:** ücretsizdir; o zamana kadar CI ve TestFlight çalışmaz.
-- **Harcama limiti tanımlamak:** GitHub → Settings → Billing and plans → Spending limits → Actions. Kota aşımı ücretlidir.
-- **Depoyu herkese açık yapmak:** standart runner'lar ücretsiz ve sınırsız olur. Gizli anahtarlar GitHub Secrets'ta kalır, kodda yoktur; ama kodun tamamı görünür olur.
+- **Log'lar herkese açık.** İş akışları gizli bilgi, gizli bilginin uzunluğunu ya da özetini, imza kimliğini (geliştiricinin adı) yazdırmaz. Açılmadan önce eski TestFlight log'ları silindi.
+- **Gizli bilgi kodda ya da geçmişte yok.** Anahtarlar ve sertifikalar GitHub Secrets'ta durur. Açmadan önce bütün geçmiş tarandı; commit'lerde yalnızca GitHub'ın noreply e-postası var.
+- **HERE verisi depoya konmaz.** Koşulları içeriğini dağıtmayı kısıtlıyor. Test örnekleri sentetik; kaydedilmiş iki HERE yanıtı geçmişten çıkarıldı. OSM verisi ODbL atfıyla serbest.
 
-Kota açılınca bekleyen build tek komutla gönderilir: `gh workflow run testflight.yml`
+Geçmişin yeniden yazılmasından önceki commit'ler, eski kimliklerini bilen birine eski Actions koşu sayfalarından ve PR #1'in zaman çizelgesinden bir süre daha görünebilir. Tamamen silinmeleri için GitHub desteğinden önbellek temizliği istenebilir.
 
 ## Nasıl kuruldu
 
