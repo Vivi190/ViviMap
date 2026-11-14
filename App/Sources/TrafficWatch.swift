@@ -40,7 +40,7 @@ final class TrafficWatch {
         planner: RoutePlanner,
         traffic: any TrafficProvider,
         position: CLLocation,
-        destination: GeoPoint
+        destination: Place
     ) async {
         let remaining = navigation.remainingRoute()
         guard remaining.count > 1, let current = try? await traffic.estimate(remaining), navigation.isActive else { return }
@@ -50,7 +50,7 @@ final class TrafficWatch {
         }
 
         // Fresh candidates from here; one running along the current road (≥ 85 %) is the same route.
-        guard let options = try? await planner.routes(from: position, to: destination) else { return }
+        guard let options = try? await planner.routes(from: position, to: destination.point, areaSpan: destination.areaSpan) else { return }
         let distinct = options.filter { RouteOverlap.share(of: $0.coordinates, along: remaining) < RouteOverlap.sameRoute }
         var candidates: [RerouteAdvisor.Candidate] = []
         for option in distinct.prefix(2) {

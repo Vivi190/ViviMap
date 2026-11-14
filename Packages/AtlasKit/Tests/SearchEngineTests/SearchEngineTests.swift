@@ -37,6 +37,24 @@ struct PhotonParserTests {
     }
 }
 
+struct AreaSpanTests {
+    @Test func areasGetTheirSizeStreetsAndPointsDoNot() throws {
+        // Extents as Photon gives them ([west, north, east, south]); the airport's is Sabiha Gökçen's.
+        let json = """
+        {"features":[
+          {"geometry":{"coordinates":[29.3118,40.8943]},"properties":{"osm_type":"R","osm_id":1,"osm_key":"aeroway","osm_value":"aerodrome","name":"Sabiha Gökçen Havalimanı","extent":[29.2958,40.9100,29.3290,40.8790]}},
+          {"geometry":{"coordinates":[29.20,40.90]},"properties":{"osm_type":"W","osm_id":2,"osm_key":"highway","osm_value":"primary","name":"Ankara Caddesi","extent":[29.18,40.91,29.22,40.89]}},
+          {"geometry":{"coordinates":[29.19,40.88]},"properties":{"osm_type":"N","osm_id":3,"osm_key":"amenity","osm_value":"cafe","name":"Kafe"}}
+        ]}
+        """
+        let places = try PhotonParser.places(from: Data(json.utf8))
+        let airport = try #require(places.first?.areaSpan)
+        #expect(airport > 3_000 && airport < 5_000)
+        #expect(places[1].areaSpan == nil) // a street's box is its length
+        #expect(places[2].areaSpan == nil)
+    }
+}
+
 /// The queries that failed in the search benchmark (14.11.2026) and what the focused request asks Photon.
 struct FocusedSearchTests {
     @Test func kindWordsBecomeAnOSMFilter() throws {

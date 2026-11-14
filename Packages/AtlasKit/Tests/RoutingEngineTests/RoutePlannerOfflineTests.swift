@@ -121,6 +121,33 @@ struct RoutePlannerOfflineTests {
         #expect(crossing.first?.notes == RouteNotes(hasToll: false, hasFerry: true))
     }
 
+    /// What the device (or server) is asked for the destination, by the size of the place.
+    private func destinationSent(areaSpan: Double?) async throws -> [String: Any] {
+        let answer = try recordedAnswer()
+        let sent = SentBody()
+        let planner = try RoutePlanner(session: session(NoConnection.self)) { body in
+            await sent.store(body)
+            return answer
+        }
+        _ = try await planner.routes(from: kartal, to: destination, areaSpan: areaSpan)
+        let body = try #require(await sent.body)
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let locations = try #require(json["locations"] as? [[String: Any]])
+        return try #require(locations.last)
+    }
+
+    @Test func bigAreasEndOnAPublicRoad() async throws {
+        let airport = try await destinationSent(areaSpan: 4_000)
+        #expect((airport["search_filter"] as? [String: Any])?["min_road_class"] as? String == "tertiary")
+        let hospital = try await destinationSent(areaSpan: 480)
+        #expect((hospital["search_filter"] as? [String: Any])?["min_road_class"] as? String == "residential")
+        let cafe = try await destinationSent(areaSpan: nil)
+        #expect(cafe["search_filter"] == nil)
+        #expect(cafe["type"] as? String == "break")
+        let courthouse = try await destinationSent(areaSpan: 81) // small: the nearest road, as before
+        #expect(courthouse["search_filter"] == nil)
+    }
+
     @Test func whatCountsAsUnreachable() {
         #expect(RoutePlanner.worthTryingOffline(URLError(.notConnectedToInternet)))
         #expect(RoutePlanner.worthTryingOffline(URLError(.timedOut)))

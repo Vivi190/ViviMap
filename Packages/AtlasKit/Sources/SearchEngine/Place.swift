@@ -32,13 +32,18 @@ public struct Place: Identifiable, Hashable, Sendable, Codable {
     public let point: GeoPoint
     /// OSM `key=value` (e.g. `amenity=townhall`); nil for coordinates typed by the user.
     public let category: String?
+    /// Diagonal of the place's area in metres when it is an area (airport, campus, hospital, mall); nil for
+    /// points and streets. The routing uses it to end on a public road rather than inside the area.
+    /// Optional, so places saved before it existed still decode.
+    public let areaSpan: Double?
 
-    public init(id: String, name: String, subtitle: String, point: GeoPoint, category: String?) {
+    public init(id: String, name: String, subtitle: String, point: GeoPoint, category: String?, areaSpan: Double? = nil) {
         self.id = id
         self.name = name
         self.subtitle = subtitle
         self.point = point
         self.category = category
+        self.areaSpan = areaSpan
     }
 }
 

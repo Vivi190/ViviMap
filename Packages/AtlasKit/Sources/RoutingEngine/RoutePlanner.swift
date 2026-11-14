@@ -67,15 +67,29 @@ public final class RoutePlanner {
             .withJsonOptions(options: options)
     }
 
-    public func routes(from location: CLLocation, to destination: GeoPoint) async throws -> [RouteOption] {
-        let waypoint = Waypoint(
-            coordinate: GeographicCoordinate(lat: destination.latitude, lng: destination.longitude),
-            kind: .break
-        )
+    /// - Parameter areaSpan: size of the destination when it is an area (Place.areaSpan); see `waypoint`.
+    public func routes(from location: CLLocation, to destination: GeoPoint, areaSpan: Double? = nil) async throws -> [RouteOption] {
+        let waypoint = Self.waypoint(destination, areaSpan: areaSpan)
         let found = try await fetch(userLocation: UserLocation(clLocation: location), waypoints: [waypoint])
         return found.routes.enumerated().map { index, route in
             RouteOption(index: index, route: route, isOffline: found.offline, notes: found.notes.indices.contains(index) ? found.notes[index] : RouteNotes())
         }
+    }
+
+    /// Search gives an area's middle point, and Valhalla then ends the route on the nearest road inside it.
+    /// Measured on FOSSGIS (14.11.2026): Sabiha Gökçen's middle → 31.9 min via airside service roads; held to
+    /// tertiary roads and up → 19.7 min to the airport junction. Hospital campuses and malls ended on internal
+    /// service roads too; without service roads they end on the street outside (Marmara Üniversitesi Pendik:
+    /// 20 → 16 maneuvers, Tevfik İleri Caddesi). Small places and streets keep the nearest road.
+    static func waypoint(_ destination: GeoPoint, areaSpan: Double?) -> Waypoint {
+        let coordinate = GeographicCoordinate(lat: destination.latitude, lng: destination.longitude)
+        guard let areaSpan, areaSpan >= 150 else { return Waypoint(coordinate: coordinate, kind: .break) }
+        let road: ValhallaRoadClass = areaSpan >= 1500 ? .tertiary : .residential
+        return createWaypointWithValhallaProperties(
+            coordinate: coordinate,
+            kind: .break,
+            properties: ValhallaWaypointProperties(searchFilter: ValhallaLocationSearchFilter(minRoadClass: road))
+        )
     }
 
     /// Online first; with no connection or a failing server, the same request answered on the device.

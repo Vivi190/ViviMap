@@ -105,6 +105,18 @@ enum PhotonParser {
         let city: String?
         let county: String?
         let state: String?
+        /// Bounding box of ways and relations: [west, north, east, south].
+        let extent: [Double]?
+    }
+
+    /// Diagonal of an area's bounding box in metres. Streets are lines, so their box says how long they are,
+    /// not how big: nil for them, as for points.
+    static func areaSpan(extent: [Double]?, key: String?) -> Double? {
+        guard let extent, extent.count == 4, key != "highway" else { return nil }
+        let (west, north, east, south) = (extent[0], extent[1], extent[2], extent[3])
+        let dx = (east - west) * 111_320 * cos((north + south) / 2 * .pi / 180)
+        let dy = (north - south) * 110_540
+        return (dx * dx + dy * dy).squareRoot()
     }
 
     static func places(from data: Data) throws -> [Place] {
@@ -130,7 +142,8 @@ enum PhotonParser {
                 name: name,
                 subtitle: subtitle,
                 point: GeoPoint(latitude: coordinates[1], longitude: coordinates[0]),
-                category: category
+                category: category,
+                areaSpan: areaSpan(extent: p.extent, key: p.osm_key)
             )
         }
     }
