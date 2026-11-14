@@ -80,6 +80,8 @@ struct NavigationBottomBar: View {
     let navigation: NavigationSession
     /// From the last live-traffic round; nil = free-flow estimate, labelled as such.
     let trafficArrival: Date?
+    /// On arrival: car parks around the destination (the first need on arriving in Istanbul); nil hides it.
+    var onParking: (() -> Void)? = nil
     let onEnd: () -> Void
 
     var body: some View {
@@ -105,6 +107,17 @@ struct NavigationBottomBar: View {
                     .font(.title3.weight(.semibold))
             }
             Spacer(minLength: 0)
+            if navigation.hasArrived, let onParking {
+                Button(action: onParking) {
+                    Label("Otopark", systemImage: "parkingsign")
+                        .font(.headline)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                .tint(Color.atlasAccent)
+                .accessibilityLabel(Text("Hedefin yakınındaki otoparklar"))
+            }
             Button(role: .destructive, action: onEnd) {
                 Text("Bitir")
                     .font(.headline)

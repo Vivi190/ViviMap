@@ -565,7 +565,12 @@ struct HomeScreen: View {
                 .overlay(alignment: .bottom) {
                     if let road = navigation.currentRoad { CurrentRoadLabel(road: road) }
                 }
-            NavigationBottomBar(navigation: navigation, trafficArrival: trafficWatch.arrival, onEnd: { endNavigation() })
+            NavigationBottomBar(
+                navigation: navigation,
+                trafficArrival: trafficWatch.arrival,
+                onParking: search.canShowNearby ? { findParking() } : nil,
+                onEnd: { endNavigation() }
+            )
         }
     }
 
@@ -703,6 +708,15 @@ struct HomeScreen: View {
         clearPlace()
         is3D = false
         camera = .trackUserLocation(zoom: 15.5, pitch: 0, pitchRange: .fixed(0))
+    }
+
+    /// "Otopark" on arrival: guidance ends and the car parks around the destination are listed.
+    private func findParking() {
+        let destination = selectedPlace
+        endNavigation()
+        guard let destination else { return }
+        search.showNearby(.parking, around: destination)
+        sheet = .search
     }
 
     private func clearPlace() {
