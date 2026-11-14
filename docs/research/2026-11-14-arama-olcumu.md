@@ -49,6 +49,36 @@ Düzeltmeyi tasarlarken hiç bakılmamış istasyon, iskele, AVM ve durak sorgul
 
 Sınır: bu ölçüm sıralamayı ve bulmayı ölçer. Kapı numaralı adres araması OSM'deki numara verisine bağlıdır ve burada ölçülmedi.
 
+## 4. ölçüm — 14.11.2026, adresler mesajda yazıldığı gibi (toplam 68 sorgu)
+
+Adresler insanların mesajda yazdığı biçimde eklendi ("Sanayi Cad. No:1 Kartal", "Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul", "ihlas sk. kartal"), yanında iki gerçekçi sorgu daha ("cevizli tugay yolu", "istanbul havalimanı otopark").
+
+Eski kurallarla ölçülebilir 7 sorgunun yalnızca 1'i doğruydu ("ihlas sk. kartal"):
+
+| Sorgu | Eski ilk sonuç | Neden |
+|---|---|---|
+| Sanayi Cad. No:1 Kartal | lastik bayisi ("İnönü Cad. D: 15") | Photon "Cad." ve "D:"yi kelime gibi eşledi |
+| Hatboyu Cad. No 17 Tuzla | Cafe North ("Başkomutan Cad. 17", Aydınlı) | aynı |
+| Ankara Cad. No:5 Kartal | Kartal 37. Noterliği (Ankara Caddesi 488, Pendik) | "No 5", adında numara geçen yerlerle eşleşti |
+| Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul | Kartal 24. Noter (Kartal Caddesi 12) | 12 numara, ama başka sokakta |
+| cevizli tugay yolu | "Tugay Yolu", yapım aşamasındaki metro hattı | hatlar sıralamada ayrılmıyordu |
+| istanbul havalimanı otopark | Turkish Technic Otopark (Sabiha Gökçen) | otopark türü aranmıyordu; "havalimanı" kelimesi havalimanlarını öne alıyordu |
+
+**Düzeltme** (`PlaceRanking`):
+- `address`: adres kısaltmaları OSM'in yazımına çevrilir. Cad. → Caddesi, Sk. → Sokak, Mah. → Mahallesi, Blv. → Bulvarı, "No:12" → 12. Daire, kat ve iç kapı numarası atılır, "/" boşluk olur. Bunlardan hiçbiri yoksa sorgu olduğu gibi gider.
+- Adres sorgusunda önce sokağı ve numarası birlikte tutan yer gelir, sonra o sokak.
+- Sorguda sokak kelimesi varsa (caddesi, sokağı, bulvarı, yolu), sorgudaki tür kelimeleri sokağın adının parçası sayılır ("istasyon caddesi") ve sokaklar öne gelir.
+- "… otopark" sorgusu otoparkı arar. Sorulan tür, adın çağrıştırdığı türün önüne geçer.
+- Raylı hatlar, yapım aşamasındaki ve planlanan yollar sona iner.
+
+**İlk sonuç doğru: 64/64 · ilk 3'te: 64/64.** Yeni 7 sorgunun 7'si doğru, önceki 57'de gerileme yok. "Bağdat Cd. No:300 Kadıköy" ölçüm dışı kaldı: o adresteki yerler kesitte adres etiketleriyle bulunamadı. Elle kontrolde ilk sonuç Bağdat Caddesi 300'deki bir mağaza, yani doğru.
+
+**Yalnızca tür yazılan sorgular** ("benzinlik", "eczane") ölçüm aracının dışındadır, çünkü hedef sabit bir yer değil, en yakını. Elle kontrol, Kartal'dan:
+- Photon'un metin araması "benzinlik"e 148 km öteden, "otopark"a 25 km öteden, "market"e 26 km öteden sonuç verdi. "hastane"de ilk sonuç bir inşaat alanıydı.
+- Photon'un ters araması `osm_tag` filtresiyle en yakınları mesafe sırasıyla verdi: BP 190 m, Nurdan Eczanesi 150 m, BİM 130 m, Kartal Kızılay Hastanesi 740 m.
+
+Uygulama artık "benzinlik", "en yakın eczane", "marketler" gibi sorguları ters aramayla arar. Çevrimdışıyken benzinlik, otopark, eczane ve şarj için en yakınları cihazdaki dizinden verir. "Nöbetçi eczane" bilerek bu yola girmez, çünkü OSM'de nöbet çizelgesi yok.
+
 ### 3. ölçümün tam tablosu
 
 | Sorgu | Sonuç | Uygulamanın ilk sonucu | İlk sonucun hedefe uzaklığı |
