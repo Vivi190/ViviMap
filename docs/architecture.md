@@ -100,7 +100,7 @@ Gerekçelerin ve kaynakların ayrıntısı: [research/2026-11-13-faz0-arastirma.
   - Online arama Photon ile yapılır. Geliştirmede public sunucu kullanılır, sonra kendi sunucumuz.
   - Sorguda yer türü kelimesi varsa (durak, istasyon/metro/marmaray, AVM, iskele), kelimesi çıkarılmış ikinci bir istek Photon'un `osm_tag` filtresiyle eşzamanlı gönderilir. Ölçüm: [2026-11-14-arama-olcumu.md](research/2026-11-14-arama-olcumu.md).
   - Adresler mesajda yazıldığı gibi gelir ("Atatürk Cad. No:12 D:5 Kartal/İstanbul"); istekten önce OSM'in yazımına çevrilir (Caddesi, 12; daire/kat atılır). Sıralamada önce sokağı ve numarası tutan yer, sonra o sokak gelir.
-  - Yalnızca tür yazılırsa ("benzinlik", "en yakın eczane") metin araması yapılmaz: Photon'un ters araması `osm_tag` filtresiyle en yakınları mesafe sırasıyla verir.
+  - Yalnızca tür yazılırsa ("benzinlik", "en yakın eczane") metin araması yapılmaz: Photon'un ters araması `osm_tag` filtresiyle en yakınları mesafe sırasıyla verir. Çevrimdışıyken aynı türler cihazdaki dizinden en yakın sırayla gelir.
   - Raylı hatlar ve yapım aşamasındaki/planlanan yollar sonuçların sonuna iner.
   - Ters geocoding (haritadan seçme) de Photon ile yapılır; Nominatim kullanılmıyor.
   - Offline: CI'da üretilen SQLite FTS4 indeksi (İstanbul, Türkçe katlama: "çanakkale" = "canakkale"). Photon'a ulaşılamazsa ya da sunucu hata verirse (5xx, 429) devreye girer.

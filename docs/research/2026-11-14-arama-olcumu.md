@@ -77,7 +77,7 @@ Eski kurallarla ölçülebilir 7 sorgunun yalnızca 1'i doğruydu ("ihlas sk. ka
 - Photon'un metin araması "benzinlik"e 148 km öteden, "otopark"a 25 km öteden, "market"e 26 km öteden sonuç verdi. "hastane"de ilk sonuç bir inşaat alanıydı.
 - Photon'un ters araması `osm_tag` filtresiyle en yakınları mesafe sırasıyla verdi: BP 190 m, Nurdan Eczanesi 150 m, BİM 130 m, Kartal Kızılay Hastanesi 740 m.
 
-Uygulama artık "benzinlik", "en yakın eczane", "marketler" gibi sorguları ters aramayla arar. Çevrimdışıyken benzinlik, otopark, eczane ve şarj için en yakınları cihazdaki dizinden verir. "Nöbetçi eczane" bilerek bu yola girmez, çünkü OSM'de nöbet çizelgesi yok.
+Uygulama artık "benzinlik", "en yakın eczane", "marketler" gibi sorguları ters aramayla arar. Çevrimdışıyken en yakınları cihazdaki dizinden verir; dizin her adlı yerin türünü tuttuğu için bu bütün türlerde çalışır. "Nöbetçi eczane" bilerek bu yola girmez, çünkü OSM'de nöbet çizelgesi yok.
 
 Ölçüm aracında artık bunun için ayrı bir bölüm var (`bench.py --kinds-only`). İsabet ölçütü: ilk sonuç o türden ve Kartal'daki kullanıcıya 3 km'den yakın.
 
