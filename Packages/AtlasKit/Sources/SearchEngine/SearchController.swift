@@ -23,6 +23,8 @@ public final class SearchController {
     /// Biases results towards the user; read when a search starts.
     @ObservationIgnored public var origin: @MainActor () -> GeoPoint? = { nil }
     @ObservationIgnored private let provider: any PlaceSearchProvider
+    /// Answers "Yakında: Benzinlik"; nil in builds without the offline packages, and the buttons are hidden.
+    @ObservationIgnored private let nearbyIndex: OfflinePlaceIndex?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var task: Task<Void, Never>?
 
@@ -31,9 +33,11 @@ public final class SearchController {
 
     public init(
         provider: any PlaceSearchProvider = FallbackSearchProvider(primary: PhotonSearchProvider(), fallback: OfflinePlaceIndex.bundled),
+        nearbyIndex: OfflinePlaceIndex? = OfflinePlaceIndex.bundled,
         defaults: UserDefaults = .standard
     ) {
         self.provider = provider
+        self.nearbyIndex = nearbyIndex
         self.defaults = defaults
         recents = defaults.data(forKey: Self.recentsKey).flatMap { try? JSONDecoder().decode([Place].self, from: $0) } ?? []
         home = Self.load(.home, from: defaults)
@@ -73,6 +77,30 @@ public final class SearchController {
     public func clearRecents() {
         recents = []
         defaults.removeObject(forKey: Self.recentsKey)
+    }
+
+    public var canShowNearby: Bool { nearbyIndex != nil }
+
+    /// "Yakında: Benzinlik": the field shows the kind, the nearest ones come from the shipped index instead of
+    /// a text search (Photon matches names, and fuel stations are called "Shell", not "benzinlik").
+    /// Editing the field afterwards searches as usual.
+    public func showNearby(_ kind: NearbyKind) {
+        guard let index = nearbyIndex else { return }
+        query = kind.title
+        task?.cancel() // the text search the line above scheduled
+        guard let origin = origin() else {
+            results = []
+            isSearching = false
+            errorMessage = "Konumun henüz bilinmiyor."
+            return
+        }
+        isSearching = true
+        task = Task {
+            let found = await Task.detached { (try? index.nearby(kind, near: origin)) ?? [] }.value
+            guard !Task.isCancelled else { return }
+            results = found
+            isSearching = false
+        }
     }
 
     private func scheduleSearch() {

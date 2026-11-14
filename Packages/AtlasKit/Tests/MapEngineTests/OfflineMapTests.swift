@@ -3,6 +3,12 @@ import Testing
 @testable import MapEngine
 
 struct OfflineMapTests {
+    @Test func dataDateComesFromTheReleaseTag() {
+        #expect(OfflineMap.date(fromTag: "offline-data-20261113-3\n") == "13.11.2026")
+        #expect(OfflineMap.date(fromTag: "offline-data-latest") == nil)
+        #expect(OfflineMap.date(fromTag: "") == nil)
+    }
+
     @Test @MainActor func styleReadsTheShippedTilesAndFonts() throws {
         let packages = URL(fileURLWithPath: "/var/containers/Bundle/Application/X/Atlas.app/Offline", isDirectory: true)
         let original = try Data(contentsOf: MapAppearance.night.styleURL)

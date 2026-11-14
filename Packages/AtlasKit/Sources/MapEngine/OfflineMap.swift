@@ -12,6 +12,23 @@ public enum OfflineMap {
         return folder
     }()
 
+    /// When the shipped Istanbul data was built ("13.11.2026"), from the release tag the TestFlight workflow
+    /// writes next to it; nil in builds without the packages.
+    public static let dataDate: String? = {
+        guard let packages,
+              let tag = try? String(contentsOf: packages.appendingPathComponent("version.txt"), encoding: .utf8)
+        else { return nil }
+        return date(fromTag: tag)
+    }()
+
+    /// "offline-data-20261113-3" → "13.11.2026".
+    nonisolated static func date(fromTag tag: String) -> String? {
+        let parts = tag.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "-")
+        guard parts.count >= 3, parts[2].count == 8, parts[2].allSatisfy(\.isNumber) else { return nil }
+        let day = parts[2]
+        return "\(day.suffix(2)).\(day.dropFirst(4).prefix(2)).\(day.prefix(4))"
+    }
+
     private static var written: [MapAppearance: URL] = [:]
 
     /// The offline copy of `appearance`'s style, written to Caches once per launch (cheap, and never stale

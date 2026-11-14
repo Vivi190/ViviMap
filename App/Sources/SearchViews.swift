@@ -50,6 +50,9 @@ struct SearchSheet: View {
             if hasQuery {
                 ForEach(search.results) { place in row(place) }
             } else {
+                if search.canShowNearby {
+                    Section("Yakında") { nearbyButtons }
+                }
                 if search.home != nil || search.work != nil {
                     Section("Kısayollar") {
                         if let home = search.home { shortcut("Ev", "house.fill", home) }
@@ -94,6 +97,27 @@ struct SearchSheet: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("\(title): rota"))
+    }
+
+    /// Nearest fuel, parking, pharmacy, charger from the shipped Istanbul index: instant, and offline too.
+    /// Bordered buttons, so each one takes its own tap inside the shared list row.
+    private var nearbyButtons: some View {
+        HStack(spacing: Spacing.s) {
+            ForEach(NearbyKind.allCases, id: \.self) { kind in
+                Button { search.showNearby(kind) } label: {
+                    VStack(spacing: Spacing.xs) {
+                        Image(systemName: kind.systemImage)
+                            .font(.system(size: 17, weight: .semibold))
+                        Text(kind.title)
+                            .font(.caption.weight(.medium))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.atlasAccent)
+            }
+        }
     }
 
     private var recentsSection: some View {
@@ -276,12 +300,23 @@ struct RouteCard: View {
     let routes: [RouteOption]
     let traffic: [Int: TrafficEstimate]
     let trafficStatus: TrafficStatus
+    /// The "Ücretli yollardan kaçın" setting these routes were planned with.
+    let avoidsTolls: Bool
     @Binding var selection: Int
     /// nil when navigation could not be set up; the button is hidden rather than shown broken.
     let onStart: (() -> Void)?
     /// Test drive; nil unless enabled in the map settings.
     let onSimulate: (() -> Void)?
     let onClose: () -> Void
+
+    /// Tolls and ferries before the driver commits to a route, and whether the setting shaped it.
+    static func notes(_ notes: RouteNotes, avoidsTolls: Bool) -> String? {
+        var parts: [String] = []
+        if notes.hasToll { parts.append("Ücretli geçiş var") }
+        if notes.hasFerry { parts.append("Feribotla geçiş") }
+        if avoidsTolls, !notes.hasToll { parts.append("Ücretli yollardan kaçınıldı") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
 
     /// Live-traffic time when every alternative was measured, otherwise Valhalla's free-flow estimate.
     private func duration(_ option: RouteOption) -> TimeInterval {
@@ -319,6 +354,12 @@ struct RouteCard: View {
             }
             if !route.mainRoads.isEmpty {
                 Label(route.mainRoads.joined(separator: " → "), systemImage: "road.lanes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if let notes = Self.notes(route.notes, avoidsTolls: avoidsTolls) {
+                Label(notes, systemImage: route.notes.hasFerry ? "ferry" : "turkishlirasign.circle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

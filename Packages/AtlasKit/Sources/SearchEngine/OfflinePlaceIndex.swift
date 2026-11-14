@@ -28,6 +28,33 @@ public enum TurkishFold {
     }
 }
 
+/// "Yakında" on the search screen: kinds a driver looks for nearby, as the index stores them (first OSM key that
+/// applies, Tools/search/build_index.py). Only named places are in the index.
+public enum NearbyKind: String, CaseIterable, Sendable {
+    case fuel = "amenity=fuel"
+    case parking = "amenity=parking"
+    case pharmacy = "amenity=pharmacy"
+    case charging = "amenity=charging_station"
+
+    public var title: String {
+        switch self {
+        case .fuel: "Benzinlik"
+        case .parking: "Otopark"
+        case .pharmacy: "Eczane"
+        case .charging: "Şarj"
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .fuel: "fuelpump.fill"
+        case .parking: "parkingsign"
+        case .pharmacy: "cross.case.fill"
+        case .charging: "bolt.car.fill"
+        }
+    }
+}
+
 /// Place search without a connection: the Istanbul index shipped with the app (Tools/search/build_index.py,
 /// OpenStreetMap). Prefix matching on folded names, ranked by how well the name matches, then by distance.
 public struct OfflinePlaceIndex: PlaceSearchProvider {
@@ -58,22 +85,46 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         return Array(found.sorted { rank($0) < rank($1) }.prefix(12))
     }
 
+    /// The nearest places of one kind by straight-line distance, from the shipped index alone: instant and
+    /// without a connection (14.11.2026 index: 833 fuel stations, 1 151 car parks, 5 195 pharmacies, 87 chargers).
+    public func nearby(_ kind: NearbyKind, near point: GeoPoint, limit: Int = 12) throws -> [Place] {
+        // Longitude degrees shrink with latitude; scaled, the squared sum orders by distance at city scale.
+        let sql = """
+        SELECT id, name, subtitle, category, lat, lon FROM place WHERE category = ?1
+        ORDER BY (lat - ?2) * (lat - ?2) + ((lon - ?3) * ?4) * ((lon - ?3) * ?4) LIMIT ?5
+        """
+        return try rows(sql) { statement in
+            sqlite3_bind_text(statement, 1, kind.rawValue, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            sqlite3_bind_double(statement, 2, point.latitude)
+            sqlite3_bind_double(statement, 3, point.longitude)
+            sqlite3_bind_double(statement, 4, cos(point.latitude * .pi / 180))
+            sqlite3_bind_int(statement, 5, Int32(limit))
+        }
+    }
+
     private func rows(matching expression: String) throws -> [Place] {
+        let sql = """
+        SELECT p.id, p.name, p.subtitle, p.category, p.lat, p.lon
+        FROM place_fts JOIN place p ON p.id = place_fts.docid
+        WHERE place_fts MATCH ? LIMIT 200
+        """
+        return try rows(sql) { statement in
+            sqlite3_bind_text(statement, 1, expression, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+        }
+    }
+
+    /// Runs a query whose columns are id, name, subtitle, category, lat, lon.
+    private func rows(_ sql: String, bind: (OpaquePointer?) -> Void) throws -> [Place] {
         var db: OpaquePointer?
         guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
             sqlite3_close(db)
             throw CocoaError(.fileReadUnknown)
         }
         defer { sqlite3_close(db) }
-        let sql = """
-        SELECT p.id, p.name, p.subtitle, p.category, p.lat, p.lon
-        FROM place_fts JOIN place p ON p.id = place_fts.docid
-        WHERE place_fts MATCH ? LIMIT 200
-        """
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { throw CocoaError(.fileReadCorruptFile) }
         defer { sqlite3_finalize(statement) }
-        sqlite3_bind_text(statement, 1, expression, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+        bind(statement)
         func text(_ column: Int32) -> String? {
             sqlite3_column_text(statement, column).map { String(cString: $0) }
         }

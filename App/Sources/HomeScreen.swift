@@ -194,6 +194,9 @@ struct HomeScreen: View {
             } else {
                 overlay
             }
+            // Here rather than in the overlay: a request made while guiding must be seen (and dropped) then, not
+            // fire when the overlay comes back after "Bitir".
+            ShortcutListener(inbox: ShortcutInbox.shared, hasFix: location.hasFix) { openShortcut($0) }
         }
         .preferredColorScheme(isNight ? .dark : .light)
         .sensoryFeedback(.impact(weight: .medium), trigger: selectedPlace?.point)
@@ -295,7 +298,7 @@ struct HomeScreen: View {
         .animation(.snappy(duration: 0.3), value: routes.isEmpty)
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)
-        // In the background so it takes no room in the layout.
+        // In the background so they take no room in the layout.
         .background {
             if showsCityTraffic, let traffic {
                 CityTrafficLoader(viewport: viewport, cityTraffic: cityTraffic, provider: traffic)
@@ -382,6 +385,24 @@ struct HomeScreen: View {
         camera = .center(place.point.coordinate, zoom: max(viewport.zoom, 16), pitch: is3D ? Self.pitch3D : 0)
     }
 
+    /// Siri / Shortcuts "Eve git", "İşe git": straight to the route card, as the search sheet's shortcut does.
+    /// Nothing saved yet: the search sheet, where its menu offers "Ev olarak kaydet".
+    /// Returns false to be asked again when the first fix arrives.
+    private func openShortcut(_ slot: SearchController.Slot) -> Bool {
+        // Not while guiding: it would take the driver off the guidance they follow. Dropped, not kept.
+        guard !isNavigating else { return true }
+        guard let place = slot == .home ? search.home : search.work else {
+            sheet = .search
+            return true
+        }
+        // Planning needs a fix; a cold start from Siri has none for a moment.
+        guard location.lastLocation != nil else { return false }
+        sheet = nil
+        select(place)
+        planRoute(to: place)
+        return true
+    }
+
     /// Long press on the map: drop a pin there (address filled in when Photon knows it).
     /// Not added to recents and the camera stays put.
     private func pick(_ coordinate: CLLocationCoordinate2D) {
@@ -419,6 +440,8 @@ struct HomeScreen: View {
             routes: routes,
             traffic: trafficEstimates,
             trafficStatus: trafficStatus,
+            // What these routes were planned with; the switch may have moved since (re-planning clears them).
+            avoidsTolls: planner?.avoidsTolls == true,
             selection: $routeSelection,
             onStart: startHandler,
             onSimulate: simulateHandler,
@@ -457,6 +480,7 @@ struct HomeScreen: View {
                 label: "Konumumu göster",
                 isActive: camera.trackingMode == .followDirection
             ) { recenterOnCourse(zoom: navigation.guidanceZoom) }
+            ArrivalShareButton(navigation: navigation, place: selectedPlace, trafficArrival: trafficWatch.arrival)
         }
     }
 
@@ -483,10 +507,7 @@ struct HomeScreen: View {
             }
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: Spacing.s) {
-                    if let alert = navigation.hazardAlert {
-                        HazardChip(alert: alert)
-                            .transition(.move(edge: .leading).combined(with: .opacity))
-                    }
+                    HazardChipSlot(navigation: navigation)
                     if !connectivity.isOnline { offlineChip }
                 }
                 Spacer(minLength: 0)
@@ -548,6 +569,7 @@ struct HomeScreen: View {
         do {
             navigation.hazardKinds = hazardKinds
             navigation.userHazards = userHazards.hazards
+            navigation.warnsSpeeding = settings.warnsSpeeding
             try navigation.start(route, from: start)
             location.setNavigating(true)
             // The screen stays on while guiding (it can still be locked by hand; guidance continues).
@@ -664,6 +686,7 @@ struct HomeScreen: View {
         let generation = planGeneration
         Task {
             do {
+                planner.avoidsTolls = settings.avoidsTolls
                 let found = try await planner.routes(from: here, to: place.point)
                 guard generation == planGeneration else { return }
                 routeSelection = 0
@@ -683,6 +706,9 @@ struct HomeScreen: View {
                         padding: UIEdgeInsets(top: 150, left: 50, bottom: 320, right: 90)
                     )
                 }
+            } catch RoutePlanner.PlanningError.noRoute where planner.avoidsTolls {
+                // "No path" here usually means no toll-free path, not a closed-off destination.
+                routeError = "Ücretli yollardan kaçınan bir rota bulunamadı. Harita ayarları → Rota'dan kapatmayı dene."
             } catch {
                 routeError = error.localizedDescription
             }
@@ -810,5 +836,56 @@ private struct CityTrafficLoader: View {
                     try? await Task.sleep(for: CityTraffic.refreshInterval)
                 }
             }
+    }
+}
+
+// Values that change with every fix are read in small views of their own: read in HomeScreen's body they
+// re-rendered the whole screen once a second, and the map with it (swiftui-dsl re-adds every layer per update).
+
+/// The camera / bump chip; its distance counts down with each fix.
+private struct HazardChipSlot: View {
+    let navigation: NavigationSession
+
+    var body: some View {
+        if let alert = navigation.hazardAlert {
+            HazardChip(alert: alert)
+                .transition(.move(edge: .leading).combined(with: .opacity))
+        }
+    }
+}
+
+/// "Varışımı paylaş" in the guidance controls. The message: "Varışım yaklaşık 12:34 · Kartal Adliyesi" and a
+/// map link to the place, phrased without a case suffix after the name ("Adliyesi'ne"), which cannot be
+/// derived reliably.
+private struct ArrivalShareButton: View {
+    let navigation: NavigationSession
+    let place: Place?
+    /// With live traffic when measured (TrafficWatch), otherwise the free-flow estimate.
+    let trafficArrival: Date?
+
+    var body: some View {
+        if let place, let remaining = navigation.durationRemaining {
+            MapControlDivider()
+            ShareLink(item: Self.message(place: place, arrival: trafficArrival ?? Date.now.addingTimeInterval(remaining), withTraffic: trafficArrival != nil)) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Color.primary)
+                    .frame(width: Metrics.controlWidth, height: Metrics.tapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Varışımı paylaş"))
+        }
+    }
+
+    static func message(place: Place, arrival: Date, withTraffic: Bool) -> String {
+        var link = URLComponents(string: "https://maps.apple.com/")!
+        link.queryItems = [
+            URLQueryItem(name: "ll", value: "\(place.point.latitude),\(place.point.longitude)"),
+            URLQueryItem(name: "q", value: place.name),
+        ]
+        let time = arrival.formatted(date: .omitted, time: .shortened)
+        let traffic = withTraffic ? " (canlı trafikle)" : ""
+        return "Varışım yaklaşık \(time)\(traffic) · \(place.name)\n\(link.url?.absoluteString ?? "")"
     }
 }

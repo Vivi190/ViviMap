@@ -1,5 +1,6 @@
 import AppCore
 import DesignSystem
+import MapEngine
 import RoadHazards
 import SwiftUI
 import TripHistory
@@ -138,8 +139,17 @@ struct MapSettingsView: View {
             }
 
             Section {
+                Toggle("Ücretli yollardan kaçın", isOn: $settings.avoidsTolls)
+            } header: {
+                Text("Rota")
+            } footer: {
+                Text("Köprü, tünel ve otoyol gişelerinden geçmeyen rota. Boğaz'ı geçerken araba vapuruna yönlendirebilir; daha uzun sürebilir.")
+            }
+
+            Section {
                 Toggle("Hız kamerası uyarıları", isOn: $settings.warnsCameras)
                 Toggle("Kasis uyarıları", isOn: $settings.warnsBumps)
+                Toggle("Hız sınırı uyarısı", isOn: $settings.warnsSpeeding)
                 NavigationLink {
                     MarkedHazardsView()
                 } label: {
@@ -159,6 +169,16 @@ struct MapSettingsView: View {
                 }
             } footer: {
                 Text("Varış tahminlerinin senin sürüşlerinde ne kadar tuttuğu.")
+            }
+
+            if let date = OfflineMap.dataDate {
+                Section {
+                    LabeledContent("İstanbul verisi", value: date)
+                } header: {
+                    Text("Çevrimdışı")
+                } footer: {
+                    Text("İnternet yokken harita, arama ve rota bu veriyle çalışır; yeni sürümle tazelenir.")
+                }
             }
 
             Section {

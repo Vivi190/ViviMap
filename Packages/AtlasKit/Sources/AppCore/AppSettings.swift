@@ -49,6 +49,16 @@ public final class AppSettings {
         didSet { defaults.set(warnsBumps, forKey: Keys.bumps) }
     }
 
+    /// Spoken "Hız sınırı 50." when clearly over the posted limit (on by default).
+    public var warnsSpeeding: Bool {
+        didSet { defaults.set(warnsSpeeding, forKey: Keys.speeding) }
+    }
+
+    /// Routes without toll bridges, tunnels and motorways (Valhalla exclude_tolls); may cross by car ferry.
+    public var avoidsTolls: Bool {
+        didSet { defaults.set(avoidsTolls, forKey: Keys.avoidsTolls) }
+    }
+
     /// City traffic layer on the map (the "Trafik" button); remembered between launches.
     public var showsTrafficLayer: Bool {
         didSet { defaults.set(showsTrafficLayer, forKey: Keys.trafficLayer) }
@@ -62,7 +72,9 @@ public final class AppSettings {
         showsDriveSimulation = defaults.bool(forKey: Keys.simulation)
         warnsCameras = defaults.object(forKey: Keys.cameras) as? Bool ?? true
         warnsBumps = defaults.object(forKey: Keys.bumps) as? Bool ?? true
+        warnsSpeeding = defaults.object(forKey: Keys.speeding) as? Bool ?? true
         showsTrafficLayer = defaults.bool(forKey: Keys.trafficLayer)
+        avoidsTolls = defaults.bool(forKey: Keys.avoidsTolls)
     }
 
     private enum Keys {
@@ -70,6 +82,8 @@ public final class AppSettings {
         static let simulation = "atlas.simulation"
         static let cameras = "atlas.warn.cameras"
         static let bumps = "atlas.warn.bumps"
+        static let speeding = "atlas.warn.speeding"
         static let trafficLayer = "atlas.trafficLayer"
+        static let avoidsTolls = "atlas.route.avoidsTolls"
     }
 }
