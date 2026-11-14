@@ -268,6 +268,9 @@ struct HomeScreen: View {
                 VStack(alignment: .leading, spacing: Spacing.s) {
                     SearchBarButton { sheet = .search }
                         .frame(maxWidth: isLandscape ? 420 : .infinity)
+                    if selectedPlace == nil, search.home != nil || search.work != nil {
+                        ShortcutChips(hasHome: search.home != nil, hasWork: search.work != nil) { _ = openShortcut($0) }
+                    }
                     GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
                     if !connectivity.isOnline { offlineChip }
                     if settings.showsTrafficLayer, let notice = cityTraffic.notice {

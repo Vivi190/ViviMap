@@ -43,6 +43,11 @@ final class HomeScreenshotTests: XCTestCase {
         XCTAssertTrue(app.otherElements["place.card"].waitForExistence(timeout: 5), "place card missing")
         settle(6)
         capture("3-place")
+        // Saved as home, it gets the "Ev" shortcut under the search pill (screenshots 4 and 6) and in search (2a).
+        app.buttons["Diğer seçenekler"].tap()
+        let saveHome = app.buttons["Ev olarak kaydet"]
+        XCTAssertTrue(saveHome.waitForExistence(timeout: 5), "place menu missing")
+        saveHome.tap()
 
         // Route (live FOSSGIS Valhalla request) → route card + line.
         app.buttons["place.route"].tap()

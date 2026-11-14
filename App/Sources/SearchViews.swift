@@ -33,6 +33,38 @@ struct SearchBarButton: View {
     }
 }
 
+/// "Ev" / "İş" under the search pill once saved: one tap to the route card, as Google Maps offers.
+struct ShortcutChips: View {
+    let hasHome: Bool
+    let hasWork: Bool
+    let onTap: (SearchController.Slot) -> Void
+
+    var body: some View {
+        HStack(spacing: Spacing.s) {
+            if hasHome { chip("Ev", "house.fill", .home) }
+            if hasWork { chip("İş", "briefcase.fill", .work) }
+        }
+    }
+
+    private func chip(_ title: String, _ symbol: String, _ slot: SearchController.Slot) -> some View {
+        Button { onTap(slot) } label: {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: symbol)
+                    .foregroundStyle(Color.atlasAccent)
+                Text(title)
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.s)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .atlasFloatingSurface(in: Capsule())
+        .accessibilityLabel(Text("\(title): rota"))
+        .accessibilityIdentifier("shortcut.\(slot.rawValue)")
+    }
+}
+
 struct SearchSheet: View {
     @Bindable var search: SearchController
     let onSelect: (Place) -> Void
