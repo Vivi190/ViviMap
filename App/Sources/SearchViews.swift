@@ -17,7 +17,8 @@ struct SearchBarButton: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.secondary)
-                Text("Ara")
+                // Where a driver starts; the search sheet takes addresses, places, kinds and coordinates.
+                Text("Nereye?")
                     .font(.body)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
