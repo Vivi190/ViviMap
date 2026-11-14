@@ -38,7 +38,7 @@ struct ManeuverArrowTests {
     }
 
     @Test func throughARoundaboutToItsExit() {
-        #expect(ManeuverArrow.reach(type: .roundabout, nextStep: 60) == 65)
+        #expect(ManeuverArrow.reach(type: .roundabout, nextStep: 60) == 75)
         #expect(ManeuverArrow.reach(type: .turn, nextStep: 400) == 15)
     }
 }

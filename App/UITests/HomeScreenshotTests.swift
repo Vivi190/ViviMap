@@ -63,7 +63,7 @@ final class HomeScreenshotTests: XCTestCase {
         app.buttons["search.open"].tap()
         let again = app.buttons.matching(identifier: "search.result").firstMatch
         XCTAssertTrue(again.waitForExistence(timeout: 20), "previous place not offered again")
-        capture("2a-search-start") // before typing: recents, shortcuts, "Yakında"
+        capture("2a-search-start") // after a drive: recents (and shortcuts, "Yakında" when the build has them)
         again.tap()
         XCTAssertTrue(app.buttons["place.route"].waitForExistence(timeout: 5), "place card missing")
         app.buttons["place.route"].tap()

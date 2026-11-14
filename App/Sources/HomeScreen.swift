@@ -706,6 +706,9 @@ struct HomeScreen: View {
         selectedPlace = nil
         routes = []
         routeError = nil
+        // Done with this place: the next search opens on recents, shortcuts and "Yakında", not the old results
+        // (CI screenshot 2a after a drive still showed the previous query).
+        search.query = ""
     }
 
     private func planRoute(to place: Place) {
