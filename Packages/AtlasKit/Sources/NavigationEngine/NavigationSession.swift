@@ -21,7 +21,13 @@ public final class NavigationSession {
 
     public private(set) var isActive = false
     public private(set) var hasArrived = false
+    /// Set by the guidance update itself: with the screen locked the UI may notice the arrival only on
+    /// unlock, which would lengthen the logged drive.
+    public private(set) var arrivedAt: Date?
     public private(set) var isRerouting = false
+    /// Called after every guidance update, also with the screen locked when SwiftUI views may not refresh;
+    /// the Live Activity on the lock screen runs on it. Cleared by `stop()`.
+    @ObservationIgnored public var onUpdate: (@MainActor (NavigationSession) -> Void)?
     /// Metres / seconds to the next maneuver and to the destination.
     public private(set) var distanceToManeuver: Double?
     public private(set) var distanceRemaining: Double?
@@ -97,6 +103,7 @@ public final class NavigationSession {
     public func start(_ option: RouteOption, from location: CLLocation) throws {
         planner = AnnouncementPlanner()
         hasArrived = false
+        arrivedAt = nil
         subscription = core.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
@@ -123,6 +130,7 @@ public final class NavigationSession {
     public func stop() {
         core.stopNavigation()
         subscription = nil
+        onUpdate = nil
         voice.stop()
         isActive = false
         isRerouting = false
@@ -158,6 +166,7 @@ public final class NavigationSession {
 
     private func apply(_ state: NavigationState?) {
         guard isActive, let state else { return }
+        defer { onUpdate?(self) }
         if state.isCalculatingNewRoute, !isRerouting { voice.speak("Yeni rota hesaplanıyor.") }
         isRerouting = state.isCalculatingNewRoute
         // Assign only when the geometry changed (reroute): observers re-render on every set.
@@ -179,6 +188,7 @@ public final class NavigationSession {
             guard !hasArrived else { return }
             voice.speak("Hedefe ulaştın.")
             hasArrived = true
+            arrivedAt = .now
             // Cleared so the bottom bar says "Vardın" instead of a stale arrival time.
             distanceToManeuver = nil
             distanceRemaining = nil

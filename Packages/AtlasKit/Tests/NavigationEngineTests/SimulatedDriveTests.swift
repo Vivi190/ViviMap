@@ -46,6 +46,11 @@ struct SimulatedDriveTests {
         let (route, path) = try await kartalRoute()
         let log = PromptLog()
         let session = try makeSession(logging: log)
+        var updates = 0, arrivalSeen = false
+        session.onUpdate = { session in
+            updates += 1
+            if session.hasArrived { arrivalSeen = true }
+        }
         let startTime = Date.now
         try session.start(route, from: path.fix(at: 0, speed: speed, timestamp: startTime))
         try await drive(session, along: path, from: 0, to: path.length + 30, start: startTime)
@@ -53,6 +58,10 @@ struct SimulatedDriveTests {
 
         let prompts = log.lines
         #expect(session.hasArrived, "never arrived; last prompts: \(prompts.suffix(5))")
+        // The lock-screen path: every update reaches the callback, the arrival included, with its time.
+        #expect(updates > 10, "update callback ran \(updates) times")
+        #expect(arrivalSeen, "the callback never saw the arrival")
+        #expect(session.arrivedAt.map { $0 >= startTime } == true)
         #expect(prompts.first?.hasPrefix("Rota başladı") == true)
         #expect(prompts.last == "Hedefe ulaştın.")
         #expect(!prompts.contains("Yeni rota hesaplanıyor."), "rerouted while exactly on the route: \(prompts)")

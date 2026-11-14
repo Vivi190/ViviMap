@@ -4,7 +4,6 @@ import DesignSystem
 import Diagnostics
 import LocationEngine
 import MapEngine
-import NavigationActivity
 import NavigationEngine
 import RoadHazards
 import RoutingEngine
@@ -138,20 +137,6 @@ struct HomeScreen: View {
         return routes.filter { $0.index != active.index }.map(\.coordinates)
     }
 
-    /// What the Live Activity shows; arrival rounded to the minute so it only changes when the display would.
-    private var activityState: NavigationActivityAttributes.ContentState? {
-        guard isNavigating, let navigation, let remaining = navigation.durationRemaining else { return nil }
-        let arrival = trafficWatch.arrival ?? Date.now.addingTimeInterval(remaining)
-        return NavigationActivityAttributes.ContentState(
-            symbol: navigation.maneuverSymbol,
-            distance: navigation.distanceToManeuver.map { Formatting.distance(meters: $0) } ?? "",
-            instruction: navigation.actionText ?? "Rotayı izle",
-            road: navigation.nextRoad,
-            arrival: Date(timeIntervalSinceReferenceDate: (arrival.timeIntervalSinceReferenceDate / 60).rounded() * 60),
-            arrivalWithTraffic: trafficWatch.arrival != nil
-        )
-    }
-
     private var hazardKinds: Set<Hazard.Kind> {
         var kinds: Set<Hazard.Kind> = []
         if settings.warnsCameras { kinds.insert(.camera) }
@@ -228,9 +213,6 @@ struct HomeScreen: View {
                 recordTrip(arrived: true)
                 guidanceActivity.end()
             }
-        }
-        .onChange(of: activityState) { _, state in
-            if let state { guidanceActivity.update(state) }
         }
         .onChange(of: navigation?.guidanceZoom) { _, zoom in
             // Only while the camera follows the car; a driver who panned the map keeps their view.
@@ -556,10 +538,9 @@ struct HomeScreen: View {
             followCourse(zoom: navigation.guidanceZoom)
             guidanceActivity.start(
                 destination: selectedPlace?.name ?? "Hedef",
-                state: NavigationActivityAttributes.ContentState(
-                    symbol: "location.north.fill", distance: "", instruction: "Rota başladı", road: nil,
-                    arrival: Date.now.addingTimeInterval(route.duration), arrivalWithTraffic: false
-                )
+                navigation: navigation,
+                traffic: trafficWatch,
+                arrival: Date.now.addingTimeInterval(route.duration)
             )
         } catch {
             routeError = "Navigasyon başlatılamadı."
@@ -594,11 +575,13 @@ struct HomeScreen: View {
     }
 
     /// Logged at arrival (so a late tap on "Bitir" does not lengthen the drive) or when ended on the way.
+    /// The arrival time comes from the session: with the screen locked this may run only on unlock.
     private func recordTrip(arrived: Bool) {
         guard let start = tripStart else { return }
         tripStart = nil
+        let end = arrived ? navigation?.arrivedAt ?? .now : .now
         trips.record(Trip(
-            startedAt: start.date, endedAt: .now, destination: start.destination, distance: start.distance,
+            startedAt: start.date, endedAt: end, destination: start.destination, distance: start.distance,
             predicted: start.predicted, predictedWithTraffic: start.withTraffic, arrived: arrived
         ))
     }
