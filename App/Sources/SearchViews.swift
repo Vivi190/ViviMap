@@ -325,17 +325,20 @@ struct RouteCard: View {
 
     var body: some View {
         let route = routes[min(selection, routes.count - 1)]
-        let estimate = trafficStatus == .ready ? traffic[route.index] : nil
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
-                Text(Formatting.duration(seconds: duration(route)))
-                    .font(.system(.largeTitle, weight: .bold))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                Text(Formatting.distance(meters: route.distance))
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+        let fastest = routes.map(duration).min() ?? 0
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            HStack(alignment: .top, spacing: Spacing.s) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(place.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if !place.subtitle.isEmpty {
+                        Text(place.subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
                 Spacer(minLength: 0)
                 Button(action: onClose) {
                     Image(systemName: "xmark.circle.fill")
@@ -346,39 +349,9 @@ struct RouteCard: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Rotayı kapat"))
             }
-            Text("Varış \(Date.now.addingTimeInterval(duration(route)).formatted(date: .omitted, time: .shortened)) · \(place.name)")
-                .font(.subheadline.weight(.medium))
-                .lineLimit(1)
-            if let estimate {
-                TrafficDelayLabel(estimate: estimate)
-            }
-            if !route.mainRoads.isEmpty {
-                Label(route.mainRoads.joined(separator: " → "), systemImage: "road.lanes")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            if let notes = Self.notes(route.notes, avoidsTolls: avoidsTolls) {
-                Label(notes, systemImage: route.notes.hasFerry ? "ferry" : "turkishlirasign.circle")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            if routes.count > 1 {
-                HStack(spacing: Spacing.s) {
-                    ForEach(routes) { option in
-                        Button { selection = option.index } label: {
-                            Text(Formatting.duration(seconds: duration(option)))
-                                .font(.subheadline.weight(.semibold))
-                                .monospacedDigit()
-                                .padding(.horizontal, Spacing.m)
-                                .frame(minHeight: 34)
-                        }
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.capsule)
-                        .tint(option.index == selection ? Color.atlasAccent : Color.secondary)
-                        .accessibilityLabel(Text("Alternatif \(option.index + 1): \(Formatting.duration(seconds: duration(option)))"))
-                    }
+            VStack(spacing: Spacing.xs) {
+                ForEach(routes) { option in
+                    routeRow(option, isSelected: option.index == route.index, fastest: fastest)
                 }
             }
             if route.isOffline {
@@ -421,6 +394,76 @@ struct RouteCard: View {
         .accessibilityIdentifier("route.card")
         .animation(.snappy(duration: 0.25), value: selection)
         .animation(.snappy(duration: 0.25), value: trafficStatus)
+    }
+
+    /// One candidate: time and how much slower than the fastest, distance and arrival. The chosen one also
+    /// shows its main roads, the traffic delay and tolls or ferries; the others stay one line high, so three
+    /// of them leave the map its room.
+    private func routeRow(_ option: RouteOption, isSelected: Bool, fastest: TimeInterval) -> some View {
+        let time = duration(option)
+        let extra = time - fastest
+        let arrival = Date.now.addingTimeInterval(time).formatted(date: .omitted, time: .shortened)
+        let estimate = trafficStatus == .ready ? traffic[option.index] : nil
+        let choosable = routes.count > 1
+        return Button { selection = option.index } label: {
+            HStack(alignment: .top, spacing: Spacing.m) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
+                        Text(Formatting.duration(seconds: time))
+                            .font(.title2.weight(.bold))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                        if choosable, extra >= 60 {
+                            Text("+\(Formatting.duration(seconds: extra))")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        } else if choosable {
+                            Text("En hızlı")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Color.atlasAccent)
+                        }
+                    }
+                    Text("\(Formatting.distance(meters: option.distance)) · Varış \(arrival)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                    if isSelected {
+                        if let estimate {
+                            TrafficDelayLabel(estimate: estimate)
+                        }
+                        if !option.mainRoads.isEmpty {
+                            Label(option.mainRoads.joined(separator: " → "), systemImage: "road.lanes")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        if let notes = Self.notes(option.notes, avoidsTolls: avoidsTolls) {
+                            Label(notes, systemImage: option.notes.hasFerry ? "ferry" : "turkishlirasign.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+                if choosable {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(isSelected ? Color.atlasAccent : Color.secondary.opacity(0.5))
+                }
+            }
+            .padding(Spacing.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                (isSelected && choosable ? Color.atlasAccent.opacity(0.12) : Color.primary.opacity(0.04)),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("\(Formatting.duration(seconds: time)), \(Formatting.distance(meters: option.distance)), varış \(arrival)"))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     /// Always says where the time comes from; HERE's terms require the attribution where its data shows.

@@ -81,43 +81,30 @@ struct NavigationBottomBar: View {
     /// From the last live-traffic round; nil = free-flow estimate, labelled as such.
     let trafficArrival: Date?
     let onEnd: () -> Void
-    @State private var isMuted = false
 
     var body: some View {
         HStack(spacing: Spacing.m) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let remaining = navigation.durationRemaining {
-                    let arrival = trafficArrival ?? Date.now.addingTimeInterval(remaining)
-                    let left = trafficArrival.map { max(0, $0.timeIntervalSinceNow) } ?? remaining
-                    Text(arrival.formatted(date: .omitted, time: .shortened))
-                        .font(.title2.weight(.bold))
-                        .monospacedDigit()
-                    Text("\(Formatting.duration(seconds: left)) · \(Formatting.distance(meters: navigation.distanceRemaining ?? 0))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
+            if let remaining = navigation.durationRemaining {
+                let arrival = trafficArrival ?? Date.now.addingTimeInterval(remaining)
+                let left = trafficArrival.map { max(0, $0.timeIntervalSinceNow) } ?? remaining
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    // Three columns, figure over label, as navigation apps show them.
+                    HStack(alignment: .top, spacing: Spacing.l) {
+                        metric(arrival.formatted(date: .omitted, time: .shortened), "varış")
+                        metric(Formatting.duration(seconds: left), "kalan")
+                        metric(Formatting.distance(meters: navigation.distanceRemaining ?? 0), "mesafe")
+                    }
+                    .accessibilityElement(children: .combine)
                     // Always says where the time comes from.
                     Text(trafficArrival == nil ? "Trafik hariç" : "Canlı trafikle · © HERE")
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
-                } else {
-                    Text(navigation.hasArrived ? "Vardın" : "Rota hazırlanıyor")
-                        .font(.title3.weight(.semibold))
                 }
+            } else {
+                Text(navigation.hasArrived ? "Vardın" : "Rota hazırlanıyor")
+                    .font(.title3.weight(.semibold))
             }
             Spacer(minLength: 0)
-            Button {
-                isMuted.toggle()
-                navigation.voice.isMuted = isMuted
-            } label: {
-                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                    .font(.headline)
-                    .frame(width: 44, height: 44)
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.circle)
-            .accessibilityLabel(Text(isMuted ? "Sesli yönlendirmeyi aç" : "Sesli yönlendirmeyi kapat"))
             Button(role: .destructive, action: onEnd) {
                 Text("Bitir")
                     .font(.headline)
@@ -131,6 +118,19 @@ struct NavigationBottomBar: View {
         }
         .padding(Spacing.l)
         .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func metric(_ value: String, _ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(value)
+                .font(.title3.weight(.bold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

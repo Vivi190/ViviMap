@@ -81,6 +81,8 @@ struct HomeScreen: View {
     @State private var trafficWatch = TrafficWatch()
     @State private var connectivity = Connectivity()
     @State private var cityTraffic = CityTraffic()
+    /// Kept across drives, like the system's own navigation mute.
+    @State private var isMuted = false
     @State private var guidanceActivity = GuidanceActivity()
     /// What the driver was told when a real (not simulated) drive started, for the trip log.
     @State private var tripStart: TripStart?
@@ -271,12 +273,13 @@ struct HomeScreen: View {
                 Spacer(minLength: 0)
                 if selectedPlace == nil {
                     Button { sheet = .attribution } label: {
+                        // Plain small print, as map apps do; still one tap from the full credits.
                         Text(showsCityTraffic ? "© OpenStreetMap · HERE" : "© OpenStreetMap")
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, Spacing.s)
                             .padding(.vertical, Spacing.xs)
-                            .atlasFloatingSurface(in: Capsule())
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text("Harita kaynakları"))
@@ -480,6 +483,15 @@ struct HomeScreen: View {
                 label: "Konumumu göster",
                 isActive: camera.trackingMode == .followDirection
             ) { recenterOnCourse(zoom: navigation.guidanceZoom) }
+            MapControlDivider()
+            MapControlButton(
+                systemImage: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                label: isMuted ? "Sesli yönlendirmeyi aç" : "Sesli yönlendirmeyi kapat",
+                isActive: isMuted
+            ) {
+                isMuted.toggle()
+                navigation.voice.isMuted = isMuted
+            }
             ArrivalShareButton(navigation: navigation, place: selectedPlace, trafficArrival: trafficWatch.arrival)
         }
     }
@@ -538,7 +550,7 @@ struct HomeScreen: View {
 
     /// Traffic rounds while guiding; the task is cancelled when navigation ends (its id changes).
     private func watchTraffic() async {
-        guard isNavigating, let traffic, let planner, let navigation, let destination = selectedPlace?.point else { return }
+        guard isNavigating, let traffic, let planner, let navigation, let destination = selectedPlace else { return }
         trafficWatch.reset()
         var wait: Duration = .seconds(20) // first look soon after the start, then every few minutes
         while !Task.isCancelled {
@@ -570,6 +582,7 @@ struct HomeScreen: View {
             navigation.hazardKinds = hazardKinds
             navigation.userHazards = userHazards.hazards
             navigation.warnsSpeeding = settings.warnsSpeeding
+            navigation.voice.isMuted = isMuted
             try navigation.start(route, from: start)
             location.setNavigating(true)
             // The screen stays on while guiding (it can still be locked by hand; guidance continues).
@@ -687,7 +700,7 @@ struct HomeScreen: View {
         Task {
             do {
                 planner.avoidsTolls = settings.avoidsTolls
-                let found = try await planner.routes(from: here, to: place.point)
+                let found = try await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan)
                 guard generation == planGeneration else { return }
                 routeSelection = 0
                 routes = found
@@ -703,7 +716,7 @@ struct HomeScreen: View {
                             latitude: found.map(\.northEast.latitude).max()!,
                             longitude: found.map(\.northEast.longitude).max()!
                         ),
-                        padding: UIEdgeInsets(top: 150, left: 50, bottom: 320, right: 90)
+                        padding: UIEdgeInsets(top: 150, left: 50, bottom: 380, right: 90)
                     )
                 }
             } catch RoutePlanner.PlanningError.noRoute where planner.avoidsTolls {
