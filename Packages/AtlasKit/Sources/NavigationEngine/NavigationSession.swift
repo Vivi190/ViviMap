@@ -28,6 +28,10 @@ public final class NavigationSession {
     /// Called after every guidance update, also with the screen locked when SwiftUI views may not refresh;
     /// the Live Activity on the lock screen runs on it. Cleared by `stop()`.
     @ObservationIgnored public var onUpdate: (@MainActor (NavigationSession) -> Void)?
+    /// Where to draw the user: the fix snapped to the route while on it, the raw fix once off it (Ferrostar's
+    /// `preferredUserLocation`), so the arrow keeps to the road instead of wandering with GPS noise between
+    /// buildings. Cleared by `stop()`.
+    @ObservationIgnored public var onPuck: (@MainActor (CLLocation) -> Void)?
     /// Metres / seconds to the next maneuver and to the destination.
     public private(set) var distanceToManeuver: Double?
     public private(set) var distanceRemaining: Double?
@@ -138,6 +142,7 @@ public final class NavigationSession {
         core.stopNavigation()
         subscription = nil
         onUpdate = nil
+        onPuck = nil
         voice.stop()
         isActive = false
         isRerouting = false
@@ -174,6 +179,7 @@ public final class NavigationSession {
     private func apply(_ state: NavigationState?) {
         guard isActive, let state else { return }
         defer { onUpdate?(self) }
+        if let puck = state.preferredUserLocation?.clLocation { onPuck?(puck) }
         if state.isCalculatingNewRoute, !isRerouting { voice.speak("Yeni rota hesaplanıyor.") }
         isRerouting = state.isCalculatingNewRoute
         // Assign only when the geometry changed (reroute): observers re-render on every set.

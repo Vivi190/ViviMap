@@ -104,6 +104,34 @@ struct SimulatedDriveTests {
         #expect(!session.isRerouting)
     }
 
+    /// GPS drifting 15 m off the road, as between buildings: the arrow stays on the route (Ferrostar's snapped
+    /// position; the drift is inside the 50 m deviation threshold).
+    @Test(.timeLimit(.minutes(2)))
+    func thePuckKeepsToTheRouteThroughGPSDrift() async throws {
+        let (route, path) = try await kartalRoute()
+        let session = try makeSession(logging: PromptLog())
+        var pucks: [CLLocation] = []
+        session.onPuck = { pucks.append($0) }
+        let startTime = Date.now
+        try session.start(route, from: path.fix(at: 0, speed: speed, timestamp: startTime))
+        var travelled = 10.0
+        while travelled < 600 {
+            let here = path.point(at: travelled)
+            session.ingest(CLLocation(
+                coordinate: Self.offset(here.coordinate, metres: 15, bearing: here.course + 90), altitude: 0,
+                horizontalAccuracy: 10, verticalAccuracy: -1, course: here.course, courseAccuracy: 10,
+                speed: speed, speedAccuracy: 0.5, timestamp: startTime.addingTimeInterval(travelled / speed)
+            ))
+            try await Task.sleep(for: .milliseconds(3))
+            travelled += 10
+        }
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(pucks.count > 20, "puck updates: \(pucks.count)")
+        let drifting = pucks.suffix(20).filter { path.project($0.coordinate, tolerance: 3) == nil }
+        #expect(drifting.isEmpty, "\(drifting.count) of the last 20 pucks are off the route")
+    }
+
     /// Phase 8, long drive: Pendik to Kadıköy (over 18 km of main road and city streets) through the whole
     /// guidance stack. It has to arrive without a reroute, and memory must not grow with the distance driven:
     /// a leak per fix (about 1 000 fixes per half) would show as megabytes in the second half.

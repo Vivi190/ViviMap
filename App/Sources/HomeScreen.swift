@@ -72,6 +72,8 @@ struct HomeScreen: View {
     @State private var simulator = DriveSimulator()
     /// Feeds the user puck during a simulated drive; nil = real GPS.
     @State private var simulatedPuck: StaticLocationManager?
+    /// Feeds the user puck during real guidance with the fix snapped to the route (NavigationSession.onPuck).
+    @State private var guidedPuck: StaticLocationManager?
     @State private var trafficEstimates: [Int: TrafficEstimate] = [:]
     @State private var trafficStatus = RouteCard.TrafficStatus.unavailable
     /// Slow stretches per route alternative, fetched for the one on screen.
@@ -182,7 +184,7 @@ struct HomeScreen: View {
                 traffic: displayedTraffic,
                 areaTraffic: showsCityTraffic ? cityTraffic.lines : [],
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
-                puckSource: simulatedPuck,
+                puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,
                 guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,
                 isOffline: !connectivity.isOnline,
@@ -586,12 +588,17 @@ struct HomeScreen: View {
             UIApplication.shared.isIdleTimerDisabled = true
             if simulated {
                 simulate(route, from: start)
-            } else if let place = selectedPlace {
-                let estimate = trafficStatus == .ready ? trafficEstimates[route.index] : nil
-                tripStart = TripStart(
-                    date: .now, destination: place.name, distance: route.distance,
-                    predicted: estimate?.duration ?? route.duration, withTraffic: estimate != nil
-                )
+            } else {
+                let puck = StaticLocationManager(initialLocation: start)
+                guidedPuck = puck
+                navigation.onPuck = { puck.lastLocation = $0 }
+                if let place = selectedPlace {
+                    let estimate = trafficStatus == .ready ? trafficEstimates[route.index] : nil
+                    tripStart = TripStart(
+                        date: .now, destination: place.name, distance: route.distance,
+                        predicted: estimate?.duration ?? route.duration, withTraffic: estimate != nil
+                    )
+                }
             }
             recenterOnCourse(zoom: navigation.guidanceZoom)
             guidanceActivity.start(
@@ -609,7 +616,7 @@ struct HomeScreen: View {
     /// the tracking mode, which cuts MapLibre's own fly-to short, so the map stayed where it was until the next
     /// fix (CI screenshot 3c showed the route preview's centre, 1.3 km from the car).
     private func recenterOnCourse(zoom: Double) {
-        guard let here = simulatedPuck?.lastLocation ?? location.lastLocation else { return followCourse(zoom: zoom) }
+        guard let here = (simulatedPuck ?? guidedPuck)?.lastLocation ?? location.lastLocation else { return followCourse(zoom: zoom) }
         let direction = here.course >= 0 ? here.course : viewport.bearing
         camera = .center(here.coordinate, zoom: zoom, pitch: Self.pitch3D, direction: direction)
         // After MapLibre's 0.3 s centre and pitch animations; following earlier would cut them short too.
@@ -668,6 +675,7 @@ struct HomeScreen: View {
             location.endSimulation()
         }
         navigation?.stop()
+        guidedPuck = nil
         location.setNavigating(false)
         UIApplication.shared.isIdleTimerDisabled = false
         clearPlace()
