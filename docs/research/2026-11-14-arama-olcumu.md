@@ -96,6 +96,18 @@ Uygulama artık "benzinlik", "en yakın eczane", "marketler" gibi sorguları ter
 
 "Şarj istasyonu" ölçütü geçemedi, çünkü Kartal kıyısına en yakın şarj noktası 3,3 km uzakta: bölgede OSM'de çok az şarj noktası var (cihazdaki dizinde İstanbul'un tamamında 87). Sıralama doğru, ölçütün 3 km sınırı burada sıkı. Eski metin araması bu sorguda bir tekerlekli sandalye şarj noktası buluyordu; Photon'un tür filtresi araç ve tekerlekli sandalye şarjını ayıramaz.
 
+**"Semt + tür" ve "semt + marka"** (elle kontrol, Kartal'dan, 14.11.2026). Photon bu biçimdeki sorguların çoğunu buluyor, çünkü semt adı adres alanlarında geçiyor: "kartal bim", "soğanlık a101", "yakacık şok", "tuzla migros", "kurtköy eczane" doğru. Bulamadıkları:
+
+| Sorgu | Photon'un metin araması | Neden |
+|---|---|---|
+| kurtköy migros | sonuç yok (iki sırada da) | Kurtköy'deki mağazaların adres alanlarında "Kurtköy" geçmiyor |
+| aydınlı benzinlik | sonuç yok | "benzinlik" adlarda geçmiyor |
+| esentepe eczane | Şişli'deki Esentepe'den ve Sakarya'dan eczane | İstanbul'da iki Esentepe var; konum önceliği yetmiyor |
+
+Semti Photon'un yer aramasıyla bulmak da güvenilir değildi (`osm_tag=place`, Kartal'dan): Esentepe ve Yakacık doğru çıktı, ama Kurtköy için önce Yalova'daki Kurtköy geldi, Soğanlık'ta ilgisiz sonuçlar geldi, Aydınlı hiç bulunamadı.
+
+**Düzeltme:** semt cihazdaki İstanbul dizininden bulunur (`place=*`, aynı adlılar arasından kullanıcıya en yakını). "Semt + tür" sorgusunda türün en yakınları o semtin çevresinde listelenir. "Semt + marka" sorgusu boş dönerse marka o semtin çevresinde yeniden aranır. Bu yollar dizinin bulunduğu TestFlight build'lerinde çalışır; ölçüm aracının OSM hedefleri bu sorguları kapsamıyor.
+
 ### 3. ölçümün tam tablosu
 
 | Sorgu | Sonuç | Uygulamanın ilk sonucu | İlk sonucun hedefe uzaklığı |

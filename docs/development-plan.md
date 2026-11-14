@@ -24,7 +24,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 21: yerle işi bitince aramanın baştan (son aramalar, kısayollar, "Yakında") açılması, göbekte dönüş okunun çıkış yoluna kadar uzaması, kayıtlıysa "Ev" ve "İş"in arama çubuğunun altında tek dokunuşla rota açması.
 - Build 22 (yükleniyor): varışta alt çubukta "Otopark" düğmesi, ayarlarda sesli yönlendirme için "Örnek dinle", arama çubuğunda "Nereye?".
 
-Sıradaki build'de gelecekler: şimdilik yok (main'deki her şey build 22'de).
+Sıradaki build'de gelecekler (main'de): "semt + tür" ("esentepe eczane") ve "semt + marka" ("kurtköy migros") aramalarının o semtin çevresinde yapılması.
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -71,6 +71,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 22. **Hedefin yakınındaki otoparklar (build 20+):** bir yeri seç, kartın "…" menüsünden "Yakındaki otoparklar"a dokun. O yerin çevresindeki otoparklar, o yere uzaklıklarıyla listelenmeli; birini seçip oraya rota alabilirsin. Uçak modunda da çalışır.
 23. **Ev / İş kısayolu (build 21+):** bir yeri kartın "…" menüsünden Ev ya da İş olarak kaydet. Ana ekranda arama çubuğunun altında "Ev" / "İş" kapsülü çıkmalı; dokununca doğrudan o yere rota kartı açılmalı.
 24. **Varışta otopark (build 22+):** navigasyonla bir yere var. Alt çubukta "Vardın"ın yanında "Otopark" düğmesi çıkmalı; dokununca navigasyon biter ve hedefin çevresindeki otoparklar, hedefe uzaklıklarıyla listelenir.
+25. **Semt + tür / marka (sıradaki build):** "esentepe eczane", "aydınlı benzinlik", "kurtköy migros" yaz. Sonuçlar o semtin çevresinden gelmeli (Esentepe için Kartal'daki, Şişli'deki değil).
 
 **Bilinen sınırlar:**
 
