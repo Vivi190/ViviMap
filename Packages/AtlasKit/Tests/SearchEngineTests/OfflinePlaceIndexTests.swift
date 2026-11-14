@@ -115,4 +115,13 @@ struct FallbackSearchProviderTests {
         let noIndex = FallbackSearchProvider(primary: Failing(error: URLError(.timedOut)), fallback: nil)
         await #expect(throws: URLError.self) { try await noIndex.search("kartal", near: nil) }
     }
+
+    @Test func aServerOutageAlsoFallsBack() async throws {
+        let busy = FallbackSearchProvider(primary: Failing(error: PhotonSearchProvider.HTTPError(status: 502)), fallback: Fixed())
+        #expect(try await busy.search("kartal", near: nil).map(\.name) == ["kartal"])
+        let limited = FallbackSearchProvider(primary: Failing(error: PhotonSearchProvider.HTTPError(status: 429)), fallback: Fixed())
+        #expect(try await limited.search("kartal", near: nil).map(\.name) == ["kartal"])
+        let badRequest = FallbackSearchProvider(primary: Failing(error: PhotonSearchProvider.HTTPError(status: 400)), fallback: Fixed())
+        await #expect(throws: PhotonSearchProvider.HTTPError.self) { try await badRequest.search("kartal", near: nil) }
+    }
 }

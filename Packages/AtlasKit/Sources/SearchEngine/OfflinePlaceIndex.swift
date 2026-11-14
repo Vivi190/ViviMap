@@ -183,9 +183,17 @@ public struct FallbackSearchProvider: PlaceSearchProvider {
     public func search(_ query: String, near: GeoPoint?) async throws -> [Place] {
         do {
             return try await primary.search(query, near: near)
-        } catch let error as URLError {
-            guard let fallback else { throw error }
+        } catch {
+            guard let fallback, Self.isOutage(error) else { throw error }
             return try await fallback.search(query, near: near)
         }
+    }
+
+    /// No connection, or the server down or rate-limiting (the public Photon answers 502/503 at busy times):
+    /// the shipped index can answer. Anything else is a real failure to report.
+    static func isOutage(_ error: any Error) -> Bool {
+        if error is URLError { return true }
+        guard let http = error as? PhotonSearchProvider.HTTPError else { return false }
+        return http.status >= 500 || http.status == 429
     }
 }
