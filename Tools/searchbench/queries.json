@@ -67,5 +67,14 @@
   {"query": "üsküdar iskelesi", "osm": "[\"amenity\"=\"ferry_terminal\"][\"name\"~\"Üsküdar\"]", "radius": 300},
   {"query": "optimum avm", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Optimum\",i]", "radius": 300},
   {"query": "capitol avm", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Capitol\",i]", "radius": 300},
-  {"query": "pendik metro durağı", "osm": "[\"highway\"=\"bus_stop\"][\"name\"~\"Pendik Metro\"]", "radius": 100}
+  {"query": "pendik metro durağı", "osm": "[\"highway\"=\"bus_stop\"][\"name\"~\"Pendik Metro\"]", "radius": 100},
+
+  {"query": "Sanayi Cad. No:1 Kartal", "osm": "[\"addr:street\"=\"Sanayi Caddesi\"][\"addr:housenumber\"=\"1\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "Hatboyu Cad. No 17 Tuzla", "osm": "[\"amenity\"=\"townhall\"][\"name\"~\"Tuzla Belediye\"]"},
+  {"query": "Bağdat Cd. No:300 Kadıköy", "osm": "[\"addr:street\"=\"Bağdat Caddesi\"][\"addr:housenumber\"=\"300\"]", "radius": 50},
+  {"query": "Ankara Cad. No:5 Kartal", "osm": "[\"highway\"][\"name\"=\"Ankara Caddesi\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul", "osm": "[\"highway\"][\"name\"=\"Atatürk Caddesi\"]", "bbox": "(40.905,29.20,40.93,29.235)", "radius": 50},
+  {"query": "ihlas sk. kartal", "osm": "[\"highway\"][\"name\"=\"İhlas Sokağı\"]", "bbox": "(40.86,29.14,40.94,29.25)", "radius": 50},
+  {"query": "cevizli tugay yolu", "osm": "[\"highway\"][\"name\"=\"Tugay Yolu Caddesi\"]", "radius": 50},
+  {"query": "istanbul havalimanı otopark", "osm": "[\"amenity\"=\"parking\"][\"name\"~\"^İstanbul Havalimanı\"]", "radius": 300}
 ]

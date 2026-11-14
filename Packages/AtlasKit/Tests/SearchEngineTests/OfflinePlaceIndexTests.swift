@@ -62,6 +62,14 @@ struct OfflinePlaceIndexTests {
         #expect(found.first?.category == "highway=secondary")
     }
 
+    @Test func anAddressFindsItsStreet() async throws {
+        // No house numbers offline: "Çanakkale Cad. No:5" finds the street, the nearer one first.
+        let kartal = GeoPoint(latitude: 40.8890, longitude: 29.1905)
+        let found = try await index().search("Çanakkale Cad. No:5", near: kartal)
+        #expect(found.first?.name == "Çanakkale Caddesi")
+        #expect(found.first?.point.latitude == 40.9005)
+    }
+
     @Test func punctuationOnlyFindsNothing() async throws {
         #expect(try await index().search(" - ' ", near: nil).isEmpty)
     }

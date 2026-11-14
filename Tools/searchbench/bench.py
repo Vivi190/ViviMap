@@ -46,28 +46,77 @@ FOCUS = [
      ["railway:station", "railway:halt", "public_transport:station"]),
     ({"avm"}, ["shop:mall"]),
     ({"iskele", "iskelesi"}, ["amenity:ferry_terminal"]),
+    ({"otopark", "otoparkı"}, ["amenity:parking"]),
 ]
+# Mirrors PlaceRanking.lines.
+LINES = {"railway=rail", "railway=subway", "railway=light_rail", "railway=tram", "railway=monorail", "railway=narrow_gauge",
+         "railway=funicular", "railway=construction", "railway=proposed", "railway=abandoned", "railway=disused",
+         "highway=construction", "highway=proposed"}
+# Mirrors PlaceRanking.addressSteps / streetWord / numberAfterStreet.
+ADDRESS_STEPS = [
+    (r"(?<!\w)iç\s+kapı(?:\s+no)?\s*[\.:]?\s*\d+\w*", " "),
+    (r"(?<!\w)dış\s+kapı(?!\w)", " "),
+    (r"(?<!\w)(?:d|k)\s*[\.:]\s*\d+\w*", " "),
+    (r"(?<!\w)(?:daire|kat)\s*[\.:]?\s*\d+\w*", " "),
+    (r"(?<!\w)(?:no|numara|nu)\s*[\.:]?\s*(\d+[a-zçğıöşü]?)(?:\s*/\s*\d+)?(?!\w)", r" \1 "),
+    (r"/", " "),
+    (r"(?<!\w)(?:cad|cd)(?:\.|(?!\w))", " caddesi "),
+    (r"(?<!\w)(?:sok|sk)(?:\.|(?!\w))", " sokak "),
+    (r"(?<!\w)(?:mah|mh)(?:\.|(?!\w))", " mahallesi "),
+    (r"(?<!\w)(?:blv|bulv)(?:\.|(?!\w))|(?<!\w)bul\.", " bulvarı "),
+]
+STREET_WORD = r"(?<!\w)(?:caddesi|cadde|sokak|sokağı|bulvarı|bulvar|yolu)(?!\w)"
+NUMBER_AFTER_STREET = r"(?<!\w)(?:caddesi|cadde|sokak|sokağı|bulvarı|bulvar|yolu)\s+(\d+[a-zçğıöşü]?)(?!\w)"
+SAME_STREET_WORD = {"sokağı": "sokak", "cadde": "caddesi", "bulvar": "bulvarı"}
 
 
 def turkish_lower(text):
     return text.replace("I", "ı").replace("İ", "i").lower()
 
 
+def words_of(text):
+    """PlaceRanking.words: lowercased, "sokağı"/"sokak" alike, padded so a match is whole words."""
+    return " " + " ".join(SAME_STREET_WORD.get(w, w) for w in turkish_lower(text).split()) + " "
+
+
+def address(query):
+    """PlaceRanking.address: the query in OSM's spelling and its house number; other queries unchanged."""
+    lower = turkish_lower(query)
+    text = lower
+    for pattern, template in ADDRESS_STEPS:
+        text = re.sub(pattern, template, text)
+    text = " ".join(text.split())
+    number = re.search(NUMBER_AFTER_STREET, text)
+    return (text if text != " ".join(lower.split()) else query), (number.group(1) if number else None)
+
+
 def app_rank(features, query):
-    text = turkish_lower(query)
-    boosted = set().union(*[cats for words, cats in BOOSTS if any(w in text for w in words)] or [set()])
-    wants_stops = "durak" in text or "durağ" in text
+    text = turkish_lower(address(query)[0])
+    query_words = words_of(text)
+    street = re.search(STREET_WORD, text) is not None
+    focused = focus(query)
+    if focused:
+        boosted = {tag.replace(":", "=") for tag in focused[1]}
+    elif street:
+        boosted = set()
+    else:
+        boosted = set().union(*[cats for words, cats in BOOSTS if any(w in text for w in words)] or [set()])
+    wants_stops = not street and ("durak" in text or "durağ" in text)
 
     def bucket(f):
         p = f["properties"]
         category = f"{p.get('osm_key')}={p.get('osm_value')}" if p.get("osm_key") else None
         if category is None:
-            return 1
-        if wants_stops:
-            return 0 if category in STOPS else 1
-        if category in boosted:
+            return 2
+        if category in LINES:
+            return 4
+        if p.get("street") and p.get("housenumber") and words_of(f"{p['street']} {p['housenumber']}") in query_words:
             return 0
-        return 2 if category in STOPS else 1
+        if wants_stops:
+            return 1 if category in STOPS else 2
+        if category in boosted or (street and category.startswith("highway=") and category not in STOPS):
+            return 1
+        return 3 if category in STOPS else 2
 
     return [f for _, f in sorted(enumerate(features), key=lambda e: (bucket(e[1]), e[0]))]
 
@@ -91,7 +140,10 @@ def photon(query, tags=()):
 
 
 def focus(query):
-    words = turkish_lower(query).split()
+    text = turkish_lower(address(query)[0])
+    if re.search(STREET_WORD, text):  # "istasyon caddesi": the kind word is part of the street's name
+        return None
+    words = text.split()
     for kind_words, tags in FOCUS:
         name = [w for w in words if w not in kind_words]
         if len(name) < len(words) and name:
@@ -101,6 +153,7 @@ def focus(query):
 
 def app_search(query):
     """PhotonSearchProvider.search: the focused hits first, then the general answer without repeats."""
+    query = address(query)[0]
     general = photon(query)
     focused = focus(query)
     if not focused:
@@ -250,6 +303,12 @@ def self_test():
     assert all(t({"highway": "primary", "name": "Canakkale Caddesi"}) for t in parse_filter('["highway"]["name"~"^[ÇC]anakkale Caddesi$"]'))
     assert not parse_filter('["highway"]')[0]({"name": "x"})
     assert parse_bbox("(40.86,29.14,40.94,29.25)") == (40.86, 29.14, 40.94, 29.25)
+    assert address("Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul") == ("yakacık mahallesi atatürk caddesi 12 kartal istanbul", "12")
+    assert address("ATATÜRK CAD. DIŞ KAPI NO: 12 İÇ KAPI NO: 3 KARTAL") == ("atatürk caddesi 12 kartal", "12")
+    assert address("Doğa Sk. No:5/2") == ("doğa sokak 5", "5")
+    assert address("Ankara Caddesi 5 Kartal") == ("Ankara Caddesi 5 Kartal", "5")
+    assert address("Kartal 5 Nolu Aile Sağlığı Merkezi") == ("Kartal 5 Nolu Aile Sağlığı Merkezi", None)
+    assert focus("istasyon caddesi tuzla") is None and focus("istanbul havalimanı otopark") == ("istanbul havalimanı", ["amenity:parking"])
     square = {"type": "Polygon", "coordinates": [[[29.0, 41.0], [29.01, 41.0], [29.01, 41.01], [29.0, 41.01], [29.0, 41.0]]]}
     assert distance_to(as_elements(square), (41.005, 29.005)) == 0.0  # inside an area
     assert 100 < distance_to(as_elements(square), (41.005, 29.0115)) < 200  # ~126 m east of it

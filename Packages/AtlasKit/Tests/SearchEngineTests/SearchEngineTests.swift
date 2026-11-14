@@ -77,6 +77,25 @@ struct FocusedSearchTests {
         #expect(PlaceRanking.focus("metro") == nil)
     }
 
+    @Test func aKindWordInAStreetNameIsNoKind() {
+        #expect(PlaceRanking.focus("istasyon caddesi tuzla") == nil)
+        let parking = PlaceRanking.focus("istanbul havalimanı otopark")
+        #expect(parking?.name == "istanbul havalimanı")
+        #expect(parking?.tags == ["amenity:parking"])
+    }
+
+    @Test func theKindAskedForOutranksTheOneItsNameSuggests() throws {
+        // "havalimanı" lifts airports; "… otopark" asks for the car park.
+        let json = """
+        {"features":[
+          {"geometry":{"coordinates":[28.7519,41.2753]},"properties":{"osm_type":"W","osm_id":1,"osm_key":"aeroway","osm_value":"aerodrome","name":"İstanbul Havalimanı","city":"Arnavutköy"}},
+          {"geometry":{"coordinates":[28.74414,41.25796]},"properties":{"osm_type":"W","osm_id":2,"osm_key":"amenity","osm_value":"parking","name":"İstanbul Havalimanı Otoparkı","street":"Terminal Caddesi","city":"Arnavutköy"}}
+        ]}
+        """
+        let ranked = PlaceRanking.rank(try PhotonParser.places(from: Data(json.utf8)), query: "istanbul havalimanı otopark")
+        #expect(ranked.first?.category == "amenity=parking")
+    }
+
     @Test func focusedRequestCarriesTheFilters() throws {
         let request = PhotonSearchProvider().request("kartal", near: nil, tags: ["railway:station", "railway:halt"])
         let url = try #require(request.url)
@@ -84,6 +103,66 @@ struct FocusedSearchTests {
         #expect(items.filter { $0.name == "osm_tag" }.map(\.value) == ["railway:station", "railway:halt"])
         #expect(items.first { $0.name == "q" }?.value == "kartal")
         #expect(items.first { $0.name == "lang" }?.value == "default")
+    }
+}
+
+/// Addresses as they are written in Turkey; search benchmark 14.11.2026: "No:5" and "Cad." sent Photon to
+/// notaries and tyre shops.
+struct AddressSearchTests {
+    @Test func shorthandIsSpelledOutAndTheHouseNumberFound() {
+        let yakacik = PlaceRanking.address("Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul")
+        #expect(yakacik.text == "yakacık mahallesi atatürk caddesi 12 kartal istanbul")
+        #expect(yakacik.houseNumber == "12")
+        #expect(PlaceRanking.address("ATATÜRK CAD. DIŞ KAPI NO: 12 İÇ KAPI NO: 3 KARTAL").text == "atatürk caddesi 12 kartal")
+        #expect(PlaceRanking.address("Doğa Sk. No:5/2").text == "doğa sokak 5")
+        #expect(PlaceRanking.address("Kızılay Blv. No.30").text == "kızılay bulvarı 30")
+    }
+
+    @Test func otherQueriesPassUnchanged() {
+        let clinic = PlaceRanking.address("Kartal 5 Nolu Aile Sağlığı Merkezi")
+        #expect(clinic.text == "Kartal 5 Nolu Aile Sağlığı Merkezi")
+        #expect(clinic.houseNumber == nil)
+        let typed = PlaceRanking.address("Ankara Caddesi 5 Kartal")
+        #expect(typed.text == "Ankara Caddesi 5 Kartal")
+        #expect(typed.houseNumber == "5")
+    }
+
+    @Test func theAddressOnThatStreetComesFirstThenTheStreet() throws {
+        // Photon's answer for the spelled-out query, trimmed, plus a pharmacy at the address itself. The notary
+        // is number 12 on another street.
+        let json = """
+        {"features":[
+          {"geometry":{"coordinates":[29.22444,40.91824]},"properties":{"osm_type":"N","osm_id":1,"osm_key":"office","osm_value":"notary","name":"Kartal 24.Noter","street":"Kartal Caddesi","housenumber":"12","district":"Yakacık Çarşı","city":"Kartal"}},
+          {"geometry":{"coordinates":[29.22688,40.91783]},"properties":{"osm_type":"W","osm_id":2,"osm_key":"building","osm_value":"residential","name":"Yakacık Çarşı Mahallesi Muhtarlığı","street":"Tarihi Ayazma Caddesi","district":"Yakacık Çarşı","city":"Kartal"}},
+          {"geometry":{"coordinates":[29.21590,40.91843]},"properties":{"osm_type":"W","osm_id":3,"osm_key":"highway","osm_value":"tertiary","name":"Atatürk Caddesi","district":"Yakacık Çarşı","city":"Kartal"}},
+          {"geometry":{"coordinates":[29.21600,40.91850]},"properties":{"osm_type":"N","osm_id":4,"osm_key":"amenity","osm_value":"pharmacy","name":"Eczane","street":"Atatürk Caddesi","housenumber":"12","district":"Yakacık Çarşı","city":"Kartal"}}
+        ]}
+        """
+        let parsed = try PhotonParser.places(from: Data(json.utf8))
+        #expect(parsed[3].streetAddress == "Atatürk Caddesi 12")
+        let query = "Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"
+        #expect(PlaceRanking.rank(parsed, query: query).prefix(2).map(\.name) == ["Eczane", "Atatürk Caddesi"])
+        #expect(PlaceRanking.rank(parsed.filter { $0.name != "Eczane" }, query: query).first?.name == "Atatürk Caddesi")
+    }
+
+    @Test func linesAndPlansSink() throws {
+        // Photon's answer for "cevizli tugay yolu", trimmed: a metro line under construction came first.
+        let json = """
+        {"features":[
+          {"geometry":{"coordinates":[29.15987,40.91768]},"properties":{"osm_type":"W","osm_id":1,"osm_key":"railway","osm_value":"construction","name":"Tugay Yolu","street":"Tugay Yolu Caddesi","district":"Cevizli","city":"Maltepe"}},
+          {"geometry":{"coordinates":[29.14961,40.91506]},"properties":{"osm_type":"N","osm_id":2,"osm_key":"highway","osm_value":"bus_stop","name":"Tugay Yolu","street":"Bağdat Caddesi","district":"Cevizli","city":"Maltepe"}},
+          {"geometry":{"coordinates":[29.16771,40.91864]},"properties":{"osm_type":"W","osm_id":3,"osm_key":"highway","osm_value":"primary","name":"Tugay Yolu Caddesi","district":"Cevizli","city":"Maltepe"}}
+        ]}
+        """
+        let ranked = PlaceRanking.rank(try PhotonParser.places(from: Data(json.utf8)), query: "cevizli tugay yolu")
+        #expect(ranked.map(\.category) == ["highway=primary", "highway=bus_stop", "railway=construction"])
+    }
+
+    @Test func aStrayCombiningDotIsDropped() throws {
+        // As Photon returned the stop by the Yavuz Selim hospital: "i" + U+0307, a doubled dot on screen.
+        let json = #"{"features":[{"geometry":{"coordinates":[29.20687,40.90123]},"properties":{"osm_type":"N","osm_id":1,"osm_key":"highway","osm_value":"bus_stop","name":"Yavuz Seli̇m Devlet Hastanesi̇","street":"Yakacık Caddesi","city":"Kartal"}}]}"#
+        let place = try #require(try PhotonParser.places(from: Data(json.utf8)).first)
+        #expect(place.name == "Yavuz Selim Devlet Hastanesi")
     }
 }
 

@@ -36,14 +36,21 @@ public struct Place: Identifiable, Hashable, Sendable, Codable {
     /// points and streets. The routing uses it to end on a public road rather than inside the area.
     /// Optional, so places saved before it existed still decode.
     public let areaSpan: Double?
+    /// "Sanayi Caddesi 1" when OSM gives the place a street and house number, so a query for that address can
+    /// put it first. Optional, so places saved before it existed still decode.
+    public let streetAddress: String?
 
-    public init(id: String, name: String, subtitle: String, point: GeoPoint, category: String?, areaSpan: Double? = nil) {
+    public init(
+        id: String, name: String, subtitle: String, point: GeoPoint, category: String?,
+        areaSpan: Double? = nil, streetAddress: String? = nil
+    ) {
         self.id = id
         self.name = name
         self.subtitle = subtitle
         self.point = point
         self.category = category
         self.areaSpan = areaSpan
+        self.streetAddress = streetAddress
     }
 }
 

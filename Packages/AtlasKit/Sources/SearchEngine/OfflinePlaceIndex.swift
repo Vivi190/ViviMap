@@ -73,7 +73,10 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     }()
 
     public func search(_ query: String, near: GeoPoint?) async throws -> [Place] {
-        let words = TurkishFold.fold(query).split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        // "Çanakkale Cad. No:5" spelled out; the index has no house numbers, so it looks for the street.
+        let address = PlaceRanking.address(query)
+        let words = TurkishFold.fold(address.text).split { !$0.isLetter && !$0.isNumber }.map(String.init)
+            .filter { $0 != address.houseNumber }
         guard !words.isEmpty else { return [] }
         let found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
         let wanted = words.joined(separator: " ")
