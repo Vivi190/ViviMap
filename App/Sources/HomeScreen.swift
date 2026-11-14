@@ -430,7 +430,7 @@ struct HomeScreen: View {
                 systemImage: "location.north.line.fill",
                 label: "Konumumu göster",
                 isActive: camera.trackingMode == .followDirection
-            ) { followCourse(zoom: navigation.guidanceZoom) }
+            ) { recenterOnCourse(zoom: navigation.guidanceZoom) }
         }
     }
 
@@ -535,7 +535,7 @@ struct HomeScreen: View {
                     predicted: estimate?.duration ?? route.duration, withTraffic: estimate != nil
                 )
             }
-            followCourse(zoom: navigation.guidanceZoom)
+            recenterOnCourse(zoom: navigation.guidanceZoom)
             guidanceActivity.start(
                 destination: selectedPlace?.name ?? "Hedef",
                 navigation: navigation,
@@ -544,6 +544,20 @@ struct HomeScreen: View {
             )
         } catch {
             routeError = "Navigasyon başlatılamadı."
+        }
+    }
+
+    /// Start and "Konumumu göster": onto the last fix first, then follow. swiftui-dsl sets the zoom right after
+    /// the tracking mode, which cuts MapLibre's own fly-to short, so the map stayed where it was until the next
+    /// fix (CI screenshot 3c showed the route preview's centre, 1.3 km from the car).
+    private func recenterOnCourse(zoom: Double) {
+        guard let here = simulatedPuck?.lastLocation ?? location.lastLocation else { return followCourse(zoom: zoom) }
+        let direction = here.course >= 0 ? here.course : viewport.bearing
+        camera = .center(here.coordinate, zoom: zoom, pitch: Self.pitch3D, direction: direction)
+        // After MapLibre's 0.3 s centre and pitch animations; following earlier would cut them short too.
+        Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            if isNavigating { followCourse(zoom: zoom) }
         }
     }
 
