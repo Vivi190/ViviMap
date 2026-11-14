@@ -57,5 +57,15 @@
   {"query": "kız kulesi", "osm": "[\"name\"=\"Kız Kulesi\"]"},
   {"query": "çamlıca camii", "osm": "[\"amenity\"=\"place_of_worship\"][\"name\"~\"Çamlıca Camii\"]", "radius": 300},
 
-  {"query": "kartal metro durağı", "osm": "[\"highway\"=\"bus_stop\"][\"name\"~\"Kartal Metro\"]", "radius": 100}
+  {"query": "kartal metro durağı", "osm": "[\"highway\"=\"bus_stop\"][\"name\"~\"Kartal Metro\"]", "radius": 100},
+
+  {"query": "maltepe metro istasyonu", "osm": "[\"railway\"=\"station\"][\"name\"~\"^Maltepe\"]", "radius": 300},
+  {"query": "bostancı marmaray", "osm": "[\"railway\"=\"station\"][\"name\"~\"^Bostancı\"]", "radius": 300},
+  {"query": "kozyatağı metro", "osm": "[\"railway\"=\"station\"][\"name\"~\"Kozyatağı\"]", "radius": 300},
+  {"query": "üsküdar marmaray", "osm": "[\"railway\"=\"station\"][\"name\"~\"^Üsküdar\"]", "radius": 300},
+  {"query": "kartal iskelesi", "osm": "[\"amenity\"=\"ferry_terminal\"][\"name\"~\"Kartal\"]", "radius": 300},
+  {"query": "üsküdar iskelesi", "osm": "[\"amenity\"=\"ferry_terminal\"][\"name\"~\"Üsküdar\"]", "radius": 300},
+  {"query": "optimum avm", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Optimum\",i]", "radius": 300},
+  {"query": "capitol avm", "osm": "[\"shop\"=\"mall\"][\"name\"~\"Capitol\",i]", "radius": 300},
+  {"query": "pendik metro durağı", "osm": "[\"highway\"=\"bus_stop\"][\"name\"~\"Pendik Metro\"]", "radius": 100}
 ]
