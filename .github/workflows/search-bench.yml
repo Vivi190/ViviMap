@@ -1,0 +1,40 @@
+name: Search benchmark
+
+# Manual: is the app's first search result the place the driver meant? (Phase 2, docs/development-plan.md)
+# Queries go live to Photon with the app's parameters and ranking (Tools/searchbench/bench.py); the intended
+# places come from the Istanbul OSM extract itself, because the public Overpass servers kept timing out.
+# Data © OpenStreetMap contributors (ODbL), extract from Geofabrik.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BBOX: "28.0,40.75,29.95,41.6" # same box as the offline packages
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Named places in Istanbul
+        run: |
+          curl -fsSL -o turkey.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          osmium extract -b "$BBOX" turkey.osm.pbf -o istanbul.osm.pbf --overwrite
+          osmium tags-filter istanbul.osm.pbf nwr/name -o named.osm.pbf --overwrite
+          osmium export named.osm.pbf -f geojsonseq -o named.geojsonseq --overwrite
+          osmium fileinfo -e istanbul.osm.pbf | grep -E "Timestamp" || true
+
+      - name: Benchmark
+        run: |
+          python3 Tools/searchbench/bench.py --self-test
+          python3 Tools/searchbench/bench.py --osm-file named.geojsonseq > search-bench.md
+          cat search-bench.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: search-bench
+          path: search-bench.md

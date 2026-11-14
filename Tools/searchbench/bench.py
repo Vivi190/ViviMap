@@ -8,10 +8,14 @@ replicated here. A hit is a result within `radius` metres of the intended OSM ge
 This measures ranking and recall on OSM data, not whether OSM itself is right.
 
     python -X utf8 Tools/searchbench/bench.py > docs/research/search-bench.md
+    # Targets from a local extract instead of Overpass (.github/workflows/search-bench.yml):
+    python3 Tools/searchbench/bench.py --osm-file named.geojsonseq > search-bench.md
 """
+import argparse
 import json
 import math
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -102,6 +106,66 @@ def overpass_targets(cases, chunk=8):
     return targets
 
 
+FILTER = re.compile(r'\["([^"]+)"(?:(=|~)"((?:[^"\\]|\\.)*)"(,i)?)?\]')
+
+
+def parse_filter(text):
+    """The Overpass tag filters queries.json uses: ["k"], ["k"="v"], ["k"~"regex"], ["k"~"regex",i]."""
+    tests = []
+    for key, op, value, ignore_case in FILTER.findall(text):
+        if not op:
+            tests.append(lambda tags, k=key: k in tags)
+        elif op == "=":
+            tests.append(lambda tags, k=key, v=value: tags.get(k) == v)
+        else:
+            pattern = re.compile(value, re.IGNORECASE if ignore_case else 0)
+            tests.append(lambda tags, k=key, p=pattern: k in tags and p.search(tags[k]) is not None)
+    return tests
+
+
+def parse_bbox(text):
+    south, west, north, east = (float(v) for v in text.strip("()").split(","))
+    return south, west, north, east
+
+
+def as_elements(geometry):
+    """GeoJSON geometry → the Overpass element shapes distance_to() reads."""
+    kind, coords = geometry["type"], geometry["coordinates"]
+    line = lambda points: [{"lat": lat, "lon": lon} for lon, lat in points]
+    if kind == "Point":
+        return [{"type": "node", "lat": coords[1], "lon": coords[0]}]
+    if kind == "LineString":
+        return [{"type": "way", "geometry": line(coords)}]
+    rings = coords if kind in ("MultiLineString", "Polygon") else [ring for polygon in coords for ring in polygon]
+    return [{"type": "relation", "members": [{"geometry": line(ring)} for ring in rings]}]
+
+
+def file_targets(cases, path):
+    """Targets from an `osmium export` geojsonseq of named objects: the same OSM data, no public server."""
+    tests = [parse_filter(case["osm"]) for case in cases]
+    boxes = [parse_bbox(case.get("bbox", ISTANBUL)) for case in cases]
+    targets = {number: [] for number in range(len(cases))}
+    with open(path, encoding="utf-8") as source:
+        for line in source:
+            line = line.strip().lstrip("\x1e")
+            if not line:
+                continue
+            feature = json.loads(line)
+            tags = feature.get("properties") or {}
+            matching = [n for n, case_tests in enumerate(tests) if all(test(tags) for test in case_tests)]
+            if not matching or feature.get("geometry") is None:
+                continue
+            elements = as_elements(feature["geometry"])
+            points = [(e["lat"], e["lon"]) for e in elements if e["type"] == "node"] + [
+                (c["lat"], c["lon"]) for e in elements for g in [e.get("geometry")] + [m["geometry"] for m in e.get("members", [])] if g for c in g
+            ]
+            for number in matching:
+                south, west, north, east = boxes[number]
+                if any(south <= lat <= north and west <= lon <= east for lat, lon in points):
+                    targets[number].extend(elements)
+    return targets
+
+
 def inside(point, ring):
     """Ray casting on a closed ring of (lat, lon)."""
     y, x = point
@@ -147,10 +211,30 @@ def distance_to(elements, point):
     return best
 
 
+def self_test():
+    tags = {"amenity": "hospital", "name": "T.C. Sağlık Bakanlığı Pendik Devlet Hastanesi"}
+    assert all(t(tags) for t in parse_filter('["amenity"="hospital"]["name"~"Pendik Devlet Hastanesi"]'))
+    assert not all(t(tags) for t in parse_filter('["amenity"="hospital"]["name"~"^Pendik"]'))
+    assert all(t({"shop": "mall", "name": "VIAPORT"}) for t in parse_filter('["shop"="mall"]["name"~"Viaport",i]'))
+    assert all(t({"highway": "primary", "name": "Canakkale Caddesi"}) for t in parse_filter('["highway"]["name"~"^[ÇC]anakkale Caddesi$"]'))
+    assert not parse_filter('["highway"]')[0]({"name": "x"})
+    assert parse_bbox("(40.86,29.14,40.94,29.25)") == (40.86, 29.14, 40.94, 29.25)
+    square = {"type": "Polygon", "coordinates": [[[29.0, 41.0], [29.01, 41.0], [29.01, 41.01], [29.0, 41.01], [29.0, 41.0]]]}
+    assert distance_to(as_elements(square), (41.005, 29.005)) == 0.0  # inside an area
+    assert 100 < distance_to(as_elements(square), (41.005, 29.0115)) < 200  # ~126 m east of it
+    print("self-test ok")
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--osm-file", help="geojsonseq of named OSM objects (osmium export) instead of Overpass")
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    if args.self_test:
+        return self_test()
     cases = json.loads(Path(__file__).with_name("queries.json").read_text(encoding="utf-8"))
     rows, hits1, hits3, scored = [], 0, 0, 0
-    all_targets = overpass_targets(cases)
+    all_targets = file_targets(cases, args.osm_file) if args.osm_file else overpass_targets(cases)
     for number, case in enumerate(cases):
         if number not in all_targets:
             rows.append((case["query"], "—", "Overpass yanıt vermedi (ölçülmedi)", ""))
@@ -174,7 +258,8 @@ def main():
 
     print(f"# Arama ölçümü — {time.strftime('%d.%m.%Y')}\n")
     print("Photon (uygulamanın parametreleri, Kartal'dan konum önceliği) + uygulamanın yeniden sıralaması.")
-    print("Hedef: OSM'deki nesne (Overpass). İsabet: sonuç hedef geometriye yarıçap içinde (varsayılan 150 m).\n")
+    source = "İstanbul OSM kesiti (Geofabrik, osmium)" if args.osm_file else "Overpass"
+    print(f"Hedef: OSM'deki nesne ({source}). İsabet: sonuç hedef geometriye yarıçap içinde (varsayılan 150 m).\n")
     print(f"**İlk sonuç doğru: {hits1}/{scored}** · ilk 3'te: {hits3}/{scored}\n")
     print("| Sorgu | Sonuç | Uygulamanın ilk sonucu | İlk sonucun hedefe uzaklığı |")
     print("|---|---|---|---|")
