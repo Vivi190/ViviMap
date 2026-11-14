@@ -350,7 +350,8 @@ struct RouteCard: View {
                 .accessibilityLabel(Text("Rotayı kapat"))
             }
             VStack(spacing: Spacing.xs) {
-                ForEach(routes) { option in
+                // Fastest first, by the same time the rows show (selection follows `index`, not the row).
+                ForEach(routes.sorted { duration($0) < duration($1) }) { option in
                     routeRow(option, isSelected: option.index == route.index, fastest: fastest)
                 }
             }
