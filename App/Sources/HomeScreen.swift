@@ -458,7 +458,33 @@ struct HomeScreen: View {
                 label: "Konumumu göster",
                 isActive: camera.trackingMode == .followDirection
             ) { recenterOnCourse(zoom: navigation.guidanceZoom) }
+            if let message = arrivalMessage(navigation) {
+                MapControlDivider()
+                ShareLink(item: message) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(Color.primary)
+                        .frame(width: Metrics.controlWidth, height: Metrics.tapTarget)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Varışımı paylaş"))
+            }
         }
+    }
+
+    /// "Varışım yaklaşık 12:34 · Kartal Adliyesi" and a map link to the place, for whoever is waiting. Phrased
+    /// without a case suffix after the name ("Adliyesi'ne"), which cannot be derived reliably.
+    private func arrivalMessage(_ navigation: NavigationSession) -> String? {
+        guard let place = selectedPlace, let remaining = navigation.durationRemaining else { return nil }
+        let arrival = (trafficWatch.arrival ?? Date.now.addingTimeInterval(remaining)).formatted(date: .omitted, time: .shortened)
+        var link = URLComponents(string: "https://maps.apple.com/")!
+        link.queryItems = [
+            URLQueryItem(name: "ll", value: "\(place.point.latitude),\(place.point.longitude)"),
+            URLQueryItem(name: "q", value: place.name),
+        ]
+        let traffic = trafficWatch.arrival == nil ? "" : " (canlı trafikle)"
+        return "Varışım yaklaşık \(arrival)\(traffic) · \(place.name)\n\(link.url?.absoluteString ?? "")"
     }
 
     private func navigationOverlay(_ navigation: NavigationSession) -> some View {
