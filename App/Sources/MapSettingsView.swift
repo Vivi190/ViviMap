@@ -122,6 +122,8 @@ struct MapSettingsView: View {
     @Environment(UserHazardStore.self) private var userHazards
     @Environment(TripLog.self) private var trips
     @Environment(\.dismiss) private var dismiss
+    /// Plays a sample prompt the way guidance speaks it (also in silent mode), e.g. after downloading a voice.
+    @State private var sampleVoice = VoiceGuide()
     let showDiagnostics: () -> Void
 
     /// Which Turkish voice guidance uses, and how to get a better one when only the compact voice is there.
@@ -134,6 +136,11 @@ struct MapSettingsView: View {
         }
         return Section {
             LabeledContent("Ses", value: voice.map { "\($0.name) · \(quality)" } ?? "Türkçe ses yok")
+            if voice != nil {
+                Button("Örnek dinle", systemImage: "play.circle") {
+                    sampleVoice.speak("300 metre sonra sağa dön, Ankara Caddesi.")
+                }
+            }
         } header: {
             Text("Sesli yönlendirme")
         } footer: {
