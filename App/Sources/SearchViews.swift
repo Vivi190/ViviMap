@@ -276,12 +276,23 @@ struct RouteCard: View {
     let routes: [RouteOption]
     let traffic: [Int: TrafficEstimate]
     let trafficStatus: TrafficStatus
+    /// The "Ücretli yollardan kaçın" setting these routes were planned with.
+    let avoidsTolls: Bool
     @Binding var selection: Int
     /// nil when navigation could not be set up; the button is hidden rather than shown broken.
     let onStart: (() -> Void)?
     /// Test drive; nil unless enabled in the map settings.
     let onSimulate: (() -> Void)?
     let onClose: () -> Void
+
+    /// Tolls and ferries before the driver commits to a route, and whether the setting shaped it.
+    static func notes(_ notes: RouteNotes, avoidsTolls: Bool) -> String? {
+        var parts: [String] = []
+        if notes.hasToll { parts.append("Ücretli geçiş var") }
+        if notes.hasFerry { parts.append("Feribotla geçiş") }
+        if avoidsTolls, !notes.hasToll { parts.append("Ücretli yollardan kaçınıldı") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
 
     /// Live-traffic time when every alternative was measured, otherwise Valhalla's free-flow estimate.
     private func duration(_ option: RouteOption) -> TimeInterval {
@@ -319,6 +330,12 @@ struct RouteCard: View {
             }
             if !route.mainRoads.isEmpty {
                 Label(route.mainRoads.joined(separator: " → "), systemImage: "road.lanes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if let notes = Self.notes(route.notes, avoidsTolls: avoidsTolls) {
+                Label(notes, systemImage: route.notes.hasFerry ? "ferry" : "turkishlirasign.circle")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

@@ -138,6 +138,14 @@ struct MapSettingsView: View {
             }
 
             Section {
+                Toggle("Ücretli yollardan kaçın", isOn: $settings.avoidsTolls)
+            } header: {
+                Text("Rota")
+            } footer: {
+                Text("Köprü, tünel ve otoyol gişelerinden geçmeyen rota. Boğaz'ı geçerken araba vapuruna yönlendirebilir; daha uzun sürebilir.")
+            }
+
+            Section {
                 Toggle("Hız kamerası uyarıları", isOn: $settings.warnsCameras)
                 Toggle("Kasis uyarıları", isOn: $settings.warnsBumps)
                 NavigationLink {

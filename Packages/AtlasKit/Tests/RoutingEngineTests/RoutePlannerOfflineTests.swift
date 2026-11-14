@@ -79,6 +79,41 @@ struct RoutePlannerOfflineTests {
         }
     }
 
+    /// Altunizade → Ortaköy over the Bosphorus bridge, as FOSSGIS Valhalla answered on 14.11.2026.
+    private func bridgeAnswer() throws -> Data {
+        let url = try #require(Bundle.module.url(forResource: "valhalla-osrm-bridge", withExtension: "json", subdirectory: "Fixtures"))
+        return try Data(contentsOf: url)
+    }
+
+    @Test func avoidingTollsAsksValhallaToExcludeThem() async throws {
+        let answer = try recordedAnswer()
+        let sent = SentBody()
+        let planner = try RoutePlanner(session: session(NoConnection.self)) { body in
+            await sent.store(body)
+            return answer
+        }
+        planner.avoidsTolls = true
+        _ = try await planner.routes(from: kartal, to: destination)
+        let body = try #require(await sent.body)
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let costing = try #require(json["costing_options"] as? [String: Any])
+        let auto = try #require(costing["auto"] as? [String: Any])
+        #expect(auto["exclude_tolls"] as? Bool == true)
+        #expect(json["alternates"] as? Int == 2) // the other options stay
+    }
+
+    @Test func cardKnowsAboutTollsAndFerries() async throws {
+        let bridge = try bridgeAnswer()
+        let viaBridge = try RoutePlanner(session: session(NoConnection.self)) { _ in bridge }
+        let tolled = try await viaBridge.routes(from: kartal, to: destination)
+        #expect(tolled.first?.notes == RouteNotes(hasToll: true, hasFerry: false))
+
+        let street = try recordedAnswer()
+        let inKartal = try RoutePlanner(session: session(NoConnection.self)) { _ in street }
+        let plain = try await inKartal.routes(from: kartal, to: destination)
+        #expect(plain.first?.notes == RouteNotes())
+    }
+
     @Test func whatCountsAsUnreachable() {
         #expect(RoutePlanner.worthTryingOffline(URLError(.notConnectedToInternet)))
         #expect(RoutePlanner.worthTryingOffline(URLError(.timedOut)))

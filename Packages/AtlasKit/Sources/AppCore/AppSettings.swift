@@ -49,6 +49,11 @@ public final class AppSettings {
         didSet { defaults.set(warnsBumps, forKey: Keys.bumps) }
     }
 
+    /// Routes without toll bridges, tunnels and motorways (Valhalla exclude_tolls); may cross by car ferry.
+    public var avoidsTolls: Bool {
+        didSet { defaults.set(avoidsTolls, forKey: Keys.avoidsTolls) }
+    }
+
     /// City traffic layer on the map (the "Trafik" button); remembered between launches.
     public var showsTrafficLayer: Bool {
         didSet { defaults.set(showsTrafficLayer, forKey: Keys.trafficLayer) }
@@ -63,6 +68,7 @@ public final class AppSettings {
         warnsCameras = defaults.object(forKey: Keys.cameras) as? Bool ?? true
         warnsBumps = defaults.object(forKey: Keys.bumps) as? Bool ?? true
         showsTrafficLayer = defaults.bool(forKey: Keys.trafficLayer)
+        avoidsTolls = defaults.bool(forKey: Keys.avoidsTolls)
     }
 
     private enum Keys {
@@ -71,5 +77,6 @@ public final class AppSettings {
         static let cameras = "atlas.warn.cameras"
         static let bumps = "atlas.warn.bumps"
         static let trafficLayer = "atlas.trafficLayer"
+        static let avoidsTolls = "atlas.route.avoidsTolls"
     }
 }

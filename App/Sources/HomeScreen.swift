@@ -419,6 +419,7 @@ struct HomeScreen: View {
             routes: routes,
             traffic: trafficEstimates,
             trafficStatus: trafficStatus,
+            avoidsTolls: settings.avoidsTolls,
             selection: $routeSelection,
             onStart: startHandler,
             onSimulate: simulateHandler,
@@ -664,6 +665,7 @@ struct HomeScreen: View {
         let generation = planGeneration
         Task {
             do {
+                planner.avoidsTolls = settings.avoidsTolls
                 let found = try await planner.routes(from: here, to: place.point)
                 guard generation == planGeneration else { return }
                 routeSelection = 0

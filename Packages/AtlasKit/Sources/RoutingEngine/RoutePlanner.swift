@@ -32,6 +32,7 @@ public final class RoutePlanner {
 
     let provider: WellKnownRouteProvider
     private let adapter: RouteAdapter
+    private let tollFreeAdapter: RouteAdapter
     private let session: URLSession
     /// Answers the same request on the device (bundled Istanbul tiles); nil in builds without them.
     private let offline: (@Sendable (Data) async throws -> Data)?
@@ -42,6 +43,7 @@ public final class RoutePlanner {
     ) throws {
         provider = try Self.valhallaProvider()
         adapter = try RouteAdapter.fromWellKnownRouteProvider(wellKnownRouteProvider: provider)
+        tollFreeAdapter = try RouteAdapter.fromWellKnownRouteProvider(wellKnownRouteProvider: Self.valhallaProvider(avoidingTolls: true))
         self.session = session
         self.offline = offline
     }
@@ -49,13 +51,20 @@ public final class RoutePlanner {
     /// Whether this build can route without a connection.
     public var canRouteOffline: Bool { offline != nil }
 
+    /// Set from the "Ücretli yollardan kaçın" setting before planning; reroutes during guidance keep it.
+    public var avoidsTolls = false
+
     /// Shared with the navigation session so reroutes use the same engine and options.
-    public static func valhallaProvider() throws -> WellKnownRouteProvider {
-        try WellKnownRouteProvider.valhalla(endpointUrl: endpoint, profile: "auto", optionsJson: nil)
-            .withJsonOptions(options: [
-                "directions_options": ["language": "tr-TR", "units": "kilometers"],
-                "alternates": 2,
-            ])
+    public static func valhallaProvider(avoidingTolls: Bool = false) throws -> WellKnownRouteProvider {
+        var options: [String: Any] = [
+            "directions_options": ["language": "tr-TR", "units": "kilometers"],
+            "alternates": 2,
+        ]
+        // exclude_tolls, not use_tolls: 0, which still took the Bosphorus bridge (FOSSGIS, 14.11.2026);
+        // excluded, Kadıköy → Beşiktaş goes by the Harem–Sirkeci car ferry.
+        if avoidingTolls { options["costing_options"] = ["auto": ["exclude_tolls": true]] }
+        return try WellKnownRouteProvider.valhalla(endpointUrl: endpoint, profile: "auto", optionsJson: nil)
+            .withJsonOptions(options: options)
     }
 
     public func routes(from location: CLLocation, to destination: GeoPoint) async throws -> [RouteOption] {
@@ -64,28 +73,33 @@ public final class RoutePlanner {
             kind: .break
         )
         let found = try await fetch(userLocation: UserLocation(clLocation: location), waypoints: [waypoint])
-        return found.routes.enumerated().map { RouteOption(index: $0.offset, route: $0.element, isOffline: found.offline) }
+        return found.routes.enumerated().map { index, route in
+            RouteOption(index: index, route: route, isOffline: found.offline, notes: found.notes.indices.contains(index) ? found.notes[index] : RouteNotes())
+        }
     }
 
     /// Online first; with no connection or a failing server, the same request answered on the device.
-    func fetch(userLocation: UserLocation, waypoints: [Waypoint]) async throws -> (routes: [Route], offline: Bool) {
-        let request = try Self.urlRequest(for: adapter.generateRequest(userLocation: userLocation, waypoints: waypoints))
+    func fetch(userLocation: UserLocation, waypoints: [Waypoint]) async throws -> (routes: [Route], notes: [RouteNotes], offline: Bool) {
+        let chosen = avoidsTolls ? tollFreeAdapter : adapter
+        let request = try Self.urlRequest(for: chosen.generateRequest(userLocation: userLocation, waypoints: waypoints))
         do {
-            return (try await online(request), false)
+            let (routes, data) = try await online(request, adapter: chosen)
+            return (routes, RouteNotes.of(data), false)
         } catch where Self.worthTryingOffline(error) {
             guard let offline, let body = request.httpBody else { throw error }
-            let routes: [Route]
+            let routes: [Route], data: Data
             do {
-                routes = try adapter.parseResponse(response: try await offline(body))
+                data = try await offline(body)
+                routes = try chosen.parseResponse(response: data)
             } catch {
                 throw PlanningError.offlineUnavailable
             }
             guard !routes.isEmpty else { throw PlanningError.offlineUnavailable }
-            return (routes, true)
+            return (routes, RouteNotes.of(data), true)
         }
     }
 
-    private func online(_ request: URLRequest) async throws -> [Route] {
+    private func online(_ request: URLRequest, adapter: RouteAdapter) async throws -> ([Route], Data) {
         let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         // Valhalla answers "no path" (error 442) with 400; anything else non-2xx is a service problem.
@@ -93,7 +107,7 @@ public final class RoutePlanner {
         guard (200 ..< 300).contains(status) else { throw PlanningError.service(status: status) }
         let routes = try adapter.parseResponse(response: data)
         guard !routes.isEmpty else { throw PlanningError.noRoute }
-        return routes
+        return (routes, data)
     }
 
     /// No connection, or the public server failing (busy, down): the device can answer. "No path" cannot:
@@ -145,12 +159,42 @@ extension RoutePlanner: @preconcurrency CustomRouteProvider {
     }
 }
 
+/// What a route passes that a driver weighs before choosing it, from Valhalla's intersection classes.
+public struct RouteNotes: Sendable, Equatable {
+    /// A bridge, tunnel or motorway with a toll (Bosphorus bridges, Avrasya Tüneli, Kuzey Marmara Otoyolu).
+    public var hasToll = false
+    public var hasFerry = false
+
+    public init(hasToll: Bool = false, hasFerry: Bool = false) {
+        self.hasToll = hasToll
+        self.hasFerry = hasFerry
+    }
+
+    private struct Response: Decodable {
+        struct Route: Decodable { let legs: [Leg] }
+        struct Leg: Decodable { let steps: [Step] }
+        struct Step: Decodable { let intersections: [Intersection]? }
+        struct Intersection: Decodable { let classes: [String]? }
+        let routes: [Route]?
+    }
+
+    /// One entry per route of an OSRM-format answer, in its order; empty if it cannot be read.
+    static func of(_ data: Data) -> [RouteNotes] {
+        guard let response = try? JSONDecoder().decode(Response.self, from: data) else { return [] }
+        return (response.routes ?? []).map { route in
+            let classes = Set(route.legs.flatMap(\.steps).flatMap { $0.intersections ?? [] }.flatMap { $0.classes ?? [] })
+            return RouteNotes(hasToll: classes.contains("toll"), hasFerry: classes.contains("ferry"))
+        }
+    }
+}
+
 /// One route alternative, flattened for the UI.
 public struct RouteOption: Identifiable {
     public let index: Int
     public let route: Route
     /// Computed on the device from the bundled Istanbul tiles (no connection): no live traffic for it.
     public var isOffline = false
+    public var notes = RouteNotes()
 
     public var id: Int { index }
     public var distance: Double { route.distance }
