@@ -16,12 +16,13 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 
 ## TestFlight'ta ne denenecek
 
-**Son yüklenen: build 19 (14.11.2026, işlendi).** Depo herkese açık olduğu için GitHub Actions dakikaları artık ücretsiz ([setup-testflight.md](setup-testflight.md#github-actions-ve-açık-depo)).
+**Son işlenen: build 19 (14.11.2026); build 20 yükleniyor.** Depo herkese açık olduğu için GitHub Actions dakikaları artık ücretsiz ([setup-testflight.md](setup-testflight.md#github-actions-ve-açık-depo)).
 - Build 17: trafik katmanı, tür kelimeli arama düzeltmesi.
 - Build 18: ücretli yollardan kaçınma, varışımı paylaş, Siri kısayolu, hız sınırı uyarısı, "Yakında" düğmeleri.
 - Build 19: yenilenen rota kartı ve navigasyon alt çubuğu, havalimanı/hastane/AVM rotalarının alanın önündeki yolda bitmesi, telefondaki en kaliteli Türkçe ses, navigasyonda yumuşak yakınlaşma.
+- Build 20 (yükleniyor): mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik", çevrimdışı da), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku, rota üzerinde dönüş oku, alt çubuğun üstünde şu anki yolun adı, haritaya bakıldıktan sonra görünümün kendiliğinden araca dönmesi, hedefin yakınındaki otoparklar, çevrimdışı "sokak + ilçe" araması, Photon sunucusu çökünce aramanın cihazdaki dizine geçmesi, arama hatasında nedenin doğru söylenmesi.
 
-Sıradaki build'de gelecekler (main'de): mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik"), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku, rota üzerinde dönüş oku ve alt çubuğun üstünde şu anki yolun adı, haritaya bakıldıktan sonra görünümün kendiliğinden araca dönmesi; hedefin yakınındaki otoparklar; çevrimdışı "sokak + ilçe" araması; Photon sunucusu çökünce aramanın cihazdaki dizine geçmesi.
+Sıradaki build'de gelecekler (main'de): yerle işi bitince aramanın baştan (son aramalar, kısayollar, "Yakında") açılması, göbekte dönüş okunun çıkış yoluna kadar uzaması.
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -62,10 +63,10 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 16. **Yakında (build 18+):** Ara sayfasında, yazmadan önce "Yakında" altında Benzinlik, Otopark, Eczane ve Şarj düğmeleri çıkar. Birine dokun: en yakın olanlar mesafeleriyle listelenmeli. Uçak modunda da çalışmalı.
 17. **Büyük alanlar (build 19+):** "Sabiha Gökçen Havalimanı", bir hastane ya da AVM'ye rota iste. Rota alanın ortasında değil, önündeki yolda bitmeli.
 18. **Ses (build 19+):** Harita ayarları → Sesli yönlendirme, kullanılan Türkçe sesi ve kalitesini gösterir. "Geliştirilmiş" bir ses indirirsen Atlas kendiliğinden onu kullanır.
-19. **Adres (sıradaki build):** bir adresi mesajda yazıldığı gibi yapıştır, örneğin "Sanayi Cad. No:1 Kartal" ya da "Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul". İlk sonuç o adresteki yer olmalı; numarası OSM'de yoksa o sokak.
-20. **En yakınlar (sıradaki build):** yalnızca "benzinlik", "eczane", "market", "hastane", "otopark" ya da "en yakın ATM" yaz. En yakınlar mesafeleriyle listelenmeli.
-21. **Konum oku, dönüş oku, yol adı (sıradaki build):** navigasyonda konum oku binaların arasında da mavi çizginin üstünde kalmalı; rotadan gerçekten çıkınca çizgiden ayrılır ve yeni rota hesaplanır. Bir sonraki dönüş, rotanın üstünde beyaz bir okla görünmeli; göbekte ok çıkışa kadar uzanır. Alt çubuğun hemen üstünde, o an üzerinde olduğun yolun adı yazmalı. Haritayı elle kaydırır ya da "Rotanın tamamı"na dokunursan, 12 saniye sonra görünüm kendiliğinden araca dönmeli.
-22. **Hedefin yakınındaki otoparklar (sıradaki build):** bir yeri seç, kartın "…" menüsünden "Yakındaki otoparklar"a dokun. O yerin çevresindeki otoparklar, o yere uzaklıklarıyla listelenmeli; birini seçip oraya rota alabilirsin. Uçak modunda da çalışır.
+19. **Adres (build 20+):** bir adresi mesajda yazıldığı gibi yapıştır, örneğin "Sanayi Cad. No:1 Kartal" ya da "Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul". İlk sonuç o adresteki yer olmalı; numarası OSM'de yoksa o sokak.
+20. **En yakınlar (build 20+):** yalnızca "benzinlik", "eczane", "market", "hastane", "otopark" ya da "en yakın ATM" yaz. En yakınlar mesafeleriyle listelenmeli.
+21. **Konum oku, dönüş oku, yol adı (build 20+):** navigasyonda konum oku binaların arasında da mavi çizginin üstünde kalmalı; rotadan gerçekten çıkınca çizgiden ayrılır ve yeni rota hesaplanır. Bir sonraki dönüş, rotanın üstünde beyaz bir okla görünmeli; göbekte ok çıkışa kadar uzanır. Alt çubuğun hemen üstünde, o an üzerinde olduğun yolun adı yazmalı. Haritayı elle kaydırır ya da "Rotanın tamamı"na dokunursan, 12 saniye sonra görünüm kendiliğinden araca dönmeli.
+22. **Hedefin yakınındaki otoparklar (build 20+):** bir yeri seç, kartın "…" menüsünden "Yakındaki otoparklar"a dokun. O yerin çevresindeki otoparklar, o yere uzaklıklarıyla listelenmeli; birini seçip oraya rota alabilirsin. Uçak modunda da çalışır.
 
 **Bilinen sınırlar:**
 
