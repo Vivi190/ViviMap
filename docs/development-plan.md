@@ -20,7 +20,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 
 Sıradaki build'de gelecekler:
 - main'de, CI'dan geçti: trafik katmanı, tür kelimeli arama düzeltmesi.
-- `next` dalında, henüz derlenmedi: ücretli yollardan kaçınma, varışımı paylaş, "Atlas ile eve git" Siri kısayolu, hız sınırı uyarısı.
+- `next` dalında, henüz derlenmedi ([PR #1](https://github.com/Vivi190/ViviMap/pull/1)): ücretli yollardan kaçınma, varışımı paylaş, "Atlas ile eve git" Siri kısayolu, hız sınırı uyarısı, arama sayfasında "Yakında" düğmeleri.
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -58,6 +58,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 13. **Varışımı paylaş (sıradaki build):** navigasyonda sağdaki düğmelerin en altındaki paylaş simgesi. Mesajda tahmini varış saati, hedef ve harita bağlantısı olmalı.
 14. **Siri (sıradaki build):** önce bir yeri Ev olarak kaydet. Sonra "Hey Siri, Atlas ile eve git" de: uygulama açılmalı ve eve rota kartı gelmeli. Kestirmeler uygulamasında da "Eve git" ve "İşe git" çıkar.
 15. **Hız sınırı uyarısı (sıradaki build):** tabelası işli bir yolda sınırın belirgin üstüne çıkarsan (50'lik yolda 57+) 3 saniye sonra "Hız sınırı 50." denmeli, sonra en erken bir dakika sonra yine. Ayarlar → Uyarılar'dan kapanır. Bunu yolcuyken ya da simülasyonla dene.
+16. **Yakında (sıradaki build):** Ara sayfasında, yazmadan önce "Yakında" altında Benzinlik, Otopark, Eczane ve Şarj düğmeleri çıkar. Birine dokun: en yakın olanlar mesafeleriyle listelenmeli. Uçak modunda da çalışmalı.
 
 **Bilinen sınırlar:**
 
