@@ -170,7 +170,9 @@ struct HomeScreen: View {
             AtlasMapView(
                 camera: $camera,
                 appearance: isNight ? .night : .day,
-                showsBuildings3D: is3D,
+                // Flat while guiding: extruded buildings hide the route line in narrow streets (MapLibre depth-tests
+                // lines against them whatever the layer order); the tilted camera stays.
+                showsBuildings3D: is3D && !isNavigating,
                 destination: selectedPlace?.point.coordinate,
                 route: displayedRoute,
                 traffic: displayedTraffic,
@@ -544,7 +546,6 @@ struct HomeScreen: View {
                     predicted: estimate?.duration ?? route.duration, withTraffic: estimate != nil
                 )
             }
-            is3D = true
             followCourse(zoom: navigation.guidanceZoom)
             guidanceActivity.start(
                 destination: selectedPlace?.name ?? "Hedef",

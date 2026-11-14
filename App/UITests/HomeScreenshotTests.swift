@@ -30,6 +30,9 @@ final class HomeScreenshotTests: XCTestCase {
         field.typeText("Kartal Adliyesi")
         let result = app.buttons.matching(identifier: "search.result").firstMatch
         XCTAssertTrue(result.waitForExistence(timeout: 20), "no search result")
+        // A fresh simulator shows the slide-to-type tip over the keyboard on first use; it covered the results.
+        let tip = app.buttons["Continue"]
+        if tip.exists { tip.tap() }
         capture("2-search-results")
         result.tap()
         XCTAssertTrue(app.otherElements["place.card"].waitForExistence(timeout: 5), "place card missing")

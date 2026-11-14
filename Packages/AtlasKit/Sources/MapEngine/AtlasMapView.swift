@@ -78,6 +78,15 @@ public struct AtlasMapView: View {
     }
 
     public var body: some View {
+        // The guidance inset needs the size SwiftUI is laying out now: on rotation the map is updated before
+        // UIKit resizes it, and the old portrait bounds left the puck under the landscape panels.
+        GeometryReader { geometry in
+            map(size: geometry.size)
+        }
+    }
+
+    @ViewBuilder
+    private func map(size: CGSize) -> some View {
         let show3D = showsBuildings3D
         let guiding = isGuiding
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
@@ -163,7 +172,6 @@ public struct AtlasMapView: View {
                 // the panels take a left column, so the puck centres in the map area to their right.
                 // Otherwise the safe area, which is what MapLibre's automatic inset uses. Set directly
                 // because swiftui-dsl's mapContentInset never resets once its value goes back to nil.
-                let size = mapView.bounds.size
                 let inset = !guiding ? mapView.safeAreaInsets
                     : size.width > size.height
                     ? UIEdgeInsets(top: size.height * 0.3, left: min(size.width * 0.45, 420), bottom: 0, right: 0)
