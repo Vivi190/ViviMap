@@ -1,0 +1,157 @@
+{
+ "sourceUpdated": "2026-11-14T01:30:00Z",
+ "results": [
+  {
+   "location": {
+    "description": "Örnek Cadde",
+    "length": 200.0,
+    "shape": {
+     "links": [
+      {
+       "points": [
+        {
+         "lat": 40.9,
+         "lng": 29.2
+        },
+        {
+         "lat": 40.9,
+         "lng": 29.201
+        },
+        {
+         "lat": 40.9,
+         "lng": 29.202
+        }
+       ],
+       "length": 100.0
+      },
+      {
+       "points": [
+        {
+         "lat": 40.9,
+         "lng": 29.202
+        },
+        {
+         "lat": 40.9,
+         "lng": 29.203
+        },
+        {
+         "lat": 40.9,
+         "lng": 29.204
+        }
+       ],
+       "length": 100.0
+      }
+     ]
+    }
+   },
+   "currentFlow": {
+    "speed": 12.5,
+    "speedUncapped": 12.5,
+    "freeFlow": 13.9,
+    "jamFactor": 0.6,
+    "confidence": 0.99,
+    "traversability": "open"
+   }
+  },
+  {
+   "location": {
+    "description": "Örnek Bulvar",
+    "length": 300.0,
+    "shape": {
+     "links": [
+      {
+       "points": [
+        {
+         "lat": 40.901,
+         "lng": 29.21
+        },
+        {
+         "lat": 40.902,
+         "lng": 29.21
+        }
+       ],
+       "length": 100.0
+      },
+      {
+       "points": [
+        {
+         "lat": 40.902,
+         "lng": 29.21
+        },
+        {
+         "lat": 40.903,
+         "lng": 29.21
+        }
+       ],
+       "length": 100.0
+      },
+      {
+       "points": [
+        {
+         "lat": 40.903,
+         "lng": 29.21
+        },
+        {
+         "lat": 40.904,
+         "lng": 29.21
+        },
+        {
+         "lat": 40.905,
+         "lng": 29.21
+        }
+       ],
+       "length": 100.0
+      }
+     ]
+    }
+   },
+   "currentFlow": {
+    "speed": 10.0,
+    "speedUncapped": 10.0,
+    "freeFlow": 13.9,
+    "jamFactor": 2.0,
+    "confidence": 0.99,
+    "traversability": "open"
+   }
+  },
+  {
+   "location": {
+    "description": "Örnek Sokak",
+    "length": 100.0,
+    "shape": {
+     "links": [
+      {
+       "points": [
+        {
+         "lat": 40.91,
+         "lng": 29.22
+        },
+        {
+         "lat": 40.91,
+         "lng": 29.221
+        },
+        {
+         "lat": 40.91,
+         "lng": 29.222
+        },
+        {
+         "lat": 40.91,
+         "lng": 29.223
+        }
+       ],
+       "length": 100.0
+      }
+     ]
+    }
+   },
+   "currentFlow": {
+    "speed": 13.9,
+    "speedUncapped": 13.9,
+    "freeFlow": 13.9,
+    "jamFactor": 0.0,
+    "confidence": 0.99,
+    "traversability": "open"
+   }
+  }
+ ]
+}
