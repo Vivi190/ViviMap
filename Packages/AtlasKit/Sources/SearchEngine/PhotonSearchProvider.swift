@@ -64,13 +64,15 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
         guard words.count >= 2 else { return nil }
         for (name, rest) in [(words[0], words.dropFirst()), (words[words.count - 1], words.dropLast())] {
             guard let district = try? districts.place(named: name, near: near) else { continue }
-            let found = try await places(request(rest.joined(separator: " "), near: district.point))
+            let found = try await places(request(rest.joined(separator: " "), near: district.point, nearnessFirst: true))
             if !found.isEmpty { return PlaceRanking.rank(found, query: text) }
         }
         return nil
     }
 
-    func request(_ query: String, near: GeoPoint?, tags: [String] = []) -> URLRequest {
+    /// `nearnessFirst`: for a district the user named, nearness over prominence; without it Photon put the
+    /// Migros stores 17 and 30 km from Kurtköy ahead of those in Kurtköy (14.11.2026).
+    func request(_ query: String, near: GeoPoint?, tags: [String] = [], nearnessFirst: Bool = false) -> URLRequest {
         var components = URLComponents(url: baseURL.appending(path: "api"), resolvingAgainstBaseURL: false)!
         var items = [
             URLQueryItem(name: "q", value: query),
@@ -82,6 +84,10 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
         if let near {
             items.append(URLQueryItem(name: "lat", value: String(near.latitude)))
             items.append(URLQueryItem(name: "lon", value: String(near.longitude)))
+            if nearnessFirst {
+                items.append(URLQueryItem(name: "location_bias_scale", value: "0"))
+                items.append(URLQueryItem(name: "zoom", value: "14"))
+            }
         }
         items += tags.map { URLQueryItem(name: "osm_tag", value: $0) }
         components.queryItems = items

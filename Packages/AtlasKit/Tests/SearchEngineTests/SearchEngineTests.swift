@@ -190,6 +190,15 @@ struct KindSearchTests {
         #expect(PlaceRanking.kindAround("eczane") == nil) // a bare kind
     }
 
+    @Test func aNamedDistrictPutsNearnessFirst() throws {
+        let kurtkoy = GeoPoint(latitude: 40.9147, longitude: 29.3006)
+        let url = try #require(PhotonSearchProvider().request("migros", near: kurtkoy, nearnessFirst: true).url)
+        let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+        #expect(items.first { $0.name == "location_bias_scale" }?.value == "0")
+        let plain = try #require(PhotonSearchProvider().request("migros", near: kurtkoy).url)
+        #expect(plain.query?.contains("location_bias_scale") == false)
+    }
+
     @Test func theRequestAsksForTheNearestOfThatKind() throws {
         let request = PhotonSearchProvider().reverseRequest(GeoPoint(latitude: 40.889, longitude: 29.19), tags: ["amenity:fuel"])
         let url = try #require(request.url)
