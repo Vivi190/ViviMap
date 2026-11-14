@@ -21,7 +21,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 18: ücretli yollardan kaçınma, varışımı paylaş, Siri kısayolu, hız sınırı uyarısı, "Yakında" düğmeleri.
 - Build 19: yenilenen rota kartı ve navigasyon alt çubuğu, havalimanı/hastane/AVM rotalarının alanın önündeki yolda bitmesi, telefondaki en kaliteli Türkçe ses, navigasyonda yumuşak yakınlaşma.
 
-Sıradaki build'de gelecekler (main'de): mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik"), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku ve rota üzerinde dönüş oku.
+Sıradaki build'de gelecekler (main'de): mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik"), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku, rota üzerinde dönüş oku ve alt çubuğun üstünde şu anki yolun adı; çevrimdışı "sokak + ilçe" araması; Photon sunucusu çökünce aramanın cihazdaki dizine geçmesi.
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -64,7 +64,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 18. **Ses (build 19+):** Harita ayarları → Sesli yönlendirme, kullanılan Türkçe sesi ve kalitesini gösterir. "Geliştirilmiş" bir ses indirirsen Atlas kendiliğinden onu kullanır.
 19. **Adres (sıradaki build):** bir adresi mesajda yazıldığı gibi yapıştır, örneğin "Sanayi Cad. No:1 Kartal" ya da "Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul". İlk sonuç o adresteki yer olmalı; numarası OSM'de yoksa o sokak.
 20. **En yakınlar (sıradaki build):** yalnızca "benzinlik", "eczane", "market", "hastane", "otopark" ya da "en yakın ATM" yaz. En yakınlar mesafeleriyle listelenmeli.
-21. **Konum oku ve dönüş oku (sıradaki build):** navigasyonda konum oku binaların arasında da mavi çizginin üstünde kalmalı; rotadan gerçekten çıkınca çizgiden ayrılır ve yeni rota hesaplanır. Bir sonraki dönüş, rotanın üstünde beyaz bir okla görünmeli; göbekte ok çıkışa kadar uzanır.
+21. **Konum oku, dönüş oku, yol adı (sıradaki build):** navigasyonda konum oku binaların arasında da mavi çizginin üstünde kalmalı; rotadan gerçekten çıkınca çizgiden ayrılır ve yeni rota hesaplanır. Bir sonraki dönüş, rotanın üstünde beyaz bir okla görünmeli; göbekte ok çıkışa kadar uzanır. Alt çubuğun hemen üstünde, o an üzerinde olduğun yolun adı yazmalı.
 
 **Bilinen sınırlar:**
 
@@ -74,7 +74,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 - Şerit bilgisi çoğu yolda yok (OSM'de veri yok; sahte şerit çizilmiyor).
 - Adres aramada kapı numarası çoğu yerde bulunmuyor (OSM'de numara verisi az): sokak bulunur. Tam nokta için haritada uzun bas. Türkçe karakterli ve karaktersiz yazım ("çanakkale" / "canakkale") aynı sonucu veriyor (14.11.2026 ölçümü).
 - Hız sınırı tabelası yalnızca OSM'de sınırı işli yollarda çıkar (Pendik/Kartal/Tuzla'da yolların %9–16'sı); bilinmeyen yerde tabela gösterilmez.
-- Çevrimdışı mod (build 12+) yalnızca İstanbul kutusunda çalışır. Çevrimdışı rotada trafik yoktur. Çevrimdışı arama yer ve sokak adlarını bulur, kapı numarası bulmaz.
+- Çevrimdışı mod (build 12+) yalnızca İstanbul kutusunda çalışır. Çevrimdışı rotada trafik yoktur. Çevrimdışı arama yer ve sokak adlarını bulur ("ankara caddesi kartal" gibi sokak + ilçe dahil), kapı numarası bulmaz.
 - Ses kalitesi cihazdaki Türkçe sese bağlı. Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe yolundan "Geliştirilmiş" sesi indirirsen daha doğal okunur.
 
 ## Faz 1 — çalışan özellikler ve eksikler
