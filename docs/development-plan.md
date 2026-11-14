@@ -23,7 +23,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 20: mesajda yazıldığı gibi adres arama, yalnızca tür yazınca en yakınlar ("benzinlik", çevrimdışı da), "… otopark" araması, rota kartında alternatiflerin süreye göre sıralanması, navigasyonda yola oturtulmuş konum oku, rota üzerinde dönüş oku, alt çubuğun üstünde şu anki yolun adı, haritaya bakıldıktan sonra görünümün kendiliğinden araca dönmesi, hedefin yakınındaki otoparklar, çevrimdışı "sokak + ilçe" araması, Photon sunucusu çökünce aramanın cihazdaki dizine geçmesi, arama hatasında nedenin doğru söylenmesi.
 - Build 21: yerle işi bitince aramanın baştan (son aramalar, kısayollar, "Yakında") açılması, göbekte dönüş okunun çıkış yoluna kadar uzaması, kayıtlıysa "Ev" ve "İş"in arama çubuğunun altında tek dokunuşla rota açması.
 
-Sıradaki build'de gelecekler (main'de): varışta alt çubukta "Otopark" düğmesi (hedefin yakınındaki otoparklar).
+Sıradaki build'de gelecekler (main'de): varışta alt çubukta "Otopark" düğmesi (hedefin yakınındaki otoparklar), ayarlarda sesli yönlendirme için "Örnek dinle", arama çubuğunda "Nereye?".
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -63,7 +63,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 15. **Hız sınırı uyarısı (build 18+):** tabelası işli bir yolda sınırın belirgin üstüne çıkarsan (50'lik yolda 57+) 3 saniye sonra "Hız sınırı 50." denmeli, sonra en erken bir dakika sonra yine. Ayarlar → Uyarılar'dan kapanır. Bunu yolcuyken ya da simülasyonla dene.
 16. **Yakında (build 18+):** Ara sayfasında, yazmadan önce "Yakında" altında Benzinlik, Otopark, Eczane ve Şarj düğmeleri çıkar. Birine dokun: en yakın olanlar mesafeleriyle listelenmeli. Uçak modunda da çalışmalı.
 17. **Büyük alanlar (build 19+):** "Sabiha Gökçen Havalimanı", bir hastane ya da AVM'ye rota iste. Rota alanın ortasında değil, önündeki yolda bitmeli.
-18. **Ses (build 19+):** Harita ayarları → Sesli yönlendirme, kullanılan Türkçe sesi ve kalitesini gösterir. "Geliştirilmiş" bir ses indirirsen Atlas kendiliğinden onu kullanır.
+18. **Ses (build 19+):** Harita ayarları → Sesli yönlendirme, kullanılan Türkçe sesi ve kalitesini gösterir. "Geliştirilmiş" bir ses indirirsen Atlas kendiliğinden onu kullanır. Sıradaki build'de aynı yerde "Örnek dinle" var: bir talimatı navigasyondaki gibi okur.
 19. **Adres (build 20+):** bir adresi mesajda yazıldığı gibi yapıştır, örneğin "Sanayi Cad. No:1 Kartal" ya da "Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul". İlk sonuç o adresteki yer olmalı; numarası OSM'de yoksa o sokak.
 20. **En yakınlar (build 20+):** yalnızca "benzinlik", "eczane", "market", "hastane", "otopark" ya da "en yakın ATM" yaz. En yakınlar mesafeleriyle listelenmeli.
 21. **Konum oku, dönüş oku, yol adı (build 20+):** navigasyonda konum oku binaların arasında da mavi çizginin üstünde kalmalı; rotadan gerçekten çıkınca çizgiden ayrılır ve yeni rota hesaplanır. Bir sonraki dönüş, rotanın üstünde beyaz bir okla görünmeli; göbekte ok çıkışa kadar uzanır. Alt çubuğun hemen üstünde, o an üzerinde olduğun yolun adı yazmalı. Haritayı elle kaydırır ya da "Rotanın tamamı"na dokunursan, 12 saniye sonra görünüm kendiliğinden araca dönmeli.
