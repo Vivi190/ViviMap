@@ -39,6 +39,14 @@ BOOSTS = [
     (["adliye"], {"amenity=courthouse"}),
 ]
 STOPS = {"highway=bus_stop", "public_transport=platform", "public_transport=stop_position"}
+# Mirrors PlaceRanking.focusRules: a query naming a kind of place also asks Photon for that kind alone.
+FOCUS = [
+    ({"durak", "durağı"}, ["highway:bus_stop", "public_transport:platform"]),
+    ({"istasyon", "istasyonu", "metro", "metrosu", "marmaray", "tren", "gar", "garı"},
+     ["railway:station", "railway:halt", "public_transport:station"]),
+    ({"avm"}, ["shop:mall"]),
+    ({"iskele", "iskelesi"}, ["amenity:ferry_terminal"]),
+]
 
 
 def turkish_lower(text):
@@ -76,9 +84,32 @@ def get_json(url, data=None, timeout=90):
             time.sleep(10 * (attempt + 1))
 
 
-def photon(query):
-    params = {"q": query, "limit": "12", "bbox": TURKEY_BBOX, "lang": "default", "lat": KARTAL[0], "lon": KARTAL[1]}
-    return get_json(PHOTON + "?" + urllib.parse.urlencode(params)).get("features", [])
+def photon(query, tags=()):
+    params = {"q": query, "limit": "12", "bbox": TURKEY_BBOX, "lang": "default", "lat": KARTAL[0], "lon": KARTAL[1],
+              "osm_tag": list(tags)}
+    return get_json(PHOTON + "?" + urllib.parse.urlencode(params, doseq=True)).get("features", [])
+
+
+def focus(query):
+    words = turkish_lower(query).split()
+    for kind_words, tags in FOCUS:
+        name = [w for w in words if w not in kind_words]
+        if len(name) < len(words) and name:
+            return " ".join(name), tags
+    return None
+
+
+def app_search(query):
+    """PhotonSearchProvider.search: the focused hits first, then the general answer without repeats."""
+    general = photon(query)
+    focused = focus(query)
+    if not focused:
+        return app_rank(general, query)
+    time.sleep(1.2)
+    first = photon(*focused)
+    ident = lambda f: f"{f['properties'].get('osm_type')}{f['properties'].get('osm_id')}"
+    shown = {ident(f) for f in first}
+    return app_rank(first + [f for f in general if ident(f) not in shown], query)
 
 
 def overpass_targets(cases, chunk=8):
@@ -243,7 +274,7 @@ def main():
         if not targets:
             rows.append((case["query"], "—", "hedef OSM'de bulunamadı (ölçüm dışı)", ""))
             continue
-        ranked = app_rank(photon(case["query"]), case["query"])
+        ranked = app_search(case["query"])
         time.sleep(1.2)
         radius = case.get("radius", 150)
         distances = [distance_to(targets, (f["geometry"]["coordinates"][1], f["geometry"]["coordinates"][0])) for f in ranked]

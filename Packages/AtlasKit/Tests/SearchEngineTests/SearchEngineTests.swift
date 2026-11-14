@@ -37,6 +37,38 @@ struct PhotonParserTests {
     }
 }
 
+/// The queries that failed in the search benchmark (14.11.2026) and what the focused request asks Photon.
+struct FocusedSearchTests {
+    @Test func kindWordsBecomeAnOSMFilter() throws {
+        let station = try #require(PlaceRanking.focus("Kartal Metro İstasyonu"))
+        #expect(station.name == "kartal")
+        #expect(station.tags.contains("railway:station"))
+        let mall = try #require(PlaceRanking.focus("akasya avm"))
+        #expect(mall.name == "akasya")
+        #expect(mall.tags == ["shop:mall"])
+    }
+
+    @Test func aStopNamedAfterTheMetroIsStillAStop() throws {
+        let stop = try #require(PlaceRanking.focus("kartal metro durağı"))
+        #expect(stop.name == "kartal metro")
+        #expect(stop.tags.contains("highway:bus_stop"))
+    }
+
+    @Test func noKindOrNothingLeftMeansOneRequest() {
+        #expect(PlaceRanking.focus("kartal adliyesi") == nil)
+        #expect(PlaceRanking.focus("metro") == nil)
+    }
+
+    @Test func focusedRequestCarriesTheFilters() throws {
+        let request = PhotonSearchProvider().request("kartal", near: nil, tags: ["railway:station", "railway:halt"])
+        let url = try #require(request.url)
+        let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+        #expect(items.filter { $0.name == "osm_tag" }.map(\.value) == ["railway:station", "railway:halt"])
+        #expect(items.first { $0.name == "q" }?.value == "kartal")
+        #expect(items.first { $0.name == "lang" }?.value == "default")
+    }
+}
+
 struct CoordinateQueryTests {
     @Test func parsesCommaOrSpaceSeparatedPairs() {
         #expect(CoordinateQuery.place(from: "40.8890, 29.1905")?.point == GeoPoint(latitude: 40.889, longitude: 29.1905))

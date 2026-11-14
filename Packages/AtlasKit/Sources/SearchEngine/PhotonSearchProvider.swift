@@ -19,6 +19,19 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
     }
 
     public func search(_ query: String, near: GeoPoint?) async throws -> [Place] {
+        // A query naming a kind of place also asks for that kind alone, by name (PlaceRanking.focus).
+        guard let focus = PlaceRanking.focus(query) else {
+            return PlaceRanking.rank(try await places(request(query, near: near)), query: query)
+        }
+        async let focused = places(request(focus.name, near: near, tags: focus.tags))
+        let general = try await places(request(query, near: near))
+        // Its hits lead; a failure there only costs the extra hits.
+        let first = (try? await focused) ?? []
+        let shown = Set(first.map(\.id))
+        return PlaceRanking.rank(first + general.filter { !shown.contains($0.id) }, query: query)
+    }
+
+    func request(_ query: String, near: GeoPoint?, tags: [String] = []) -> URLRequest {
         var components = URLComponents(url: baseURL.appending(path: "api"), resolvingAgainstBaseURL: false)!
         var items = [
             URLQueryItem(name: "q", value: query),
@@ -31,15 +44,19 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
             items.append(URLQueryItem(name: "lat", value: String(near.latitude)))
             items.append(URLQueryItem(name: "lon", value: String(near.longitude)))
         }
+        items += tags.map { URLQueryItem(name: "osm_tag", value: $0) }
         components.queryItems = items
         var request = URLRequest(url: components.url!)
         request.setValue("Atlas-iOS/1.0 (personal navigation app)", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 10
+        return request
+    }
 
+    private func places(_ request: URLRequest) async throws -> [Place] {
         let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else { throw HTTPError(status: status) }
-        return PlaceRanking.rank(try PhotonParser.places(from: data), query: query)
+        return try PhotonParser.places(from: data)
     }
 
     /// Nearest named place or address for a point picked on the map.
@@ -131,6 +148,28 @@ enum PlaceRanking {
         (["adliye"], ["amenity=courthouse"]),
     ]
     private static let stops: Set<String> = ["highway=bus_stop", "public_transport=platform", "public_transport=stop_position"]
+
+    /// In order: "kartal metro durağı" is a bus stop named "Kartal Metro", not a station.
+    private static let focusRules: [(words: Set<String>, tags: [String])] = [
+        (["durak", "durağı"], ["highway:bus_stop", "public_transport:platform"]),
+        (["istasyon", "istasyonu", "metro", "metrosu", "marmaray", "tren", "gar", "garı"],
+         ["railway:station", "railway:halt", "public_transport:station"]),
+        (["avm"], ["shop:mall"]),
+        (["iskele", "iskelesi"], ["amenity:ferry_terminal"]),
+    ]
+
+    /// A query naming a kind of place the full-text search tends to miss: the rest of the query and Photon's
+    /// osm_tag filters for that kind. Search benchmark 14.11.2026: "kartal metro istasyonu" and "akasya avm"
+    /// (OSM: "Akasya Alışveriş Merkezi") found nothing right; "kartal" + railway:station and "akasya" + shop:mall
+    /// put it first.
+    static func focus(_ query: String) -> (name: String, tags: [String])? {
+        let words = query.lowercased(with: Locale(identifier: "tr")).split(separator: " ").map(String.init)
+        for rule in focusRules {
+            let name = words.filter { !rule.words.contains($0) }
+            if name.count < words.count, !name.isEmpty { return (name.joined(separator: " "), rule.tags) }
+        }
+        return nil
+    }
 
     static func rank(_ places: [Place], query: String) -> [Place] {
         let text = query.lowercased(with: Locale(identifier: "tr"))
