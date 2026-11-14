@@ -33,6 +33,8 @@ struct OfflinePlaceIndexTests {
             ("Opet", "", "amenity=fuel", 41.0500, 28.9500),
             ("BP", "", "amenity=fuel", 40.8905, 29.1910),
             ("Shell", "", "amenity=fuel", 40.8950, 29.1920),
+            ("Migros", "", "shop=supermarket", 40.8900, 29.1900),
+            ("Tekel", "", "shop=convenience", 40.8950, 29.1950),
         ]
         var sql = """
         CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL, category TEXT, lat REAL NOT NULL, lon REAL NOT NULL);
@@ -80,6 +82,8 @@ struct OfflinePlaceIndexTests {
     @Test func aBareKindListsTheNearest() async throws {
         let kartal = GeoPoint(latitude: 40.8890, longitude: 29.1905)
         #expect(try await index().search("en yakın benzinlik", near: kartal).map(\.name) == ["BP", "Shell", "Opet"])
+        // A kind of two categories, beyond the four "Yakında" buttons.
+        #expect(try await index().search("marketler", near: kartal).map(\.name) == ["Migros", "Tekel"])
     }
 
     /// "Yakındaki otoparklar" on a destination's card: the nearest around the destination, not around the user.

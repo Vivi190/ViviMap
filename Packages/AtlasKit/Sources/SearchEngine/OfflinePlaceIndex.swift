@@ -73,10 +73,9 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     }()
 
     public func search(_ query: String, near: GeoPoint?) async throws -> [Place] {
-        // "benzinlik": the nearest of that kind, for the kinds the index lists.
-        if let near, let tags = PlaceRanking.kind(query), tags.count == 1,
-           let kind = NearbyKind(rawValue: tags[0].replacingOccurrences(of: ":", with: "=")) {
-            return try nearby(kind, near: near)
+        // "benzinlik", "marketler": the nearest of that kind (the index keeps every named place's category).
+        if let near, let tags = PlaceRanking.kind(query) {
+            return try nearby(categories: tags.map { $0.replacingOccurrences(of: ":", with: "=") }, near: near)
         }
         // "Çanakkale Cad. No:5" spelled out; the index has no house numbers, so it looks for the street.
         let address = PlaceRanking.address(query)
@@ -104,17 +103,25 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     /// The nearest places of one kind by straight-line distance, from the shipped index alone: instant and
     /// without a connection (14.11.2026 index: 833 fuel stations, 1 151 car parks, 5 195 pharmacies, 87 chargers).
     public func nearby(_ kind: NearbyKind, near point: GeoPoint, limit: Int = 12) throws -> [Place] {
+        try nearby(categories: [kind.rawValue], near: point, limit: limit)
+    }
+
+    /// The nearest places in any of `categories` ("shop=supermarket", …).
+    func nearby(categories: [String], near point: GeoPoint, limit: Int = 12) throws -> [Place] {
+        let list = categories.indices.map { "?\($0 + 5)" }.joined(separator: ", ")
         // Longitude degrees shrink with latitude; scaled, the squared sum orders by distance at city scale.
         let sql = """
-        SELECT id, name, subtitle, category, lat, lon FROM place WHERE category = ?1
-        ORDER BY (lat - ?2) * (lat - ?2) + ((lon - ?3) * ?4) * ((lon - ?3) * ?4) LIMIT ?5
+        SELECT id, name, subtitle, category, lat, lon FROM place WHERE category IN (\(list))
+        ORDER BY (lat - ?1) * (lat - ?1) + ((lon - ?2) * ?3) * ((lon - ?2) * ?3) LIMIT ?4
         """
         return try rows(sql) { statement in
-            sqlite3_bind_text(statement, 1, kind.rawValue, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-            sqlite3_bind_double(statement, 2, point.latitude)
-            sqlite3_bind_double(statement, 3, point.longitude)
-            sqlite3_bind_double(statement, 4, cos(point.latitude * .pi / 180))
-            sqlite3_bind_int(statement, 5, Int32(limit))
+            sqlite3_bind_double(statement, 1, point.latitude)
+            sqlite3_bind_double(statement, 2, point.longitude)
+            sqlite3_bind_double(statement, 3, cos(point.latitude * .pi / 180))
+            sqlite3_bind_int(statement, 4, Int32(limit))
+            for (offset, category) in categories.enumerated() {
+                sqlite3_bind_text(statement, Int32(offset + 5), category, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            }
         }
     }
 
