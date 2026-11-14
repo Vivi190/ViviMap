@@ -1,5 +1,6 @@
 import AppCore
 import DesignSystem
+import MapEngine
 import RoadHazards
 import SwiftUI
 import TripHistory
@@ -168,6 +169,16 @@ struct MapSettingsView: View {
                 }
             } footer: {
                 Text("Varış tahminlerinin senin sürüşlerinde ne kadar tuttuğu.")
+            }
+
+            if let date = OfflineMap.dataDate {
+                Section {
+                    LabeledContent("İstanbul verisi", value: date)
+                } header: {
+                    Text("Çevrimdışı")
+                } footer: {
+                    Text("İnternet yokken harita, arama ve rota bu veriyle çalışır; yeni sürümle tazelenir.")
+                }
             }
 
             Section {

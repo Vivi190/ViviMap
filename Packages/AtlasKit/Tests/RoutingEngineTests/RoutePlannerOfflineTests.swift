@@ -112,6 +112,13 @@ struct RoutePlannerOfflineTests {
         let inKartal = try RoutePlanner(session: session(NoConnection.self)) { _ in street }
         let plain = try await inKartal.routes(from: kartal, to: destination)
         #expect(plain.first?.notes == RouteNotes())
+
+        // Kadıköy → Beşiktaş with tolls excluded (14.11.2026): the Harem–Sirkeci car ferry, no toll.
+        let url = try #require(Bundle.module.url(forResource: "valhalla-osrm-ferry", withExtension: "json", subdirectory: "Fixtures"))
+        let ferryAnswer = try Data(contentsOf: url)
+        let byFerry = try RoutePlanner(session: session(NoConnection.self)) { _ in ferryAnswer }
+        let crossing = try await byFerry.routes(from: kartal, to: destination)
+        #expect(crossing.first?.notes == RouteNotes(hasToll: false, hasFerry: true))
     }
 
     @Test func whatCountsAsUnreachable() {
