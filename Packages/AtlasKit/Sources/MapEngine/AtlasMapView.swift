@@ -39,6 +39,7 @@ public struct AtlasMapView: View {
     private let showsBuildings3D: Bool
     private let destination: CLLocationCoordinate2D?
     private let route: [CLLocationCoordinate2D]
+    private let alternatives: [[CLLocationCoordinate2D]]
     private let traffic: [TrafficLine]
     private let marks: [MapMark]
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
@@ -55,6 +56,7 @@ public struct AtlasMapView: View {
         showsBuildings3D: Bool,
         destination: CLLocationCoordinate2D? = nil,
         route: [CLLocationCoordinate2D] = [],
+        alternatives: [[CLLocationCoordinate2D]] = [],
         traffic: [TrafficLine] = [],
         marks: [MapMark] = [],
         puckSource: StaticLocationManager? = nil,
@@ -68,6 +70,7 @@ public struct AtlasMapView: View {
         self.showsBuildings3D = showsBuildings3D
         self.destination = destination
         self.route = route
+        self.alternatives = alternatives
         self.traffic = traffic
         self.marks = marks
         self.puckSource = puckSource
@@ -95,6 +98,28 @@ public struct AtlasMapView: View {
         // Without a connection the shipped Istanbul tiles take over (when this build has them).
         let style = isOffline ? OfflineMap.styleURL(appearance) ?? appearance.styleURL : appearance.styleURL
         MapView(styleURL: style, camera: $camera, locationManager: puckSource) {
+            // Other candidates in a paler blue under the chosen route, so the driver sees where each one goes.
+            if !alternatives.isEmpty {
+                let others = ShapeSource(identifier: "atlas-alternatives") {
+                    alternatives.map { MLNPolylineFeature(coordinates: $0) as MLNShape }
+                }
+                LineStyleLayer(identifier: "atlas-alternatives-casing", source: others)
+                    .lineCap(.round)
+                    .lineJoin(.round)
+                    .lineColor(appearance == .night ? Self.routeCasingNight : .white)
+                    .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
+                               parameters: NSExpression(forConstantValue: 1.5),
+                               stops: NSExpression(forConstantValue: [10: 5, 14: 8.5, 18: 24]))
+                    .renderBelow(.symbols)
+                LineStyleLayer(identifier: "atlas-alternatives", source: others)
+                    .lineCap(.round)
+                    .lineJoin(.round)
+                    .lineColor(appearance == .night ? Self.alternativeNight : Self.alternativeDay)
+                    .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
+                               parameters: NSExpression(forConstantValue: 1.5),
+                               stops: NSExpression(forConstantValue: [10: 3, 14: 5.5, 18: 17]))
+                    .renderBelow(.symbols)
+            }
             if route.count > 1 {
                 let line = ShapeSource(identifier: "atlas-route") {
                     MLNPolylineFeature(coordinates: route)
@@ -215,6 +240,8 @@ public struct AtlasMapView: View {
     private static let destinationColor = UIColor(Color.atlasCritical)
     private static let routeColor = UIColor(Color.atlasAccent)
     private static let routeCasingNight = UIColor(red: 0.04, green: 0.10, blue: 0.20, alpha: 1)
+    private static let alternativeDay = UIColor(red: 0.53, green: 0.69, blue: 0.96, alpha: 1)
+    private static let alternativeNight = UIColor(red: 0.27, green: 0.40, blue: 0.62, alpha: 1)
 
     private static let puckStyle = MapUserAnnotationStyle(
         approximateHaloBorderColor: .atlasAccent,

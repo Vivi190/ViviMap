@@ -132,6 +132,12 @@ struct HomeScreen: View {
         return activeRoute?.coordinates ?? []
     }
 
+    /// The other candidates while choosing a route; none while guiding.
+    private var alternativeRoutes: [[CLLocationCoordinate2D]] {
+        guard !isNavigating, let active = activeRoute else { return [] }
+        return routes.filter { $0.index != active.index }.map(\.coordinates)
+    }
+
     /// What the Live Activity shows; arrival rounded to the minute so it only changes when the display would.
     private var activityState: NavigationActivityAttributes.ContentState? {
         guard isNavigating, let navigation, let remaining = navigation.durationRemaining else { return nil }
@@ -175,6 +181,7 @@ struct HomeScreen: View {
                 showsBuildings3D: is3D && !isNavigating,
                 destination: selectedPlace?.point.coordinate,
                 route: displayedRoute,
+                alternatives: alternativeRoutes,
                 traffic: displayedTraffic,
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 puckSource: simulatedPuck,
@@ -639,10 +646,17 @@ struct HomeScreen: View {
                 routeSelection = 0
                 routes = found
                 scoreTraffic(found, generation: generation)
-                if let first = found.first {
+                // Every candidate in view: the alternatives are drawn too.
+                if !found.isEmpty {
                     camera = .fitting(
-                        southWest: first.southWest,
-                        northEast: first.northEast,
+                        southWest: CLLocationCoordinate2D(
+                            latitude: found.map(\.southWest.latitude).min()!,
+                            longitude: found.map(\.southWest.longitude).min()!
+                        ),
+                        northEast: CLLocationCoordinate2D(
+                            latitude: found.map(\.northEast.latitude).max()!,
+                            longitude: found.map(\.northEast.longitude).max()!
+                        ),
                         padding: UIEdgeInsets(top: 150, left: 50, bottom: 320, right: 90)
                     )
                 }
