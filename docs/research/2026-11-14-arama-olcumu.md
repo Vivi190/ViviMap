@@ -41,6 +41,12 @@ Düzeltmeyi tasarlarken hiç bakılmamış istasyon, iskele, AVM ve durak sorgul
 
 **İlk sonuç doğru: 57/57 · ilk 3'te: 57/57.** Bakılmamış 8 ölçülebilir sorgunun 8'i doğru. Ölçüm dışı kalan 3 sorgunun hedefi OSM'de yok: Kartal Koşuyolu Hastanesi, Viaport ve Capitol AVM (`shop=mall` olarak işli değil).
 
+Ölçüm dışı kalanlarda uygulamanın gerçekte gösterdiği (elle kontrol, 14.11.2026):
+
+- **kartal koşuyolu hastanesi:** ilk sonuç "Kartal Koşuyolu Kalp Hastanesi", yani doğru. OSM'de `building=hospital` olarak işli, ölçüm `amenity=hospital` arıyordu.
+- **capitol avm:** ilk sonuç "Capitol Alışveriş Merkezi" (`shop=mall`, Altunizade), yani doğru. Ölçüm aracı kesitte hedefi bulamadı; bu aracın sınırı.
+- **viaport:** ilk sonuç "Viaport Houses & Suites" (konut sitesi), yani yanlış. Viaport AVM OSM'de alışveriş merkezi olarak işli değil; bu bir veri eksiği, sıralamayla düzelmez.
+
 Sınır: bu ölçüm sıralamayı ve bulmayı ölçer. Kapı numaralı adres araması OSM'deki numara verisine bağlıdır ve burada ölçülmedi.
 
 ### 3. ölçümün tam tablosu
