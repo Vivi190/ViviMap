@@ -106,7 +106,7 @@ Uygulama artık "benzinlik", "en yakın eczane", "marketler" gibi sorguları ter
 
 Semti Photon'un yer aramasıyla bulmak da güvenilir değildi (`osm_tag=place`, Kartal'dan): Esentepe ve Yakacık doğru çıktı, ama Kurtköy için önce Yalova'daki Kurtköy geldi, Soğanlık'ta ilgisiz sonuçlar geldi, Aydınlı hiç bulunamadı.
 
-**Düzeltme:** semt cihazdaki İstanbul dizininden bulunur (`place=*`, aynı adlılar arasından kullanıcıya en yakını). "Semt + tür" sorgusunda türün en yakınları o semtin çevresinde listelenir. "Semt + marka" sorgusu boş dönerse marka o semtin çevresinde yeniden aranır. Bu yollar dizinin bulunduğu TestFlight build'lerinde çalışır; ölçüm aracının OSM hedefleri bu sorguları kapsamıyor.
+**Düzeltme:** semt cihazdaki İstanbul dizininden bulunur (`place=*`, aynı adlılar arasından kullanıcıya en yakını). "Semt + tür" sorgusunda türün en yakınları o semtin çevresinde listelenir. "Semt + marka" sorgusu boş dönerse marka o semtin çevresinde yeniden aranır. Bu yeniden aramada yakınlık önemden önce gelir (`location_bias_scale=0`); bu olmadan Photon, Kurtköy konumuna rağmen Ataşehir (17 km) ve Şişli (30 km) Migros'larını öne koyuyordu. Hastane "semt + tür" yoluna girmez: hastaneler markayla anılır ve marka bir semt adı da olabilir ("acıbadem hastane" Kadıköy'deki Acıbadem semti değil, hastane zinciri). Bu yollar dizinin bulunduğu TestFlight build'lerinde çalışır; ölçüm aracının OSM hedefleri bu sorguları kapsamıyor.
 
 ### 3. ölçümün tam tablosu
 
