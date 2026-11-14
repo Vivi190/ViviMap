@@ -290,11 +290,12 @@ enum PlaceRanking {
         guard focus(query) == nil else { return nil }
         let words = query.lowercased(with: Locale(identifier: "tr")).split(whereSeparator: \.isWhitespace).map(String.init)
         for size in [2, 1] where words.count > size {
-            if let tags = kind(words.suffix(size).joined(separator: " ")) {
-                return (tags, words.dropLast(size).joined(separator: " "))
-            }
-            if let tags = kind(words.prefix(size).joined(separator: " ")) {
-                return (tags, words.dropFirst(size).joined(separator: " "))
+            for (kindWords, rest) in [(words.suffix(size), words.dropLast(size)), (words.prefix(size), words.dropFirst(size))] {
+                // Hospitals go by brand, and a brand can be a district too: "acıbadem hastane" means the chain,
+                // not Kadıköy's Acıbadem. The text search finds "kartal hastane" well enough.
+                if let tags = kind(kindWords.joined(separator: " ")), tags != ["amenity:hospital"] {
+                    return (tags, rest.joined(separator: " "))
+                }
             }
         }
         return nil

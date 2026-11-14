@@ -188,6 +188,7 @@ struct KindSearchTests {
         #expect(PlaceRanking.kindAround("benzinlik aydınlı")?.district == "aydınlı")
         #expect(PlaceRanking.kindAround("kartal metro istasyonu") == nil) // named after the place: focus finds it
         #expect(PlaceRanking.kindAround("eczane") == nil) // a bare kind
+        #expect(PlaceRanking.kindAround("acıbadem hastane") == nil) // the hospital chain, not the district
     }
 
     @Test func aNamedDistrictPutsNearnessFirst() throws {
