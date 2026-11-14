@@ -181,6 +181,15 @@ struct KindSearchTests {
         #expect(PlaceRanking.kind("nöbetçi eczane") == nil) // no duty roster in OSM
     }
 
+    @Test func aKindNextToADistrict() {
+        let pharmacy = PlaceRanking.kindAround("esentepe eczane")
+        #expect(pharmacy?.tags == ["amenity:pharmacy"])
+        #expect(pharmacy?.district == "esentepe")
+        #expect(PlaceRanking.kindAround("benzinlik aydınlı")?.district == "aydınlı")
+        #expect(PlaceRanking.kindAround("kartal metro istasyonu") == nil) // named after the place: focus finds it
+        #expect(PlaceRanking.kindAround("eczane") == nil) // a bare kind
+    }
+
     @Test func theRequestAsksForTheNearestOfThatKind() throws {
         let request = PhotonSearchProvider().reverseRequest(GeoPoint(latitude: 40.889, longitude: 29.19), tags: ["amenity:fuel"])
         let url = try #require(request.url)

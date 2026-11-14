@@ -9,13 +9,20 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
 
     private let baseURL: URL
     private let session: URLSession
+    /// Districts a query names ("esentepe eczane", "kurtköy migros"), from the shipped Istanbul index; nil in
+    /// builds without it, where such queries go to Photon as typed.
+    private let districts: OfflinePlaceIndex?
 
     // Results outside Turkey are noise for this app.
     private static let turkeyBBox = "25.6,35.8,44.9,42.2"
 
-    public init(baseURL: URL = URL(string: "https://photon.komoot.io")!, session: URLSession = .shared) {
+    public init(
+        baseURL: URL = URL(string: "https://photon.komoot.io")!, session: URLSession = .shared,
+        districts: OfflinePlaceIndex? = nil
+    ) {
         self.baseURL = baseURL
         self.session = session
+        self.districts = districts
     }
 
     public func search(_ query: String, near: GeoPoint?) async throws -> [Place] {
@@ -24,8 +31,20 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
             let nearest = try await places(reverseRequest(near, tags: tags))
             if !nearest.isEmpty { return nearest }
         }
+        // "esentepe eczane": the nearest of that kind around the district (the Esentepe nearest the user).
+        if let around = PlaceRanking.kindAround(query), let district = try? districts?.place(named: around.district, near: near) {
+            let nearest = try await places(reverseRequest(district.point, tags: around.tags))
+            if !nearest.isEmpty { return nearest }
+        }
         // "Atatürk Cad. No:12" as OSM spells it (PlaceRanking.address); other queries go as typed.
         let text = PlaceRanking.address(query).text
+        let found = try await answer(text, near: near)
+        // "kurtköy migros": nothing, because the stores' addresses do not say Kurtköy; the rest around it.
+        if found.isEmpty, let retry = try await aroundDistrict(text, near: near) { return retry }
+        return found
+    }
+
+    private func answer(_ text: String, near: GeoPoint?) async throws -> [Place] {
         // A query naming a kind of place also asks for that kind alone, by name (PlaceRanking.focus).
         guard let focus = PlaceRanking.focus(text) else {
             return PlaceRanking.rank(try await places(request(text, near: near)), query: text)
@@ -36,6 +55,19 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
         let first = (try? await focused) ?? []
         let shown = Set(first.map(\.id))
         return PlaceRanking.rank(first + general.filter { !shown.contains($0.id) }, query: text)
+    }
+
+    /// A district named first or last ("kurtköy migros", "migros kurtköy"): the rest of the query, biased to it.
+    private func aroundDistrict(_ text: String, near: GeoPoint?) async throws -> [Place]? {
+        guard let districts else { return nil }
+        let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard words.count >= 2 else { return nil }
+        for (name, rest) in [(words[0], words.dropFirst()), (words[words.count - 1], words.dropLast())] {
+            guard let district = try? districts.place(named: name, near: near) else { continue }
+            let found = try await places(request(rest.joined(separator: " "), near: district.point))
+            if !found.isEmpty { return PlaceRanking.rank(found, query: text) }
+        }
+        return nil
     }
 
     func request(_ query: String, near: GeoPoint?, tags: [String] = []) -> URLRequest {
@@ -243,6 +275,23 @@ enum PlaceRanking {
         // Plural: "eczaneler", "otoparklar".
         let singular = text.hasSuffix("ler") || text.hasSuffix("lar") ? String(text.dropLast(3)) : text
         return kinds[text] ?? kinds[singular]
+    }
+
+    /// A kind next to a district, either way round ("esentepe eczane", "benzinlik aydınlı"): the kind's tags and
+    /// the district's name. Photon's text search sent "esentepe eczane" to Şişli and Sakarya and found nothing
+    /// for "aydınlı benzinlik" (14.11.2026). Kinds named after places (stations, piers, malls) stay with `focus`.
+    static func kindAround(_ query: String) -> (tags: [String], district: String)? {
+        guard focus(query) == nil else { return nil }
+        let words = query.lowercased(with: Locale(identifier: "tr")).split(whereSeparator: \.isWhitespace).map(String.init)
+        for size in [2, 1] where words.count > size {
+            if let tags = kind(words.suffix(size).joined(separator: " ")) {
+                return (tags, words.dropLast(size).joined(separator: " "))
+            }
+            if let tags = kind(words.prefix(size).joined(separator: " ")) {
+                return (tags, words.dropFirst(size).joined(separator: " "))
+            }
+        }
+        return nil
     }
 
     /// Turkish address shorthand in OSM's spelling, in order: door and flat numbers go, "No:12" becomes the

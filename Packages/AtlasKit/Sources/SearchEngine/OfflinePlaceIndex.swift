@@ -86,7 +86,7 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         var center = near
         // "ankara caddesi kartal": the index holds names only, so a district named last finds nothing. Without
         // it, and nearest to that district first.
-        if found.isEmpty, words.count > 1, let area = try place(named: words[words.count - 1]) {
+        if found.isEmpty, words.count > 1, let area = try place(named: words[words.count - 1], near: near) {
             words.removeLast()
             found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
             center = area.point
@@ -125,15 +125,26 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         }
     }
 
-    /// A district or neighbourhood (`place=*`) whose whole folded name is `word`.
-    private func place(named word: String) throws -> Place? {
+    /// The district or neighbourhood (`place=*`) called `name`, the one nearest `near`: Istanbul has an
+    /// Esentepe in Kartal and one in Şişli. Photon's own place search, asked the same 14.11.2026, put a
+    /// Kurtköy in Yalova first and found no Aydınlı.
+    public func place(named name: String, near: GeoPoint?) throws -> Place? {
+        let folded = TurkishFold.fold(name).split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")
+        guard !folded.isEmpty else { return nil }
+        let center = near ?? GeoPoint(latitude: 41.01, longitude: 28.98) // no fix yet: the city centre
         let sql = """
         SELECT p.id, p.name, p.subtitle, p.category, p.lat, p.lon
         FROM place_fts JOIN place p ON p.id = place_fts.docid
-        WHERE place_fts MATCH ?1 AND place_fts.folded = ?1 AND p.category LIKE 'place=%' LIMIT 1
+        WHERE place_fts MATCH ?1 AND place_fts.folded = ?2 AND p.category LIKE 'place=%'
+        ORDER BY (p.lat - ?3) * (p.lat - ?3) + ((p.lon - ?4) * ?5) * ((p.lon - ?4) * ?5) LIMIT 1
         """
         return try rows(sql) { statement in
-            sqlite3_bind_text(statement, 1, word, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(statement, 1, "\"\(folded)\"", -1, transient) // a phrase: every word, in order
+            sqlite3_bind_text(statement, 2, folded, -1, transient)
+            sqlite3_bind_double(statement, 3, center.latitude)
+            sqlite3_bind_double(statement, 4, center.longitude)
+            sqlite3_bind_double(statement, 5, cos(center.latitude * .pi / 180))
         }.first
     }
 

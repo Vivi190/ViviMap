@@ -35,6 +35,9 @@ struct OfflinePlaceIndexTests {
             ("Shell", "", "amenity=fuel", 40.8950, 29.1920),
             ("Migros", "", "shop=supermarket", 40.8900, 29.1900),
             ("Tekel", "", "shop=convenience", 40.8950, 29.1950),
+            // Two districts of one name, as Istanbul has (Kartal and Şişli).
+            ("Esentepe", "", "place=suburb", 40.9070, 29.1850),
+            ("Esentepe", "", "place=suburb", 41.0800, 29.0100),
         ]
         var sql = """
         CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL, category TEXT, lat REAL NOT NULL, lon REAL NOT NULL);
@@ -77,6 +80,16 @@ struct OfflinePlaceIndexTests {
         let found = try await index().search("Çanakkale Caddesi Kartal", near: nil)
         #expect(found.count == 2)
         #expect(found.first?.point.latitude == 40.9005)
+    }
+
+    @Test func theNearestOfTwoSameNamedDistricts() throws {
+        let shipped = try index()
+        let kartal = GeoPoint(latitude: 40.8890, longitude: 29.1905)
+        let sisli = GeoPoint(latitude: 41.0600, longitude: 28.9900)
+        #expect(try shipped.place(named: "Esentepe", near: kartal)?.point.latitude == 40.9070)
+        #expect(try shipped.place(named: "esentepe", near: sisli)?.point.latitude == 41.0800)
+        #expect(try shipped.place(named: "Kartal", near: nil)?.category == "place=town")
+        #expect(try shipped.place(named: "Çanakkale Caddesi", near: kartal) == nil) // a street, not a district
     }
 
     @Test func aBareKindListsTheNearest() async throws {

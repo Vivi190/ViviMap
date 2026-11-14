@@ -34,7 +34,9 @@ public final class SearchController {
     private static let maxRecents = 12
 
     public init(
-        provider: any PlaceSearchProvider = FallbackSearchProvider(primary: PhotonSearchProvider(), fallback: OfflinePlaceIndex.bundled),
+        provider: any PlaceSearchProvider = FallbackSearchProvider(
+            primary: PhotonSearchProvider(districts: OfflinePlaceIndex.bundled), fallback: OfflinePlaceIndex.bundled
+        ),
         nearbyIndex: OfflinePlaceIndex? = OfflinePlaceIndex.bundled,
         defaults: UserDefaults = .standard
     ) {
