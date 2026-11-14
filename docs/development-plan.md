@@ -16,6 +16,8 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 
 ## TestFlight'ta ne denenecek
 
+**Son yüklenen: build 14 (14.11.2026).** Build 15'in kodu hazır ve CI'dan geçti: trafik katmanı, tür kelimeli arama düzeltmesi. GitHub Actions'ın aylık kotası dolduğu için yüklenemedi ([setup-testflight.md](setup-testflight.md#github-actions-dakikaları)). Aşağıda "build 15+" yazan madde o build'le gelir.
+
 Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururken etkileşime gir.
 
 0. **Evde deneme (simülasyon):** Harita ayarları → Test → **Sürüş simülasyonu**'nu aç. Bundan sonra rota kartında **Simüle et** düğmesi çıkar:

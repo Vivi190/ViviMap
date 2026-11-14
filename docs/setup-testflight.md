@@ -20,6 +20,23 @@ gh run watch -R Vivi190/ViviMap
 
 Apple build'i işledikten sonra (genellikle birkaç dakika) iPhone'daki TestFlight uygulamasında görünür. Dahili test için Beta App Review gerekmez.
 
+## GitHub Actions dakikaları
+
+Depo özel olduğu için macOS dakikaları 10 kat sayılır. GitHub Free ayda 2.000 dakika verir; bu yaklaşık 200 gerçek macOS dakikası eder.
+
+| İş | Süre | Sayılan |
+|---|---|---|
+| CI (derleme, birim + UI testleri) | ~8 dk | ~80 dk |
+| TestFlight yüklemesi | ~3 dk | ~30 dk |
+
+14.11.2026'da bu ayın kotası doldu: yeni işler "spending limit" uyarısıyla başlamıyor. Seçenekler senin kararın:
+
+- **Ay başını beklemek:** ücretsizdir; o zamana kadar CI ve TestFlight çalışmaz.
+- **Harcama limiti tanımlamak:** GitHub → Settings → Billing and plans → Spending limits → Actions. Kota aşımı ücretlidir.
+- **Depoyu herkese açık yapmak:** standart runner'lar ücretsiz ve sınırsız olur. Gizli anahtarlar GitHub Secrets'ta kalır, kodda yoktur; ama kodun tamamı görünür olur.
+
+Kota açılınca bekleyen build tek komutla gönderilir: `gh workflow run testflight.yml`
+
 ## Nasıl kuruldu
 
 Apple'ın web arayüzünde yalnızca iki şey elle yapıldı; geri kalan her şey App Store Connect API üzerinden çalışan [Tools/appstore/provision.mjs](../Tools/appstore/provision.mjs) betiğiyle yapıldı.
