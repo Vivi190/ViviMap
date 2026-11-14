@@ -25,6 +25,36 @@ public struct TrafficSection: Sendable {
     public let coordinates: [CLLocationCoordinate2D]
 }
 
+/// The city traffic layer: each slow, queuing or stopped stretch in HERE's own geometry (there is no route
+/// to snap it to).
+public enum AreaTraffic {
+    /// Segments are directional: each is moved a few metres to the right of its travel direction (traffic
+    /// keeps right), so the two directions of a street show side by side instead of one hiding the other.
+    public static func sections(_ segments: [FlowSegment]) -> [TrafficSection] {
+        segments.compactMap { segment in
+            guard segment.points.count > 1, let level = RouteTraffic.level(segment) else { return nil }
+            return TrafficSection(level: level, coordinates: offsetRight(segment.points, metres: 4))
+        }
+    }
+
+    /// Each vertex shifted along the right-hand normal of the line through its neighbours.
+    static func offsetRight(_ points: [CLLocationCoordinate2D], metres: Double) -> [CLLocationCoordinate2D] {
+        points.indices.map { index in
+            let before = points[max(index - 1, 0)], after = points[min(index + 1, points.count - 1)]
+            let metresPerDegreeLon = 111_320 * cos(points[index].latitude * .pi / 180)
+            let dx = (after.longitude - before.longitude) * metresPerDegreeLon
+            let dy = (after.latitude - before.latitude) * 110_540
+            let length = (dx * dx + dy * dy).squareRoot()
+            guard length > 0 else { return points[index] }
+            // Right of the travel direction (dx, dy) is (dy, -dx).
+            return CLLocationCoordinate2D(
+                latitude: points[index].latitude - dx / length * metres / 110_540,
+                longitude: points[index].longitude + dy / length * metres / metresPerDegreeLon
+            )
+        }
+    }
+}
+
 public enum RouteTraffic {
     /// HERE's jam factor bands: under 4 flows (left uncoloured), 4–8 slow, 8–10 queuing, 10 or closed stopped.
     static func level(_ segment: FlowSegment) -> TrafficSection.Level? {

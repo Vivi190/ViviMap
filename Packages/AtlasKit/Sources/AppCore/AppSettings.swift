@@ -49,6 +49,11 @@ public final class AppSettings {
         didSet { defaults.set(warnsBumps, forKey: Keys.bumps) }
     }
 
+    /// City traffic layer on the map (the "Trafik" button); remembered between launches.
+    public var showsTrafficLayer: Bool {
+        didSet { defaults.set(showsTrafficLayer, forKey: Keys.trafficLayer) }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
@@ -57,6 +62,7 @@ public final class AppSettings {
         showsDriveSimulation = defaults.bool(forKey: Keys.simulation)
         warnsCameras = defaults.object(forKey: Keys.cameras) as? Bool ?? true
         warnsBumps = defaults.object(forKey: Keys.bumps) as? Bool ?? true
+        showsTrafficLayer = defaults.bool(forKey: Keys.trafficLayer)
     }
 
     private enum Keys {
@@ -64,5 +70,6 @@ public final class AppSettings {
         static let simulation = "atlas.simulation"
         static let cameras = "atlas.warn.cameras"
         static let bumps = "atlas.warn.bumps"
+        static let trafficLayer = "atlas.trafficLayer"
     }
 }

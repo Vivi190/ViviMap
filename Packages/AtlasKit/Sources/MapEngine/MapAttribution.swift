@@ -11,6 +11,9 @@ public struct MapAttributionView: View {
                 link("© OpenMapTiles", "https://www.openmaptiles.org/")
                 link("Karolar: OpenFreeMap", "https://openfreemap.org/")
             }
+            Section("Trafik") {
+                link("Canlı trafik ve trafikli süreler: © HERE", "https://legal.here.com/")
+            }
             Section("Yazılım") {
                 link("MapLibre Native (BSD-2)", "https://github.com/maplibre/maplibre-native")
                 link("MapLibre SwiftUI DSL (BSD-3)", "https://github.com/maplibre/swiftui-dsl")

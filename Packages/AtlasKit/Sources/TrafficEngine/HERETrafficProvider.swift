@@ -78,6 +78,53 @@ public struct HERETrafficProvider: TrafficProvider {
         return request
     }
 
+    /// Traffic v7 flow in a box, only roads at the slow band or worse (RouteTraffic's 4 and up): free-flowing
+    /// roads are not drawn. Measured 14.11.2026 on a 0.10° × 0.07° Kartal box: 1.7 MB unfiltered, 11 KB
+    /// filtered (night); HERE ignores minJamFactor unless maxJamFactor is sent too. Wider than 0.15° only main
+    /// roads (functional classes 1–3): their unfiltered answer was 2.2 MB for 0.30° × 0.20°.
+    public func flow(in area: TrafficArea) async throws -> [FlowSegment] {
+        guard area.fitsHERE else { return [] }
+        guard budget.spend(.areaFlow) else { throw TrafficError.budgetExhausted }
+        let (data, response) = try await session.data(for: areaFlowRequest(for: area))
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200 ..< 300).contains(status) else { throw TrafficError.service(status: status) }
+        return try HEREFlowResponse.segments(from: data)
+    }
+
+    func areaFlowRequest(for area: TrafficArea) throws -> URLRequest {
+        var components = URLComponents(url: Self.flowURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "apiKey", value: apiKey)]
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 20
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(AreaFlowBody(
+            in: .init(type: "bbox", west: area.west, south: area.south, east: area.east, north: area.north),
+            locationReferencing: ["shape"],
+            minJamFactor: 4,
+            maxJamFactor: 10,
+            functionalClasses: area.span > 0.15 ? [1, 2, 3] : nil
+        ))
+        return request
+    }
+
+    private struct AreaFlowBody: Encodable {
+        struct Box: Encodable {
+            let type: String
+            let west: Double
+            let south: Double
+            let east: Double
+            let north: Double
+        }
+
+        let `in`: Box
+        let locationReferencing: [String]
+        let minJamFactor: Double
+        let maxJamFactor: Double
+        /// Omitted when nil: every road class.
+        let functionalClasses: [Int]?
+    }
+
     private struct ImportBody: Encodable {
         let trace: [HERETrace.Point]
     }

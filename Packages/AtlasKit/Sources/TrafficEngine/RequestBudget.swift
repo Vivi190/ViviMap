@@ -8,7 +8,11 @@ import Foundation
 public final class RequestBudget: @unchecked Sendable {
     public enum Kind: String, Sendable {
         case routeImport
+        /// Traffic along a route (route card, guidance).
         case flow
+        /// The city traffic layer. Both flow kinds are HERE Traffic flow requests: 1 800 + 600 per device
+        /// stay under half of the 5 000 free ones, and the layer cannot eat into guidance.
+        case areaFlow
     }
 
     public static let shared = RequestBudget()
@@ -20,7 +24,7 @@ public final class RequestBudget: @unchecked Sendable {
 
     public init(
         defaults: UserDefaults = .standard,
-        limits: [Kind: Int] = [.routeImport: 1_200, .flow: 2_400],
+        limits: [Kind: Int] = [.routeImport: 1_200, .flow: 1_800, .areaFlow: 600],
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.defaults = defaults

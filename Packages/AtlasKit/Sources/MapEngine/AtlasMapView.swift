@@ -41,6 +41,7 @@ public struct AtlasMapView: View {
     private let route: [CLLocationCoordinate2D]
     private let alternatives: [[CLLocationCoordinate2D]]
     private let traffic: [TrafficLine]
+    private let areaTraffic: [TrafficLine]
     private let marks: [MapMark]
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
@@ -58,6 +59,7 @@ public struct AtlasMapView: View {
         route: [CLLocationCoordinate2D] = [],
         alternatives: [[CLLocationCoordinate2D]] = [],
         traffic: [TrafficLine] = [],
+        areaTraffic: [TrafficLine] = [],
         marks: [MapMark] = [],
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
@@ -72,6 +74,7 @@ public struct AtlasMapView: View {
         self.route = route
         self.alternatives = alternatives
         self.traffic = traffic
+        self.areaTraffic = areaTraffic
         self.marks = marks
         self.puckSource = puckSource
         self.isGuiding = isGuiding
@@ -94,10 +97,22 @@ public struct AtlasMapView: View {
         let guiding = isGuiding
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
         let slow = byLevel[.slow] ?? [], heavy = byLevel[.heavy] ?? [], stopped = byLevel[.stopped] ?? []
+        let area = Dictionary(grouping: areaTraffic, by: \.level).mapValues { $0.map(\.coordinates) }
+        let areaSlow = area[.slow] ?? [], areaHeavy = area[.heavy] ?? [], areaStopped = area[.stopped] ?? []
         let cameraMarks = marks.filter(\.isCamera).map(\.coordinate), bumpMarks = marks.filter { !$0.isCamera }.map(\.coordinate)
         // Without a connection the shipped Istanbul tiles take over (when this build has them).
         let style = isOffline ? OfflineMap.styleURL(appearance) ?? appearance.styleURL : appearance.styleURL
         MapView(styleURL: style, camera: $camera, locationManager: puckSource) {
+            // City traffic layer ("Trafik"): lowest of ours and thinner, so routes and their colours stay on top.
+            if !areaSlow.isEmpty {
+                Self.trafficLayer("area-slow", areaSlow, Self.trafficSlow, widths: Self.areaWidths)
+            }
+            if !areaHeavy.isEmpty {
+                Self.trafficLayer("area-heavy", areaHeavy, Self.trafficHeavy, widths: Self.areaWidths)
+            }
+            if !areaStopped.isEmpty {
+                Self.trafficLayer("area-stopped", areaStopped, Self.trafficStopped, widths: Self.areaWidths)
+            }
             // Other candidates in a paler blue under the chosen route, so the driver sees where each one goes.
             if !alternatives.isEmpty {
                 let others = ShapeSource(identifier: "atlas-alternatives") {
@@ -144,13 +159,13 @@ public struct AtlasMapView: View {
             }
             // Traffic colours over the route line, worst on top.
             if !slow.isEmpty {
-                Self.trafficLayer("slow", slow, Self.trafficSlow)
+                Self.trafficLayer("route-slow", slow, Self.trafficSlow)
             }
             if !heavy.isEmpty {
-                Self.trafficLayer("heavy", heavy, Self.trafficHeavy)
+                Self.trafficLayer("route-heavy", heavy, Self.trafficHeavy)
             }
             if !stopped.isEmpty {
-                Self.trafficLayer("stopped", stopped, Self.trafficStopped)
+                Self.trafficLayer("route-stopped", stopped, Self.trafficStopped)
             }
             if !cameraMarks.isEmpty {
                 Self.markLayer("camera", cameraMarks, Self.destinationColor)
@@ -208,8 +223,13 @@ public struct AtlasMapView: View {
             }
     }
 
-    /// Same width as the route's inner line, so a slow stretch reads as the route turning orange or red.
-    private static func trafficLayer(_ name: String, _ lines: [[CLLocationCoordinate2D]], _ color: UIColor) -> some StyleLayerDefinition {
+    /// By default as wide as the route's inner line, so a slow stretch reads as the route turning orange or red.
+    private static func trafficLayer(
+        _ name: String,
+        _ lines: [[CLLocationCoordinate2D]],
+        _ color: UIColor,
+        widths: [Int: Double] = [10: 3.5, 14: 6.5, 18: 20]
+    ) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-traffic-\(name)") {
             lines.map { MLNPolylineFeature(coordinates: $0) as MLNShape }
         }
@@ -219,9 +239,11 @@ public struct AtlasMapView: View {
             .lineColor(color)
             .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
                        parameters: NSExpression(forConstantValue: 1.5),
-                       stops: NSExpression(forConstantValue: [10: 3.5, 14: 6.5, 18: 20]))
+                       stops: NSExpression(forConstantValue: widths))
             .renderBelow(.symbols)
     }
+
+    private static let areaWidths: [Int: Double] = [10: 1.5, 14: 3.5, 18: 9]
 
     private static func markLayer(_ name: String, _ points: [CLLocationCoordinate2D], _ color: UIColor) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-mark-\(name)") {

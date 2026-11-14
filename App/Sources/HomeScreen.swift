@@ -25,12 +25,22 @@ final class MapViewport {
     var zoom: Double = 15
     var pitch: Double = 0
     var center = Defaults.istanbul
+    /// What the screen shows, snapped outward to 0.01° (~1 km) so a small move keeps the same value.
+    var area: TrafficArea?
 
     func update(from proxy: MapViewProxy) {
         if abs(proxy.direction - bearing) > 0.5 { bearing = proxy.direction }
         zoom = proxy.zoomLevel
         pitch = proxy.pitch
         center = proxy.centerCoordinate
+        let box = proxy.visibleBox, step = 0.01
+        let visible = TrafficArea(
+            west: (box.west / step).rounded(.down) * step,
+            south: (box.south / step).rounded(.down) * step,
+            east: (box.east / step).rounded(.up) * step,
+            north: (box.north / step).rounded(.up) * step
+        )
+        if visible != area { area = visible }
     }
 }
 
@@ -70,6 +80,7 @@ struct HomeScreen: View {
     @State private var planGeneration = 0
     @State private var trafficWatch = TrafficWatch()
     @State private var connectivity = Connectivity()
+    @State private var cityTraffic = CityTraffic()
     @State private var guidanceActivity = GuidanceActivity()
     /// What the driver was told when a real (not simulated) drive started, for the trip log.
     @State private var tripStart: TripStart?
@@ -131,6 +142,12 @@ struct HomeScreen: View {
         return activeRoute?.coordinates ?? []
     }
 
+    /// The "Trafik" layer: switched on, a HERE key in this build, online, and not while guiding (the route
+    /// carries its own colours then).
+    private var showsCityTraffic: Bool {
+        settings.showsTrafficLayer && traffic != nil && connectivity.isOnline && !isNavigating
+    }
+
     /// The other candidates while choosing a route; none while guiding.
     private var alternativeRoutes: [[CLLocationCoordinate2D]] {
         guard !isNavigating, let active = activeRoute else { return [] }
@@ -146,14 +163,7 @@ struct HomeScreen: View {
 
     private var displayedTraffic: [TrafficLine] {
         let sections = isNavigating ? trafficWatch.sections : activeRoute.flatMap { previewTraffic[$0.index] } ?? []
-        return sections.map { section in
-            let level: TrafficLine.Level = switch section.level {
-            case .slow: .slow
-            case .heavy: .heavy
-            case .stopped: .stopped
-            }
-            return TrafficLine(level: level, coordinates: section.coordinates)
-        }
+        return sections.map { TrafficLine($0) }
     }
 
     var body: some View {
@@ -168,6 +178,7 @@ struct HomeScreen: View {
                 route: displayedRoute,
                 alternatives: alternativeRoutes,
                 traffic: displayedTraffic,
+                areaTraffic: showsCityTraffic ? cityTraffic.lines : [],
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 puckSource: simulatedPuck,
                 isGuiding: isNavigating,
@@ -241,6 +252,9 @@ struct HomeScreen: View {
                         .frame(maxWidth: isLandscape ? 420 : .infinity)
                     GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
                     if !connectivity.isOnline { offlineChip }
+                    if settings.showsTrafficLayer, let notice = cityTraffic.notice {
+                        StatusChip(systemImage: "car.2.fill", title: notice, tone: .warning)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 VStack(spacing: Spacing.m) {
@@ -249,12 +263,15 @@ struct HomeScreen: View {
                 }
             }
             Spacer(minLength: 0)
+            if showsCityTraffic, let traffic {
+                CityTrafficLoader(viewport: viewport, cityTraffic: cityTraffic, provider: traffic)
+            }
             HStack(alignment: .bottom) {
                 SpeedOverlay()
                 Spacer(minLength: 0)
                 if selectedPlace == nil {
                     Button { sheet = .attribution } label: {
-                        Text("© OpenStreetMap")
+                        Text(showsCityTraffic ? "© OpenStreetMap · HERE" : "© OpenStreetMap")
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, Spacing.s)
@@ -288,6 +305,12 @@ struct HomeScreen: View {
             MapControlButton(systemImage: "map", label: "Harita ayarları") { sheet = .mapSettings }
             MapControlDivider()
             MapControlTextButton(title: is3D ? "2D" : "3D", label: "Üç boyutlu görünüm", isActive: is3D, action: toggle3D)
+            if traffic != nil {
+                MapControlDivider()
+                MapControlButton(systemImage: "car.2.fill", label: "Trafik", isActive: settings.showsTrafficLayer) {
+                    settings.showsTrafficLayer.toggle()
+                }
+            }
             MapControlDivider()
             MapControlButton(
                 systemImage: locationSymbol,
@@ -762,5 +785,27 @@ struct CompassButton: View {
             }
         }
         .animation(.snappy(duration: 0.2), value: offNorth > 1)
+    }
+}
+
+/// Loads the "Trafik" layer wherever the map comes to rest. A view of its own because it reads the viewport,
+/// which changes on every frame while the map moves; HomeScreen itself does not.
+private struct CityTrafficLoader: View {
+    let viewport: MapViewport
+    let cityTraffic: CityTraffic
+    let provider: any TrafficProvider
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .task(id: viewport.area) {
+                // Still moving: the next area change cancels this before it fetches.
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let area = viewport.area else { return }
+                while !Task.isCancelled {
+                    await cityTraffic.refresh(area, using: provider)
+                    try? await Task.sleep(for: CityTraffic.refreshInterval)
+                }
+            }
     }
 }

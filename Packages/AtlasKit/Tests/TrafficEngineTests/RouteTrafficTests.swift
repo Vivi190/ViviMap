@@ -93,3 +93,75 @@ struct RouteTrafficTests {
         #expect(body["locationReferencing"] as? [String] == ["shape"])
     }
 }
+
+struct AreaTrafficTests {
+    private let kartal = TrafficArea(west: 29.1, south: 40.85, east: 29.3, north: 40.95)
+
+    private func segment(_ points: [(Double, Double)], jam: Double, closed: Bool = false) -> FlowSegment {
+        FlowSegment(points: points.map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }, jamFactor: jam, isClosed: closed)
+    }
+
+    @Test func drawsOnlySlowAndWorse() {
+        let sections = AreaTraffic.sections([
+            segment([(40.90, 29.20), (40.90, 29.21)], jam: 2),
+            segment([(40.91, 29.20), (40.91, 29.21)], jam: 6),
+            segment([(40.92, 29.20), (40.92, 29.21)], jam: 1, closed: true),
+            segment([(40.93, 29.20)], jam: 9), // a single point draws nothing
+        ])
+        #expect(sections.map(\.level) == [.slow, .stopped])
+    }
+
+    @Test func eachDirectionMovesToItsRightSide() {
+        let east = AreaTraffic.offsetRight([(40.9, 29.20), (40.9, 29.21)].map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }, metres: 4)
+        let north = AreaTraffic.offsetRight([(40.90, 29.2), (40.91, 29.2)].map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }, metres: 4)
+        // Eastbound keeps to the south side, northbound to the east side, 4 m out.
+        #expect(abs((40.9 - east[0].latitude) * 110_540 - 4) < 0.01)
+        #expect(east[1].longitude == 29.21)
+        #expect(abs((north[1].longitude - 29.2) * 111_320 * cos(40.91 * .pi / 180) - 4) < 0.01)
+        #expect(north[0].latitude == 40.90)
+    }
+
+    @Test func requestIsABoxPostForSlowRoadsOnly() throws {
+        let provider = HERETrafficProvider(apiKey: "k", session: .shared, budget: RequestBudget(defaults: UserDefaults(suiteName: "atlas.test.\(UUID())")!))
+        // The box measured on 14.11.2026 (HERETrafficProvider.flow(in:)): close enough for every road class.
+        let request = try provider.areaFlowRequest(for: TrafficArea(west: 29.15, south: 40.86, east: 29.25, north: 40.93))
+        #expect(request.httpMethod == "POST")
+        #expect(request.url?.host == "data.traffic.hereapi.com")
+        let data = try #require(request.httpBody)
+        let body = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let box = try #require(body["in"] as? [String: Any])
+        #expect(box["type"] as? String == "bbox")
+        #expect(box["west"] as? Double == 29.15)
+        #expect(box["north"] as? Double == 40.93)
+        #expect(body["minJamFactor"] as? Double == 4)
+        #expect(body["maxJamFactor"] as? Double == 10) // without it HERE ignores the minimum
+        #expect(body["functionalClasses"] == nil) // close in: every road
+        #expect(body["locationReferencing"] as? [String] == ["shape"])
+    }
+
+    @Test func zoomedOutAsksForMainRoadsOnly() throws {
+        let provider = HERETrafficProvider(apiKey: "k", session: .shared, budget: RequestBudget(defaults: UserDefaults(suiteName: "atlas.test.\(UUID())")!))
+        let request = try provider.areaFlowRequest(for: TrafficArea(west: 29.0, south: 40.85, east: 29.3, north: 41.05))
+        let data = try #require(request.httpBody)
+        let body = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(body["functionalClasses"] as? [Int] == [1, 2, 3])
+    }
+
+    @Test func fetchedAreaCoversSmallPansAndStaysUnderHERELimit() {
+        let fetched = kartal.expanded(by: 0.5)
+        #expect(fetched.contains(kartal))
+        #expect(fetched.contains(TrafficArea(west: 29.15, south: 40.86, east: 29.35, north: 40.96)))
+        #expect(abs((fetched.east - fetched.west) - 0.4) < 1e-9)
+        #expect(TrafficArea(west: 28.5, south: 40.8, east: 29.4, north: 41.2).expanded(by: 0.5).fitsHERE)
+        #expect(!TrafficArea(west: 28.0, south: 40.8, east: 29.2, north: 41.2).fitsHERE)
+    }
+
+    @Test func layerHasItsOwnMonthlyCap() async {
+        let budget = RequestBudget(defaults: UserDefaults(suiteName: "atlas.test.\(UUID())")!, limits: [.areaFlow: 0, .flow: 5])
+        let provider = HERETrafficProvider(apiKey: "k", session: .shared, budget: budget)
+        await #expect(throws: TrafficError.budgetExhausted) {
+            _ = try await provider.flow(in: kartal)
+        }
+        #expect(budget.used(.flow) == 0)
+    }
+}
