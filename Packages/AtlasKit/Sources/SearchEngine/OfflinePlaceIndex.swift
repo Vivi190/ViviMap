@@ -73,6 +73,11 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     }()
 
     public func search(_ query: String, near: GeoPoint?) async throws -> [Place] {
+        // "benzinlik": the nearest of that kind, for the kinds the index lists.
+        if let near, let tags = PlaceRanking.kind(query), tags.count == 1,
+           let kind = NearbyKind(rawValue: tags[0].replacingOccurrences(of: ":", with: "=")) {
+            return try nearby(kind, near: near)
+        }
         // "Çanakkale Cad. No:5" spelled out; the index has no house numbers, so it looks for the street.
         let address = PlaceRanking.address(query)
         let words = TurkishFold.fold(address.text).split { !$0.isLetter && !$0.isNumber }.map(String.init)

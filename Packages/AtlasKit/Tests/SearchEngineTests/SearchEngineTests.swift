@@ -166,6 +166,32 @@ struct AddressSearchTests {
     }
 }
 
+/// "benzinlik" by itself: Photon's text search found a station 148 km away (14.11.2026); the nearest are wanted.
+struct KindSearchTests {
+    @Test func bareKindsWantTheNearest() {
+        #expect(PlaceRanking.kind("benzinlik") == ["amenity:fuel"])
+        #expect(PlaceRanking.kind("En yakın eczane") == ["amenity:pharmacy"])
+        #expect(PlaceRanking.kind("marketler") == ["shop:supermarket", "shop:convenience"])
+        #expect(PlaceRanking.kind("yakındaki otoparklar") == ["amenity:parking"])
+    }
+
+    @Test func namedPlacesAreNoKind() {
+        #expect(PlaceRanking.kind("akasya avm") == nil)
+        #expect(PlaceRanking.kind("pendik devlet hastanesi") == nil)
+        #expect(PlaceRanking.kind("nöbetçi eczane") == nil) // no duty roster in OSM
+    }
+
+    @Test func theRequestAsksForTheNearestOfThatKind() throws {
+        let request = PhotonSearchProvider().reverseRequest(GeoPoint(latitude: 40.889, longitude: 29.19), tags: ["amenity:fuel"])
+        let url = try #require(request.url)
+        let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+        #expect(url.path == "/reverse")
+        #expect(items.filter { $0.name == "osm_tag" }.map(\.value) == ["amenity:fuel"])
+        #expect(items.first { $0.name == "limit" }?.value == "12")
+        #expect(items.first { $0.name == "radius" }?.value == "15")
+    }
+}
+
 struct CoordinateQueryTests {
     @Test func parsesCommaOrSpaceSeparatedPairs() {
         #expect(CoordinateQuery.place(from: "40.8890, 29.1905")?.point == GeoPoint(latitude: 40.889, longitude: 29.1905))

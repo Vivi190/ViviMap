@@ -19,6 +19,11 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
     }
 
     public func search(_ query: String, near: GeoPoint?) async throws -> [Place] {
+        // "benzinlik", "en yakın eczane": the nearest of that kind (PlaceRanking.kind).
+        if let near, let tags = PlaceRanking.kind(query) {
+            let nearest = try await places(reverseRequest(near, tags: tags))
+            if !nearest.isEmpty { return nearest }
+        }
         // "Atatürk Cad. No:12" as OSM spells it (PlaceRanking.address); other queries go as typed.
         let query = PlaceRanking.address(query).text
         // A query naming a kind of place also asks for that kind alone, by name (PlaceRanking.focus).
@@ -63,19 +68,27 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
 
     /// Nearest named place or address for a point picked on the map.
     public func reverse(_ point: GeoPoint) async throws -> Place? {
+        let (data, response) = try await session.data(for: reverseRequest(point))
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return try PhotonParser.places(from: data).first
+    }
+
+    /// Photon's reverse search: the nearest place; with `tags`, the nearest 12 of that kind within 15 km.
+    func reverseRequest(_ point: GeoPoint, tags: [String] = []) -> URLRequest {
         var components = URLComponents(url: baseURL.appending(path: "reverse"), resolvingAgainstBaseURL: false)!
-        components.queryItems = [
+        var items = [
             URLQueryItem(name: "lat", value: String(point.latitude)),
             URLQueryItem(name: "lon", value: String(point.longitude)),
             URLQueryItem(name: "lang", value: "default"),
-            URLQueryItem(name: "limit", value: "1"),
+            URLQueryItem(name: "limit", value: tags.isEmpty ? "1" : "12"),
         ]
+        if !tags.isEmpty { items.append(URLQueryItem(name: "radius", value: "15")) }
+        items += tags.map { URLQueryItem(name: "osm_tag", value: $0) }
+        components.queryItems = items
         var request = URLRequest(url: components.url!)
         request.setValue("Atlas-iOS/1.0 (personal navigation app)", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 10
-        let (data, response) = try await session.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
-        return try PhotonParser.places(from: data).first
+        return request
     }
 }
 
@@ -188,6 +201,49 @@ enum PlaceRanking {
         (["iskele", "iskelesi"], ["amenity:ferry_terminal"]),
         (["otopark", "otoparkı"], ["amenity:parking"]),
     ]
+
+    /// Bare kinds of place and their OSM tags. Not "nöbetçi eczane": OSM has no duty roster, and the nearest
+    /// pharmacy may be shut.
+    private static let kinds: [String: [String]] = {
+        let table: [(words: [String], tags: [String])] = [
+            (["benzinlik", "benzin istasyonu", "akaryakıt", "akaryakıt istasyonu", "petrol istasyonu"], ["amenity:fuel"]),
+            (["eczane"], ["amenity:pharmacy"]),
+            (["otopark", "park yeri"], ["amenity:parking"]),
+            (["şarj", "şarj istasyonu", "şarj noktası"], ["amenity:charging_station"]),
+            (["hastane"], ["amenity:hospital"]),
+            (["market", "süpermarket"], ["shop:supermarket", "shop:convenience"]),
+            (["atm", "bankamatik"], ["amenity:atm"]),
+            (["banka"], ["amenity:bank"]),
+            (["kafe", "cafe"], ["amenity:cafe"]),
+            (["restoran", "restaurant", "lokanta"], ["amenity:restaurant"]),
+            (["fırın"], ["shop:bakery"]),
+            (["avm", "alışveriş merkezi"], ["shop:mall"]),
+            (["polis", "karakol"], ["amenity:police"]),
+            (["durak", "otobüs durağı"], ["highway:bus_stop"]),
+            (["metro", "istasyon", "metro istasyonu", "tren istasyonu"], ["railway:station"]),
+            (["iskele", "vapur iskelesi"], ["amenity:ferry_terminal"]),
+            (["taksi", "taksi durağı"], ["amenity:taxi"]),
+            (["oto yıkama", "otoyıkama"], ["amenity:car_wash"]),
+            (["lastikçi"], ["shop:tyres"]),
+            (["ptt", "postane"], ["amenity:post_office"]),
+            (["tuvalet", "wc"], ["amenity:toilets"]),
+            (["otel"], ["tourism:hotel"]),
+        ]
+        return Dictionary(table.flatMap { row in row.words.map { ($0, row.tags) } }, uniquingKeysWith: { first, _ in first })
+    }()
+
+    /// A bare kind of place ("benzinlik", "en yakın eczane", "marketler") wants the nearest ones, not places with
+    /// the word in their name: Photon's text search answered "benzinlik" with a station 148 km away and "hastane"
+    /// with a building site; its reverse search filtered by kind lists the nearest (14.11.2026). Photon tags.
+    static func kind(_ query: String) -> [String]? {
+        var text = query.lowercased(with: Locale(identifier: "tr")).split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        if let prefix = ["en yakın ", "yakınımdaki ", "yakındaki ", "yakınımda ", "yakında "].first(where: { text.hasPrefix($0) }) {
+            text = String(text.dropFirst(prefix.count))
+        }
+        // Plural: "eczaneler", "otoparklar".
+        let singular = text.hasSuffix("ler") || text.hasSuffix("lar") ? String(text.dropLast(3)) : text
+        return kinds[text] ?? kinds[singular]
+    }
 
     /// Turkish address shorthand in OSM's spelling, in order: door and flat numbers go, "No:12" becomes the
     /// house number, "Cad." "Sk." "Mah." "Blv." are spelled out.

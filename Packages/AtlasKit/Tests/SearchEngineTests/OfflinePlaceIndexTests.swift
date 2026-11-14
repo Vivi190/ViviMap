@@ -70,6 +70,11 @@ struct OfflinePlaceIndexTests {
         #expect(found.first?.point.latitude == 40.9005)
     }
 
+    @Test func aBareKindListsTheNearest() async throws {
+        let kartal = GeoPoint(latitude: 40.8890, longitude: 29.1905)
+        #expect(try await index().search("en yakın benzinlik", near: kartal).map(\.name) == ["BP", "Shell", "Opet"])
+    }
+
     @Test func punctuationOnlyFindsNothing() async throws {
         #expect(try await index().search(" - ' ", near: nil).isEmpty)
     }
