@@ -148,6 +148,7 @@ struct MapSettingsView: View {
             Section {
                 Toggle("Hız kamerası uyarıları", isOn: $settings.warnsCameras)
                 Toggle("Kasis uyarıları", isOn: $settings.warnsBumps)
+                Toggle("Hız sınırı uyarısı", isOn: $settings.warnsSpeeding)
                 NavigationLink {
                     MarkedHazardsView()
                 } label: {

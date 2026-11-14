@@ -588,6 +588,7 @@ struct HomeScreen: View {
         do {
             navigation.hazardKinds = hazardKinds
             navigation.userHazards = userHazards.hazards
+            navigation.warnsSpeeding = settings.warnsSpeeding
             try navigation.start(route, from: start)
             location.setNavigating(true)
             // The screen stays on while guiding (it can still be locked by hand; guidance continues).

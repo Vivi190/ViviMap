@@ -60,6 +60,10 @@ public final class NavigationSession {
     @ObservationIgnored private var subscription: AnyCancellable?
     @ObservationIgnored private var planner = AnnouncementPlanner()
     @ObservationIgnored private var lastSpeed: Double = 0
+    @ObservationIgnored private var lastFixTime = Date.distantPast
+    /// Spoken warning when clearly over the posted limit (map settings → Uyarılar); set before a route starts.
+    @ObservationIgnored public var warnsSpeeding = true
+    @ObservationIgnored private var speedingWatch = SpeedingWatch()
     /// Shipped OSM cameras and bumps (works offline).
     @ObservationIgnored private let hazards = HazardCatalog.bundled()?.hazards ?? []
     /// The driver's own marks; set before a route starts, used from the next route change.
@@ -97,11 +101,14 @@ public final class NavigationSession {
     public func ingest(_ location: CLLocation) {
         guard isActive else { return }
         lastSpeed = max(location.speed, 0)
+        lastFixTime = location.timestamp
         bridge.forward(location)
     }
 
     public func start(_ option: RouteOption, from location: CLLocation) throws {
         planner = AnnouncementPlanner()
+        speedingWatch = SpeedingWatch()
+        speedingWatch.isEnabled = warnsSpeeding
         hasArrived = false
         arrivedAt = nil
         subscription = core.$state
@@ -208,6 +215,7 @@ public final class NavigationSession {
         durationRemaining = progress.durationRemaining
         let limit = Self.speedLimit(fromAnnotation: state.currentAnnotationJSON)
         if limit != speedLimit { speedLimit = limit }
+        if let warning = speedingWatch.update(speedKmh: lastSpeed * 3.6, limit: limit, at: lastFixTime) { voice.speak(warning) }
         let zoom = GuidanceZoom.level(speed: lastSpeed, distanceToManeuver: progress.distanceToNextManeuver, current: guidanceZoom)
         if zoom != guidanceZoom { guidanceZoom = zoom }
 
