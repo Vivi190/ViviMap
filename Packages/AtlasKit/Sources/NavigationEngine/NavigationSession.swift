@@ -40,6 +40,8 @@ public final class NavigationSession {
     public private(set) var maneuverSymbol = "arrow.up"
     public private(set) var actionText: String?
     public private(set) var nextRoad: String?
+    /// The road being driven, in its Turkish spelling; nil on unnamed roads.
+    public private(set) var currentRoad: String?
     /// Empty when the data has no lanes — never invented (OSM barely tags them in Istanbul, research §8).
     public private(set) var lanes: [Lane] = []
     /// Symbol of the maneuver right after the next one when it follows within 150 m ("Sonra ↰").
@@ -156,6 +158,7 @@ public final class NavigationSession {
         maneuverSymbol = "arrow.up"
         actionText = nil
         nextRoad = nil
+        currentRoad = nil
         lanes = []
         thenSymbol = nil
         routeCoordinates = []
@@ -216,6 +219,7 @@ public final class NavigationSession {
             maneuverSymbol = ManeuverSymbols.symbol(type: .arrive, modifier: nil)
             actionText = "Hedefe ulaştın"
             nextRoad = nil
+            currentRoad = nil
             lanes = []
             thenSymbol = nil
             maneuverArrow = []
@@ -253,6 +257,8 @@ public final class NavigationSession {
         // The banner text from Valhalla is the next road's name for most maneuvers.
         nextRoad = content.flatMap { $0.maneuverType == .arrive ? nil : $0.text }
             .map { spellings[TurkishFold.fold($0)] ?? $0 }
+        let road = state.currentRoadName.flatMap { $0.isEmpty ? nil : spellings[TurkishFold.fold($0)] ?? $0 }
+        if road != currentRoad { currentRoad = road }
 
         // remainingSteps[0] is the current step; the step after it ends at the follow-up maneuver.
         let following = state.remainingSteps.flatMap { $0.count > 1 ? $0[1] : nil }

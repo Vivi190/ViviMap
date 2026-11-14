@@ -134,6 +134,23 @@ struct NavigationBottomBar: View {
     }
 }
 
+/// The road being driven, centred above the bottom bar, as Waze and Yandex show it.
+struct CurrentRoadLabel: View {
+    let road: String
+
+    var body: some View {
+        Text(road)
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.xs)
+            .atlasFloatingSurface(in: Capsule())
+            .frame(maxWidth: 200)
+            .accessibilityLabel(Text("Şu anki yol: \(road)"))
+            .accessibilityIdentifier("nav.road")
+    }
+}
+
 /// "Hız kamerası · 250 m · 50" / "Kasis · 80 m" while the next one is in warning range.
 struct HazardChip: View {
     let alert: HazardAlert

@@ -521,29 +521,30 @@ struct HomeScreen: View {
                 VStack(alignment: .leading, spacing: Spacing.s) {
                     HazardChipSlot(navigation: navigation)
                     if !connectivity.isOnline { offlineChip }
+                    if simulatedPuck != nil {
+                        // Always visible: a simulated drive must never pass for real guidance.
+                        HStack(spacing: Spacing.xs) {
+                            Image(systemName: "play.circle.fill")
+                                .foregroundStyle(Color.atlasWarning)
+                            Text("Simülasyon")
+                        }
+                            .font(.footnote.weight(.semibold))
+                            .padding(.horizontal, Spacing.m)
+                            .padding(.vertical, Spacing.s)
+                            .atlasFloatingSurface(in: Capsule())
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("nav.simulation")
+                    }
                 }
                 Spacer(minLength: 0)
                 if !isLandscape { navigationControls(navigation) }
             }
             Spacer(minLength: 0)
-            HStack(alignment: .bottom) {
-                SpeedOverlay(limit: navigation.speedLimit)
-                Spacer(minLength: 0)
-                if simulatedPuck != nil {
-                    // Always visible: a simulated drive must never pass for real guidance.
-                    HStack(spacing: Spacing.xs) {
-                        Image(systemName: "play.circle.fill")
-                            .foregroundStyle(Color.atlasWarning)
-                        Text("Simülasyon")
-                    }
-                        .font(.footnote.weight(.semibold))
-                        .padding(.horizontal, Spacing.m)
-                        .padding(.vertical, Spacing.s)
-                        .atlasFloatingSurface(in: Capsule())
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("nav.simulation")
+            SpeedOverlay(limit: navigation.speedLimit)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .bottom) {
+                    if let road = navigation.currentRoad { CurrentRoadLabel(road: road) }
                 }
-            }
             NavigationBottomBar(navigation: navigation, trafficArrival: trafficWatch.arrival, onEnd: { endNavigation() })
         }
     }

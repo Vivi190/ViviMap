@@ -46,11 +46,12 @@ struct SimulatedDriveTests {
         let (route, path) = try await kartalRoute()
         let log = PromptLog()
         let session = try makeSession(logging: log)
-        var updates = 0, arrivalSeen = false, arrowSeen = false
+        var updates = 0, arrivalSeen = false, arrowSeen = false, roads = Set<String>()
         session.onUpdate = { session in
             updates += 1
             if session.hasArrived { arrivalSeen = true }
             if !session.maneuverArrow.isEmpty { arrowSeen = true }
+            if let road = session.currentRoad { roads.insert(road) }
         }
         let startTime = Date.now
         try session.start(route, from: path.fix(at: 0, speed: speed, timestamp: startTime))
@@ -73,6 +74,8 @@ struct SimulatedDriveTests {
         #expect(session.durationRemaining == nil, "arrival must clear the remaining time")
         #expect(arrowSeen, "no turn arrow on a route with turns")
         #expect(session.maneuverArrow.isEmpty, "arrival must clear the turn arrow")
+        #expect(roads.count >= 2, "current road names seen: \(roads)")
+        #expect(session.currentRoad == nil, "arrival must clear the current road")
     }
 
     @Test(.timeLimit(.minutes(2)))
