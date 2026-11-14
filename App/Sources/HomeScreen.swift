@@ -295,8 +295,9 @@ struct HomeScreen: View {
         .animation(.snappy(duration: 0.3), value: routes.isEmpty)
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)
-        // In the background so it takes no room in the layout.
+        // In the background so they take no room in the layout.
         .background {
+            ShortcutListener(inbox: ShortcutInbox.shared, hasFix: location.hasFix) { openShortcut($0) }
             if showsCityTraffic, let traffic {
                 CityTrafficLoader(viewport: viewport, cityTraffic: cityTraffic, provider: traffic)
             }
@@ -380,6 +381,18 @@ struct HomeScreen: View {
         search.remember(place)
         show(place)
         camera = .center(place.point.coordinate, zoom: max(viewport.zoom, 16), pitch: is3D ? Self.pitch3D : 0)
+    }
+
+    /// Siri / Shortcuts "Eve git", "İşe git": straight to the route card, as the search sheet's shortcut does.
+    /// Nothing saved yet: the search sheet, where its menu offers "Ev olarak kaydet".
+    private func openShortcut(_ slot: SearchController.Slot) {
+        guard let place = slot == .home ? search.home : search.work else {
+            sheet = .search
+            return
+        }
+        sheet = nil
+        select(place)
+        planRoute(to: place)
     }
 
     /// Long press on the map: drop a pin there (address filled in when Photon knows it).
