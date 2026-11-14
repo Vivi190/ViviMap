@@ -93,6 +93,18 @@ final class HomeScreenshotTests: XCTestCase {
         app.buttons["Bitti"].tap()
         settle(6)
         capture("6-home-night-3d")
+
+        // Screens reviewed from screenshots only: the rest of the settings sheet and the drive log (empty on
+        // CI, simulated drives are not recorded). Soft checks: a missing step costs a screenshot, not the run.
+        app.buttons["Harita ayarları"].tap()
+        guard app.navigationBars["Harita"].waitForExistence(timeout: 5) else { return }
+        app.swipeUp()
+        settle(1)
+        capture("7-map-settings-more")
+        let trips = app.staticTexts["Sürüşlerim"]
+        guard trips.waitForExistence(timeout: 3) else { return }
+        trips.tap()
+        if app.navigationBars["Sürüşlerim"].waitForExistence(timeout: 5) { capture("8-trips") }
     }
 
     private func settle(_ seconds: TimeInterval) {

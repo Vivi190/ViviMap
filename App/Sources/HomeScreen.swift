@@ -263,9 +263,6 @@ struct HomeScreen: View {
                 }
             }
             Spacer(minLength: 0)
-            if showsCityTraffic, let traffic {
-                CityTrafficLoader(viewport: viewport, cityTraffic: cityTraffic, provider: traffic)
-            }
             HStack(alignment: .bottom) {
                 SpeedOverlay()
                 Spacer(minLength: 0)
@@ -298,6 +295,12 @@ struct HomeScreen: View {
         .animation(.snappy(duration: 0.3), value: routes.isEmpty)
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)
+        // In the background so it takes no room in the layout.
+        .background {
+            if showsCityTraffic, let traffic {
+                CityTrafficLoader(viewport: viewport, cityTraffic: cityTraffic, provider: traffic)
+            }
+        }
     }
 
     private var controls: some View {

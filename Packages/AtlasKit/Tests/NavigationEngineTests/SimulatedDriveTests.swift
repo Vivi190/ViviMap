@@ -104,6 +104,39 @@ struct SimulatedDriveTests {
         #expect(!session.isRerouting)
     }
 
+    /// Phase 8, long drive: Pendik to Kadıköy (over 18 km of main road and city streets) through the whole
+    /// guidance stack. It has to arrive without a reroute, and memory must not grow with the distance driven:
+    /// a leak per fix (about 1 000 fixes per half) would show as megabytes in the second half.
+    @Test(.timeLimit(.minutes(5)))
+    func longDriveArrivesWithoutMemoryGrowth() async throws {
+        let origin = CLLocation(latitude: 40.8767, longitude: 29.2337)
+        let destination = GeoPoint(latitude: 40.9905, longitude: 29.0280)
+        let route = try #require(try await RoutePlanner().routes(from: origin, to: destination).first)
+        let path = RoutePath(route.coordinates)
+        #expect(path.length > 18_000, "route is only \(Int(path.length)) m")
+        let log = PromptLog()
+        let session = try makeSession(logging: log)
+        let startTime = Date.now
+        try session.start(route, from: path.fix(at: 0, speed: speed, timestamp: startTime))
+        try await drive(session, along: path, from: 0, to: path.length / 2, start: startTime)
+        let halfway = Self.peakMemory()
+        try await drive(session, along: path, from: path.length / 2, to: path.length + 30, start: startTime)
+        try await Task.sleep(for: .milliseconds(200))
+        let grown = Self.peakMemory() - halfway
+
+        #expect(session.hasArrived, "never arrived; last prompts: \(log.lines.suffix(5))")
+        #expect(!log.lines.contains("Yeni rota hesaplanıyor."), "rerouted while exactly on the route")
+        #expect(log.lines.count > 20, "only \(log.lines.count) prompts in \(Int(path.length)) m")
+        #expect(grown < 8 * 1024 * 1024, "memory grew \(grown / 1024) KB in the second half")
+    }
+
+    /// Peak resident memory of this process so far (bytes on Darwin): a leak keeps raising it.
+    private static func peakMemory() -> Int64 {
+        var usage = rusage()
+        getrusage(RUSAGE_SELF, &usage)
+        return Int64(usage.ru_maxrss)
+    }
+
     private static func distance(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
         CLLocation(latitude: a.latitude, longitude: a.longitude).distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
     }
