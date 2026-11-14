@@ -43,6 +43,7 @@ public struct AtlasMapView: View {
     private let traffic: [TrafficLine]
     private let areaTraffic: [TrafficLine]
     private let marks: [MapMark]
+    private let maneuverArrow: [[CLLocationCoordinate2D]]
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
@@ -62,6 +63,7 @@ public struct AtlasMapView: View {
         traffic: [TrafficLine] = [],
         areaTraffic: [TrafficLine] = [],
         marks: [MapMark] = [],
+        maneuverArrow: [[CLLocationCoordinate2D]] = [],
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         guidanceZoom: Double? = nil,
@@ -78,6 +80,7 @@ public struct AtlasMapView: View {
         self.traffic = traffic
         self.areaTraffic = areaTraffic
         self.marks = marks
+        self.maneuverArrow = maneuverArrow
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.guidanceZoom = guidanceZoom
@@ -170,6 +173,28 @@ public struct AtlasMapView: View {
             }
             if !stopped.isEmpty {
                 Self.trafficLayer("route-stopped", stopped, Self.trafficStopped)
+            }
+            // The next turn as a white arrow over the route and its traffic colours, under the street names.
+            if !maneuverArrow.isEmpty {
+                let arrow = ShapeSource(identifier: "atlas-maneuver") {
+                    maneuverArrow.map { MLNPolylineFeature(coordinates: $0) as MLNShape }
+                }
+                LineStyleLayer(identifier: "atlas-maneuver-casing", source: arrow)
+                    .lineCap(.round)
+                    .lineJoin(.round)
+                    .lineColor(Self.maneuverCasing)
+                    .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
+                               parameters: NSExpression(forConstantValue: 1.5),
+                               stops: NSExpression(forConstantValue: [14: 7, 17: 13, 18: 19]))
+                    .renderBelow(.symbols)
+                LineStyleLayer(identifier: "atlas-maneuver", source: arrow)
+                    .lineCap(.round)
+                    .lineJoin(.round)
+                    .lineColor(.white)
+                    .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
+                               parameters: NSExpression(forConstantValue: 1.5),
+                               stops: NSExpression(forConstantValue: [14: 4, 17: 8, 18: 12]))
+                    .renderBelow(.symbols)
             }
             if !cameraMarks.isEmpty {
                 Self.markLayer("camera", cameraMarks, Self.destinationColor)
@@ -272,6 +297,8 @@ public struct AtlasMapView: View {
     private static let destinationColor = UIColor(Color.atlasCritical)
     private static let routeColor = UIColor(Color.atlasAccent)
     private static let routeCasingNight = UIColor(red: 0.04, green: 0.10, blue: 0.20, alpha: 1)
+    /// Darker than the route blue, so the white arrow stands out on it and beside it.
+    private static let maneuverCasing = UIColor(red: 0.03, green: 0.22, blue: 0.55, alpha: 1)
     private static let alternativeDay = UIColor(red: 0.53, green: 0.69, blue: 0.96, alpha: 1)
     private static let alternativeNight = UIColor(red: 0.27, green: 0.40, blue: 0.62, alpha: 1)
 

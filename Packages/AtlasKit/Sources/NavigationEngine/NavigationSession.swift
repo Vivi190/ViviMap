@@ -45,6 +45,10 @@ public final class NavigationSession {
     /// Symbol of the maneuver right after the next one when it follows within 150 m ("Sonra ↰").
     public private(set) var thenSymbol: String?
     public private(set) var routeCoordinates: [CLLocationCoordinate2D] = []
+    /// The white arrow on the route at the next turn (shaft, head); empty when it goes straight on or arrives.
+    /// Set once per maneuver, not per fix.
+    public private(set) var maneuverArrow: [[CLLocationCoordinate2D]] = []
+    @ObservationIgnored private var arrowSteps: Int?
     /// The next camera or bump within warning range, for the banner chip.
     public private(set) var hazardAlert: HazardAlert?
     /// Speed limit of the road being driven, km/h, only when the map data has one (OSM `maxspeed` via
@@ -156,6 +160,8 @@ public final class NavigationSession {
         thenSymbol = nil
         routeCoordinates = []
         routePath = nil
+        maneuverArrow = []
+        arrowSteps = nil
         hazardAlert = nil
         speedLimit = nil
         hazardWatch = HazardWatch()
@@ -190,6 +196,7 @@ public final class NavigationSession {
             // New route (start, reroute or a taken suggestion): find the cameras and bumps it passes.
             let path = RoutePath(routeCoordinates)
             routePath = path
+            arrowSteps = nil // the arrow is rebuilt on the new geometry
             hazardWatch = HazardWatch(hazards: RouteHazards.along(path, hazards: hazards + userHazards))
             hazardWatch.kinds = hazardKinds
             spellings = TurkishFold.preferredSpellings((state.remainingSteps ?? []).flatMap { step in
@@ -211,6 +218,7 @@ public final class NavigationSession {
             nextRoad = nil
             lanes = []
             thenSymbol = nil
+            maneuverArrow = []
             hazardAlert = nil
             speedLimit = nil
             return
@@ -261,6 +269,19 @@ public final class NavigationSession {
             ManeuverSymbols.symbol(type: followingContent?.maneuverType, modifier: followingContent?.maneuverModifier)
         }
         if symbol != thenSymbol { thenSymbol = symbol }
+
+        // Once per maneuver: through a roundabout the arrow runs on to the exit (the step after it).
+        let steps = state.remainingSteps?.count ?? 0
+        if steps != arrowSteps, let path = routePath {
+            // Until the step's banner is there, try again on the next fix.
+            arrowSteps = content == nil ? nil : steps
+            let type = content?.maneuverType
+            let at = path.length - progress.distanceRemaining + progress.distanceToNextManeuver
+            let arrow = ManeuverArrow.wanted(type: type, modifier: content?.maneuverModifier)
+                ? ManeuverArrow.lines(along: path, maneuverAt: at, after: ManeuverArrow.reach(type: type, nextStep: following?.distance))
+                : []
+            if !(arrow.isEmpty && maneuverArrow.isEmpty) { maneuverArrow = arrow }
+        }
 
         announce(step: state.remainingSteps?.count ?? 0, distance: progress.distanceToNextManeuver, followUp: followUp)
     }

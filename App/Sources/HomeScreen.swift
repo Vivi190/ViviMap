@@ -184,6 +184,7 @@ struct HomeScreen: View {
                 traffic: displayedTraffic,
                 areaTraffic: showsCityTraffic ? cityTraffic.lines : [],
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
+                maneuverArrow: isNavigating ? navigation?.maneuverArrow ?? [] : [],
                 puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,
                 guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,

@@ -46,10 +46,11 @@ struct SimulatedDriveTests {
         let (route, path) = try await kartalRoute()
         let log = PromptLog()
         let session = try makeSession(logging: log)
-        var updates = 0, arrivalSeen = false
+        var updates = 0, arrivalSeen = false, arrowSeen = false
         session.onUpdate = { session in
             updates += 1
             if session.hasArrived { arrivalSeen = true }
+            if !session.maneuverArrow.isEmpty { arrowSeen = true }
         }
         let startTime = Date.now
         try session.start(route, from: path.fix(at: 0, speed: speed, timestamp: startTime))
@@ -70,6 +71,8 @@ struct SimulatedDriveTests {
         #expect(turns.contains { $0.contains(" sonra ") }, "no advance warning: \(prompts)")
         #expect(turns.contains { !$0.contains(" sonra ") }, "no at-the-turn prompt: \(prompts)")
         #expect(session.durationRemaining == nil, "arrival must clear the remaining time")
+        #expect(arrowSeen, "no turn arrow on a route with turns")
+        #expect(session.maneuverArrow.isEmpty, "arrival must clear the turn arrow")
     }
 
     @Test(.timeLimit(.minutes(2)))

@@ -90,6 +90,14 @@ struct RoutePath {
         return best.map { ($0.offset, $0.course) }
     }
 
+    /// The line between two distances from the start, clamped to the route.
+    func slice(from start: CLLocationDistance, to end: CLLocationDistance) -> [CLLocationCoordinate2D] {
+        guard coordinates.count > 1, end > start else { return [] }
+        return [point(at: start).coordinate]
+            + zip(coordinates, offsets).filter { $0.1 > start && $0.1 < end }.map(\.0)
+            + [point(at: end).coordinate]
+    }
+
     /// The line after `distance` metres, starting exactly there (what is left of a route).
     func remainder(after distance: CLLocationDistance) -> [CLLocationCoordinate2D] {
         guard coordinates.count > 1 else { return coordinates }
