@@ -394,7 +394,7 @@ public struct AtlasMapView: View {
     }
 
     /// The destination as Apple Maps and Yandex mark it: a red drop with a white rim and dot, its tip on the place
-    /// (bottom-anchored). The dot it replaces sat on the place's own icon and label (CI 3-place).
+    /// (bottom-anchored). A plain dot covered the place's own icon and label.
     private static let destinationPin: UIImage = {
         let margin: CGFloat = 3, radius: CGFloat = 14, tipBelowCircle: CGFloat = 14
         let size = CGSize(width: radius * 2 + margin * 2, height: radius * 2 + tipBelowCircle + margin * 2)

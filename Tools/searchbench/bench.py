@@ -414,7 +414,7 @@ def main():
 
 def measure_kinds():
     """Bare kinds: is the first result of that kind and within KIND_RADIUS_KM of the user? The text search the
-    app used before 14.11.2026 next to the nearest-of-kind search it uses now."""
+    app used before 2026-11-14 next to the nearest-of-kind search it uses now."""
     def verdict(features, wanted):
         if not features:
             return False, "(sonuç yok)"

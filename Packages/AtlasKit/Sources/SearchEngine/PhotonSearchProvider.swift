@@ -71,7 +71,7 @@ public struct PhotonSearchProvider: PlaceSearchProvider {
     }
 
     /// `nearnessFirst`: for a district the user named, nearness over prominence; without it Photon put the
-    /// Migros stores 17 and 30 km from Kurtköy ahead of those in Kurtköy (14.11.2026).
+    /// Migros stores 17 and 30 km from Kurtköy ahead of those in Kurtköy (2026-11-14).
     func request(_ query: String, near: GeoPoint?, tags: [String] = [], nearnessFirst: Bool = false) -> URLRequest {
         var components = URLComponents(url: baseURL.appending(path: "api"), resolvingAgainstBaseURL: false)!
         var items = [
@@ -223,7 +223,7 @@ enum PlaceRanking {
     ]
     private static let stops: Set<String> = ["highway=bus_stop", "public_transport=platform", "public_transport=stop_position"]
     /// Lines and plans, never where a driver is headed: "cevizli tugay yolu" first found "Tugay Yolu", a metro
-    /// line under construction (search benchmark 14.11.2026).
+    /// line under construction (search benchmark 2026-11-14).
     private static let lines: Set<String> = [
         "railway=rail", "railway=subway", "railway=light_rail", "railway=tram", "railway=monorail",
         "railway=narrow_gauge", "railway=funicular", "railway=construction", "railway=proposed",
@@ -272,7 +272,7 @@ enum PlaceRanking {
 
     /// A bare kind of place ("benzinlik", "en yakın eczane", "marketler") wants the nearest ones, not places with
     /// the word in their name: Photon's text search answered "benzinlik" with a station 148 km away and "hastane"
-    /// with a building site; its reverse search filtered by kind lists the nearest (14.11.2026). Photon tags.
+    /// with a building site; its reverse search filtered by kind lists the nearest (2026-11-14). Photon tags.
     static func kind(_ query: String) -> [String]? {
         var text = query.lowercased(with: Locale(identifier: "tr")).split(whereSeparator: \.isWhitespace).joined(separator: " ")
         if let prefix = ["en yakın ", "yakınımdaki ", "yakındaki ", "yakınımda ", "yakında "].first(where: { text.hasPrefix($0) }) {
@@ -285,7 +285,7 @@ enum PlaceRanking {
 
     /// A kind next to a district, either way round ("esentepe eczane", "benzinlik aydınlı"): the kind's tags and
     /// the district's name. Photon's text search sent "esentepe eczane" to Şişli and Sakarya and found nothing
-    /// for "aydınlı benzinlik" (14.11.2026). Kinds named after places (stations, piers, malls) stay with `focus`.
+    /// for "aydınlı benzinlik" (2026-11-14). Kinds named after places (stations, piers, malls) stay with `focus`.
     static func kindAround(_ query: String) -> (tags: [String], district: String)? {
         guard focus(query) == nil else { return nil }
         let words = query.lowercased(with: Locale(identifier: "tr")).split(whereSeparator: \.isWhitespace).map(String.init)
@@ -322,7 +322,7 @@ enum PlaceRanking {
     /// Addresses as they are written in Turkey, in OSM's spelling: "Yakacık Mah. Atatürk Cad. No:12 D:5
     /// Kartal/İstanbul" → "yakacık mahallesi atatürk caddesi 12 kartal istanbul", house number "12". Photon took
     /// "No:5" and "Cad." for words and answered with notaries and tyre shops; spelled out, it found the building
-    /// or the street (search benchmark 14.11.2026). Other queries pass unchanged.
+    /// or the street (search benchmark 2026-11-14). Other queries pass unchanged.
     static func address(_ query: String) -> (text: String, houseNumber: String?) {
         let lower = query.lowercased(with: Locale(identifier: "tr"))
         var text = lower
@@ -347,7 +347,7 @@ enum PlaceRanking {
     }
 
     /// A query naming a kind of place the full-text search tends to miss: the rest of the query and Photon's
-    /// osm_tag filters for that kind. Search benchmark 14.11.2026: "kartal metro istasyonu" and "akasya avm"
+    /// osm_tag filters for that kind. Search benchmark 2026-11-14: "kartal metro istasyonu" and "akasya avm"
     /// (OSM: "Akasya Alışveriş Merkezi") found nothing right; "kartal" + railway:station and "akasya" + shop:mall
     /// put it first.
     static func focus(_ query: String) -> (name: String, tags: [String])? {

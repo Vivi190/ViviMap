@@ -29,7 +29,7 @@ struct OfflinePlaceIndexTests {
             ("Çanakkale Caddesi", "", "highway=secondary", 40.9005, 29.1722), // Kartal
             ("Çanakkale Caddesi", "", "highway=residential", 41.0400, 28.9000), // across the city
             ("Kartal", "", "place=town", 40.8890, 29.1905),
-            // Nearest from the Kartal coast in the real index (14.11.2026): BP 189 m, Shell 785 m; Opet across the city.
+            // Nearest from the Kartal coast in the real index (2026-11-14): BP 189 m, Shell 785 m; Opet across the city.
             ("Opet", "", "amenity=fuel", 41.0500, 28.9500),
             ("BP", "", "amenity=fuel", 40.8905, 29.1910),
             ("Shell", "", "amenity=fuel", 40.8950, 29.1920),

@@ -7,9 +7,8 @@ public extension View {
         modifier(FloatingSurface(shape: shape))
     }
 
-    /// Panels people read at a glance (place, route, guidance): opaque, white by day and graphite at night, as
-    /// Yandex draws them. Glass let the map through and tinted the text's ground (CI 3b-route: the sea turned the
-    /// route card cyan).
+    /// Panels people read at a glance (place, route, guidance): opaque, white by day and graphite at night. Glass
+    /// lets the map's colours through behind the text; over the sea a route card turned cyan.
     func atlasCardSurface(in shape: some Shape) -> some View {
         background(Color.atlasCard, in: shape)
             .overlay(shape.stroke(Color.primary.opacity(0.06), lineWidth: 0.5))

@@ -69,7 +69,7 @@ struct HazardWatchTests {
 
 @MainActor
 struct SpeedLimitTests {
-    // Annotation shapes as FOSSGIS Valhalla returned them on a Kartal route (14.11.2026): 50 and 110 km/h
+    // Annotation shapes as FOSSGIS Valhalla returned them on a Kartal route (2026-11-14): 50 and 110 km/h
     // where OSM has maxspeed, {"unknown":true} on 88 of 180 segments.
     @Test func onlyMappedLimitsBecomeASign() {
         #expect(NavigationSession.speedLimit(fromAnnotation: #"{"maxspeed":{"speed":50,"unit":"km/h"},"speed":13.9,"distance":21.3,"duration":1.5}"#) == 50)
@@ -124,7 +124,7 @@ struct TrafficSignalsTests {
     }
 
     @Test func theShippedFileHasIstanbulsLights() {
-        // 4 118 nodes on 15.11.2026; refreshed with Tools/hazards/fetch_signals.py.
+        // 4 118 nodes on 2026-11-15; refreshed with Tools/hazards/fetch_signals.py.
         #expect(TrafficSignals.bundled.count > 3_000)
         #expect(TrafficSignals.bundled.allSatisfy { (40.75 ... 41.6).contains($0.latitude) && (28.0 ... 29.95).contains($0.longitude) })
     }

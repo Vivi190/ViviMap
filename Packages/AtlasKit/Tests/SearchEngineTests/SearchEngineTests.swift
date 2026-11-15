@@ -55,7 +55,7 @@ struct AreaSpanTests {
     }
 }
 
-/// The queries that failed in the search benchmark (14.11.2026) and what the focused request asks Photon.
+/// The queries that failed in the search benchmark (2026-11-14) and what the focused request asks Photon.
 struct FocusedSearchTests {
     @Test func kindWordsBecomeAnOSMFilter() throws {
         let station = try #require(PlaceRanking.focus("Kartal Metro İstasyonu"))
@@ -106,7 +106,7 @@ struct FocusedSearchTests {
     }
 }
 
-/// Addresses as they are written in Turkey; search benchmark 14.11.2026: "No:5" and "Cad." sent Photon to
+/// Addresses as they are written in Turkey; search benchmark 2026-11-14: "No:5" and "Cad." sent Photon to
 /// notaries and tyre shops.
 struct AddressSearchTests {
     @Test func shorthandIsSpelledOutAndTheHouseNumberFound() {
@@ -166,7 +166,7 @@ struct AddressSearchTests {
     }
 }
 
-/// "benzinlik" by itself: Photon's text search found a station 148 km away (14.11.2026); the nearest are wanted.
+/// "benzinlik" by itself: Photon's text search found a station 148 km away (2026-11-14); the nearest are wanted.
 struct KindSearchTests {
     @Test func bareKindsWantTheNearest() {
         #expect(PlaceRanking.kind("benzinlik") == ["amenity:fuel"])

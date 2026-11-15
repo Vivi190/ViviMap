@@ -60,7 +60,7 @@ public final class RoutePlanner {
             "directions_options": ["language": "tr-TR", "units": "kilometers"],
             "alternates": 2,
         ]
-        // exclude_tolls, not use_tolls: 0, which still took the Bosphorus bridge (FOSSGIS, 14.11.2026);
+        // exclude_tolls, not use_tolls: 0, which still took the Bosphorus bridge (FOSSGIS, 2026-11-14);
         // excluded, Kadıköy → Beşiktaş goes by the Harem–Sirkeci car ferry.
         if avoidingTolls { options["costing_options"] = ["auto": ["exclude_tolls": true]] }
         return try WellKnownRouteProvider.valhalla(endpointUrl: endpoint, profile: "auto", optionsJson: nil)
@@ -77,7 +77,7 @@ public final class RoutePlanner {
     }
 
     /// Search gives an area's middle point, and Valhalla then ends the route on the nearest road inside it.
-    /// Measured on FOSSGIS (14.11.2026): Sabiha Gökçen's middle → 31.9 min via airside service roads; held to
+    /// Measured on FOSSGIS (2026-11-14): Sabiha Gökçen's middle → 31.9 min via airside service roads; held to
     /// tertiary roads and up → 19.7 min to the airport junction. Hospital campuses and malls ended on internal
     /// service roads too; without service roads they end on the street outside (Marmara Üniversitesi Pendik:
     /// 20 → 16 maneuvers, Tevfik İleri Caddesi). Small places and streets keep the nearest road.

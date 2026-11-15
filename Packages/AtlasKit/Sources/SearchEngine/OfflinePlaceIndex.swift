@@ -101,7 +101,7 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     }
 
     /// The nearest places of one kind by straight-line distance, from the shipped index alone: instant and
-    /// without a connection (14.11.2026 index: 833 fuel stations, 1 151 car parks, 5 195 pharmacies, 87 chargers).
+    /// without a connection (2026-11-14 index: 833 fuel stations, 1 151 car parks, 5 195 pharmacies, 87 chargers).
     public func nearby(_ kind: NearbyKind, near point: GeoPoint, limit: Int = 12) throws -> [Place] {
         try nearby(categories: [kind.rawValue], near: point, limit: limit)
     }
@@ -126,7 +126,7 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     }
 
     /// The district or neighbourhood (`place=*`) called `name`, the one nearest `near`: Istanbul has an
-    /// Esentepe in Kartal and one in Şişli. Photon's own place search, asked the same 14.11.2026, put a
+    /// Esentepe in Kartal and one in Şişli. Photon's own place search, asked the same 2026-11-14, put a
     /// Kurtköy in Yalova first and found no Aydınlı.
     public func place(named name: String, near: GeoPoint?) throws -> Place? {
         let folded = TurkishFold.fold(name).split { !$0.isLetter && !$0.isNumber }.joined(separator: " ")

@@ -6,9 +6,8 @@ import RoutingEngine
 import SwiftUI
 import TrafficEngine
 
-/// Turn card, as Yandex draws it: the maneuver on a blue tile, the distance large, the road to take in bold and
-/// the Turkish action under it. A floating card like the rest of the app (dark at night) instead of the solid
-/// blue block it was (15.11.2026: "Başlat"tan sonrası Yandex gibi güzel değil); lanes only when the data has them.
+/// Turn card: the maneuver on a blue tile, the distance large, the road to take in bold and the Turkish action
+/// under it. An opaque card like the other reading panels (dark at night); lanes only when the data has them.
 struct NavigationBanner: View {
     let navigation: NavigationSession
 

@@ -36,7 +36,7 @@ struct RoutePlannerOfflineTests {
         return URLSession(configuration: configuration)
     }
 
-    /// A real FOSSGIS Valhalla answer (14.11.2026) to the request Ferrostar builds, as the device would give it.
+    /// A real FOSSGIS Valhalla answer (2026-11-14) to the request Ferrostar builds, as the device would give it.
     private func recordedAnswer() throws -> Data {
         let url = try #require(Bundle.module.url(forResource: "valhalla-osrm-kartal", withExtension: "json", subdirectory: "Fixtures"))
         return try Data(contentsOf: url)
@@ -79,7 +79,7 @@ struct RoutePlannerOfflineTests {
         }
     }
 
-    /// Altunizade → Ortaköy over the Bosphorus bridge, as FOSSGIS Valhalla answered on 14.11.2026.
+    /// Altunizade → Ortaköy over the Bosphorus bridge, as FOSSGIS Valhalla answered on 2026-11-14.
     private func bridgeAnswer() throws -> Data {
         let url = try #require(Bundle.module.url(forResource: "valhalla-osrm-bridge", withExtension: "json", subdirectory: "Fixtures"))
         return try Data(contentsOf: url)
@@ -113,7 +113,7 @@ struct RoutePlannerOfflineTests {
         let plain = try await inKartal.routes(from: kartal, to: destination)
         #expect(plain.first?.notes == RouteNotes())
 
-        // Kadıköy → Beşiktaş with tolls excluded (14.11.2026): the Harem–Sirkeci car ferry, no toll.
+        // Kadıköy → Beşiktaş with tolls excluded (2026-11-14): the Harem–Sirkeci car ferry, no toll.
         let url = try #require(Bundle.module.url(forResource: "valhalla-osrm-ferry", withExtension: "json", subdirectory: "Fixtures"))
         let ferryAnswer = try Data(contentsOf: url)
         let byFerry = try RoutePlanner(session: session(NoConnection.self)) { _ in ferryAnswer }

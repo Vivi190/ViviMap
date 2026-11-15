@@ -80,7 +80,7 @@ public struct HERETrafficProvider: TrafficProvider {
     }
 
     /// Traffic v7 flow in a box, only roads at the slow band or worse (RouteTraffic's 4 and up): free-flowing
-    /// roads are not drawn. Measured 14.11.2026 on a 0.10° × 0.07° Kartal box: 1.7 MB unfiltered, 11 KB
+    /// roads are not drawn. Measured 2026-11-14 on a 0.10° × 0.07° Kartal box: 1.7 MB unfiltered, 11 KB
     /// filtered (night); HERE ignores minJamFactor unless maxJamFactor is sent too. Wider than 0.15° only main
     /// roads (functional classes 1–3): their unfiltered answer was 2.2 MB for 0.30° × 0.20°.
     public func flow(in area: TrafficArea) async throws -> [FlowSegment] {
@@ -123,7 +123,7 @@ public struct HERETrafficProvider: TrafficProvider {
         request.httpBody = try JSONEncoder().encode(AreaFlowBody(
             in: .init(type: "bbox", west: area.west, south: area.south, east: area.east, north: area.north),
             locationReferencing: ["shape"],
-            // Flowing roads too, drawn green. Measured 14.11.2026 on a 0.30° x 0.15° box around Kartal–Tuzla:
+            // Flowing roads too, drawn green. Measured 2026-11-14 on a 0.30° x 0.15° box around Kartal–Tuzla:
             // classes 1–3 gave 815 segments in 200 KB (gzip), 1–4 gave 5 098 in 944 KB. Never class 5 (local
             // streets): rarely any traffic there, and every segment is redrawn on each map update (swiftui-dsl).
             minJamFactor: 0,

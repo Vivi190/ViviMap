@@ -14,7 +14,7 @@ struct RouteSummaryTests {
         #expect(RouteSummary.mainRoads(steps) == ["Sahil Bulvarı", "Ankara Caddesi"])
     }
 
-    /// Kartal → Kartal Adliyesi as Valhalla returned it on 14.11.2026: OSM names one road both ways.
+    /// Kartal → Kartal Adliyesi as Valhalla returned it on 2026-11-14: OSM names one road both ways.
     @Test func oneRoadSpelledTwoWaysCountsOnceWithTurkishLetters() {
         let steps: [(name: String?, distance: Double)] = [
             ("İhlas Sokağı", 65),

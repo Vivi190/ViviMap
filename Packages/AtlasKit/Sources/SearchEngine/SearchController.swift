@@ -144,7 +144,7 @@ public final class SearchController {
     }
 
     /// The cause in plain words: no connection, or a search server that did not answer (the public Photon
-    /// failed once while the connection was fine, CI 14.11.2026, and the old text blamed the connection).
+    /// can fail while the connection is fine, and blaming the connection then misleads).
     nonisolated static func message(for error: any Error) -> String {
         let offline: [URLError.Code] = [.notConnectedToInternet, .networkConnectionLost, .dataNotAllowed]
         if let url = error as? URLError, offline.contains(url.code) {

@@ -27,12 +27,12 @@ final class HomeScreenshotTests: XCTestCase {
         app.buttons["search.open"].tap()
         let field = app.searchFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5), "search field missing")
-        // The sheet focuses its field by itself, but on a slow runner it had not yet ("no keyboard focus", CI
-        // 15.11.2026, cold launch at 128 s instead of 36 s); a tap on a focused field changes nothing.
+        // The sheet focuses its field by itself, but not yet on a slow runner ("no keyboard focus" after a
+        // 128 s cold launch); a tap on a focused field changes nothing.
         field.tap()
         field.typeText("Kartal Adliyesi")
         let result = app.buttons.matching(identifier: "search.result").firstMatch
-        // Photon is a shared public server and failed once in CI (14.11.2026): one retry, with the evidence kept.
+        // Photon is a shared public server and fails at times: one retry, with the evidence kept.
         if !result.waitForExistence(timeout: 20) {
             capture("2-search-retry")
             field.typeText(" ") // the same text once trimmed: searches again

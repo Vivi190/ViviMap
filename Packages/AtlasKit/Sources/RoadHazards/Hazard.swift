@@ -66,7 +66,7 @@ public struct HazardCatalog: Sendable {
     }
 }
 
-/// Traffic lights from OpenStreetMap (Tools/hazards/fetch_signals.py; 4 118 in Istanbul, 15.11.2026), for the
+/// Traffic lights from OpenStreetMap (Tools/hazards/fetch_signals.py; 4 118 in Istanbul, 2026-11-15), for the
 /// map only: guidance does not warn about them.
 public enum TrafficSignals {
     public static let bundled: [CLLocationCoordinate2D] = {

@@ -14,7 +14,7 @@ enum ManeuverArrow {
     }
 
     /// How far past the maneuver the arrow runs: through a roundabout and 15 m into its exit (the step after
-    /// it), so the head points down the road to take; ending at the exit, it pointed round the circle (CI 3c).
+    /// it), so the head points down the road to take; ending at the exit, it pointed round the circle.
     static func reach(type: ManeuverType?, nextStep: CLLocationDistance?) -> CLLocationDistance {
         switch type {
         case .roundabout?, .rotary?, .roundaboutTurn?: min((nextStep ?? 0) + 15, 150)

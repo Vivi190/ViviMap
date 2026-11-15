@@ -19,7 +19,7 @@ FONT_BOLD = ["Noto Sans Bold"]
 FONT_ITALIC = ["Noto Sans Italic"]
 
 PALETTES = {
-    # Day leans to Apple Maps: warm off-white land, clear greens and a bright sea (15.11.2026: the greyer first
+    # Day leans to Apple Maps: warm off-white land, clear greens and a bright sea (2026-11-15: the greyer first
     # palette read as dull next to it).
     "day": {
         "background": "#F6F3EC",
@@ -137,7 +137,7 @@ def poi_layers(name, p):
         "text-field": NAME, "text-font": FONT_REGULAR,
         "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10.5, 18, 12.5],
         "text-anchor": "top", "text-offset": [0, 1.0], "text-max-width": 8,
-        # Badge and name together or not at all: lone badges cluttered the first CI screenshot (15.11.2026).
+        # Badge and name together or not at all: lone badges cluttered the first CI screenshot (2026-11-15).
         "symbol-sort-key": ["coalesce", ["get", "rank"], 99],
     }
     paint = {"text-color": color, "text-halo-color": p["label_halo"], "text-halo-width": 1.3}

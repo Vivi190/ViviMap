@@ -744,7 +744,7 @@ struct HomeScreen: View {
 
     /// Start and "Konumumu göster": onto the last fix first, then follow. swiftui-dsl sets the zoom right after
     /// the tracking mode, which cuts MapLibre's own fly-to short, so the map stayed where it was until the next
-    /// fix (CI screenshot 3c showed the route preview's centre, 1.3 km from the car).
+    /// fix and guidance opened on the route preview's centre instead of the car.
     private func recenterOnCourse(zoom: Double) {
         guard let here = (simulatedPuck ?? guidedPuck)?.lastLocation ?? location.lastLocation else { return followCourse(zoom: zoom) }
         let direction = here.course >= 0 ? here.course : viewport.bearing
@@ -840,8 +840,7 @@ struct HomeScreen: View {
         isPlanning = false
         prefetch?.task.cancel()
         prefetch = nil
-        // Done with this place: the next search opens on recents, shortcuts and "Yakında", not the old results
-        // (CI screenshot 2a after a drive still showed the previous query).
+        // Done with this place: the next search opens on recents, shortcuts and "Yakında", not the old results.
         search.query = ""
     }
 
