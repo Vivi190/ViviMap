@@ -26,7 +26,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 23: "semt + tür" ("esentepe eczane") ve "semt + marka" ("kurtköy migros") aramalarının o semtin çevresinde yapılması.
 - Build 24: Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları; trafik ışığındaki dönüşte "Işıklarda sağa dön"; yol numaraları tabela gibi kutularda (D-100 mavi, O-4 yeşil).
 
-Sıradaki build'de gelecekler (main'de): yol olayları haritada (kapalı yol, kaza, yol çalışması); trafik katmanı mahalle sokaklarını istemiyor (akıcılık için).
+Sıradaki build'de gelecekler (main'de): yol olayları haritada (kapalı yol, kaza, yol çalışması); trafik katmanı mahalle sokaklarını istemiyor (akıcılık için); navigasyon alt çubuğunda kalan yolun trafik şeridi.
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -79,6 +79,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 28. **Kasis, kamera, ışık (build 24+):** sokak düzeyine yakınlaş. Trafik ışıkları küçük üç renkli sinyal, kasisler kırmızı kenarlı üçgen levha, kameralar kırmızı rozet olarak görünmeli; navigasyonda da görünür.
 29. **Işıklarda dönüş (build 24+):** trafik ışıklı bir kavşakta dönen bir rota seç (simülasyon da olur). Bant ve ses "Işıklarda sağa dön" demeli; ışıksız kavşakta yalnızca "Sağa dön". OSM'de her ışık işli değil.
 30. **Yol olayları (sıradaki build):** trafik katmanı açıkken haritada kapalı yollar kırmızı kesikli çizgi ve başında beyaz çizgili kırmızı daire (girilmez), kazalar turuncu, yol çalışmaları koni işaretiyle görünmeli. Veri HERE'den, en fazla 10 dakikada bir tazelenir.
+31. **Trafik şeridi (sıradaki build):** canlı trafikle navigasyonda, alt çubuktaki saatlerin altında ince bir şerit: soldan sağa kalan yol; yavaş kesimler turuncu, yoğunlar kırmızı, akanlar açık mavi. Yaklaştıkça renkler sola kayar.
 
 **Bilinen sınırlar:**
 
