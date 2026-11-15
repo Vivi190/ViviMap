@@ -10,6 +10,7 @@ import Foundation
 public struct HERETrafficProvider: TrafficProvider {
     static let importURL = URL(string: "https://router.hereapi.com/v8/import")!
     static let flowURL = URL(string: "https://data.traffic.hereapi.com/v7/flow")!
+    static let incidentsURL = URL(string: "https://data.traffic.hereapi.com/v7/incidents")!
 
     private let apiKey: String
     private let session: URLSession
@@ -89,6 +90,27 @@ public struct HERETrafficProvider: TrafficProvider {
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200 ..< 300).contains(status) else { throw TrafficError.service(status: status) }
         return try HEREFlowResponse.segments(from: data)
+    }
+
+    public func incidents(in area: TrafficArea) async throws -> [TrafficIncident] {
+        guard area.fitsHERE else { return [] }
+        guard budget.spend(.incidents) else { throw TrafficError.budgetExhausted }
+        let (data, response) = try await session.data(for: incidentsRequest(for: area))
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200 ..< 300).contains(status) else { throw TrafficError.service(status: status) }
+        return try HEREIncidentsResponse.incidents(from: data)
+    }
+
+    func incidentsRequest(for area: TrafficArea) -> URLRequest {
+        var components = URLComponents(url: Self.incidentsURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "in", value: "bbox:\(area.west),\(area.south),\(area.east),\(area.north)"),
+            URLQueryItem(name: "locationReferencing", value: "shape"),
+            URLQueryItem(name: "apiKey", value: apiKey),
+        ]
+        var request = URLRequest(url: components.url!)
+        request.timeoutInterval = 20
+        return request
     }
 
     func areaFlowRequest(for area: TrafficArea) throws -> URLRequest {

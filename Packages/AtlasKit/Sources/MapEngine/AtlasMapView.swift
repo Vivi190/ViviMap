@@ -32,6 +32,22 @@ public struct MapMark: Sendable {
     }
 }
 
+/// A road event for the map (HERE incidents, city layer): a closed stretch is drawn as a red dashed line, and
+/// every event gets a sign at its start.
+public struct MapIncident: Sendable {
+    public enum Kind: Hashable, Sendable {
+        case closure, accident, roadworks
+    }
+
+    public let kind: Kind
+    public let coordinates: [CLLocationCoordinate2D]
+
+    public init(kind: Kind, coordinates: [CLLocationCoordinate2D]) {
+        self.kind = kind
+        self.coordinates = coordinates
+    }
+}
+
 /// Full-screen Atlas map. Holds no state of its own: camera, appearance and 3D mode come from the caller,
 /// and MapLibre's built-in ornaments are hidden because the app draws its own controls.
 public struct AtlasMapView: View {
@@ -46,6 +62,7 @@ public struct AtlasMapView: View {
     private let marks: [MapMark]
     private let maneuverArrow: [[CLLocationCoordinate2D]]
     private let roadMarks: RoadMarks
+    private let incidents: [MapIncident]
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
@@ -67,6 +84,7 @@ public struct AtlasMapView: View {
         marks: [MapMark] = [],
         maneuverArrow: [[CLLocationCoordinate2D]] = [],
         roadMarks: RoadMarks = .none,
+        incidents: [MapIncident] = [],
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         guidanceZoom: Double? = nil,
@@ -85,6 +103,7 @@ public struct AtlasMapView: View {
         self.marks = marks
         self.maneuverArrow = maneuverArrow
         self.roadMarks = roadMarks
+        self.incidents = incidents
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.guidanceZoom = guidanceZoom
@@ -110,6 +129,10 @@ public struct AtlasMapView: View {
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
         let slow = byLevel[.slow] ?? [], heavy = byLevel[.heavy] ?? [], stopped = byLevel[.stopped] ?? []
         let area = Dictionary(grouping: areaTraffic, by: \.level).mapValues { $0.map(\.coordinates) }
+        let closed = incidents.filter { $0.kind == .closure && $0.coordinates.count > 1 }.map(\.coordinates)
+        let starts = Dictionary(grouping: incidents.compactMap { incident in incident.coordinates.first.map { (incident.kind, $0) } }, by: { $0.0 })
+            .mapValues { pairs in pairs.map { $0.1 } }
+        let closureStarts = starts[.closure] ?? [], accidentStarts = starts[.accident] ?? [], roadworkStarts = starts[.roadworks] ?? []
         let areaFree = area[.free] ?? [], areaSlow = area[.slow] ?? [], areaHeavy = area[.heavy] ?? [], areaStopped = area[.stopped] ?? []
         let cameraMarks = marks.filter(\.isCamera).map(\.coordinate), bumpMarks = marks.filter { !$0.isCamera }.map(\.coordinate)
         // Without a connection the shipped Istanbul tiles take over (when this build has them).
@@ -127,6 +150,28 @@ public struct AtlasMapView: View {
             }
             if !areaStopped.isEmpty {
                 Self.trafficLayer("area-stopped", areaStopped, Self.trafficStopped, widths: Self.areaWidths)
+            }
+            // Road events (HERE): closed stretches dashed red over the traffic colours; signs on top of everything.
+            if !closed.isEmpty {
+                let source = ShapeSource(identifier: "atlas-closures") {
+                    closed.map { MLNPolylineFeature(coordinates: $0) as MLNShape }
+                }
+                LineStyleLayer(identifier: "atlas-closures", source: source)
+                    .lineColor(Self.closureColor)
+                    .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
+                               parameters: NSExpression(forConstantValue: 1.5),
+                               stops: NSExpression(forConstantValue: [10: 2, 14: 4, 18: 9]))
+                    .lineDashPattern([1.5, 1])
+                    .renderBelow(.symbols)
+            }
+            if !closureStarts.isEmpty {
+                Self.incidentLayer("closure", closureStarts, Self.closureSign)
+            }
+            if !accidentStarts.isEmpty {
+                Self.incidentLayer("accident", accidentStarts, Self.accidentSign)
+            }
+            if !roadworkStarts.isEmpty {
+                Self.incidentLayer("roadworks", roadworkStarts, Self.roadworksSign)
             }
             // Other candidates in a paler blue under the chosen route, so the driver sees where each one goes.
             if !alternatives.isEmpty {
@@ -297,6 +342,29 @@ public struct AtlasMapView: View {
     }
 
     /// About the width of the road it covers, as Yandex draws traffic.
+    private static func incidentLayer(_ name: String, _ points: [CLLocationCoordinate2D], _ sign: UIImage) -> some StyleLayerDefinition {
+        let source = ShapeSource(identifier: "atlas-incident-\(name)") {
+            points.map { MLNPointFeature(coordinate: $0) as MLNShape }
+        }
+        return SymbolStyleLayer(identifier: "atlas-incident-\(name)", source: source)
+            .iconImage(sign)
+            .iconAllowsOverlap(true)
+    }
+
+    private static let closureColor = UIColor(red: 0.90, green: 0.22, blue: 0.21, alpha: 1)
+    /// "No entry": a white bar on a red disc.
+    private static let closureSign = UIGraphicsImageRenderer(size: CGSize(width: 20, height: 20)).image { _ in
+        let rect = CGRect(x: 0, y: 0, width: 20, height: 20)
+        UIColor.white.setFill()
+        UIBezierPath(ovalIn: rect).fill()
+        closureColor.setFill()
+        UIBezierPath(ovalIn: rect.insetBy(dx: 1.5, dy: 1.5)).fill()
+        UIColor.white.setFill()
+        UIBezierPath(roundedRect: CGRect(x: 4.5, y: 8.5, width: 11, height: 3), cornerRadius: 1.5).fill()
+    }
+    private static let accidentSign = POIIcons.badge("car.side.rear.and.collision.and.car.side.front", color: POIIcons.rgb(0xFF6B00), diameter: 20)
+    private static let roadworksSign = POIIcons.badge("cone.fill", color: POIIcons.rgb(0xFF9500), diameter: 20)
+
     private static let areaWidths: [Int: Double] = [10: 2, 13: 3, 15: 4.5, 18: 11]
 
     private static func markLayer(_ name: String, _ points: [CLLocationCoordinate2D], _ color: UIColor) -> some StyleLayerDefinition {

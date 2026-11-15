@@ -13,6 +13,9 @@ final class CityTraffic {
     private(set) var lines: [TrafficLine] = []
     /// 0 flowing … 10 standstill for the roads around (AreaTraffic.score), as Yandex scores its traffic.
     private(set) var score: Int?
+    /// Closures, accidents and road works around; refreshed every 10 minutes at most (its own monthly cap).
+    private(set) var incidents: [TrafficIncident] = []
+    @ObservationIgnored private var incidentsFetched: (area: TrafficArea, at: Date)?
     /// Shown under the search bar when the layer cannot load ("Bu ayın trafik sorgu sınırı doldu.").
     private(set) var notice: String?
     @ObservationIgnored private var fetched: (area: TrafficArea, at: Date)?
@@ -30,9 +33,16 @@ final class CityTraffic {
             score = AreaTraffic.score(segments)
             fetched = (area, .now)
             notice = nil
+            // Road events change slowly: again only for a new area or after 10 minutes.
+            let due = incidentsFetched.map { !$0.area.contains(visible) || Date.now.timeIntervalSince($0.at) >= 600 } ?? true
+            if due, let found = try? await provider.incidents(in: area) {
+                incidents = found
+                incidentsFetched = (area, .now)
+            }
         } catch let error as TrafficError where error == .budgetExhausted {
             lines = []
             score = nil
+            incidents = []
             notice = error.localizedDescription
         } catch {
             // Offline or a server hiccup: the next rest of the map tries again.
@@ -49,5 +59,16 @@ extension TrafficLine {
         case .stopped: .stopped
         }
         self.init(level: level, coordinates: section.coordinates)
+    }
+}
+
+extension MapIncident {
+    init(_ incident: TrafficIncident) {
+        let kind: MapIncident.Kind = switch incident.kind {
+        case .closure: .closure
+        case .accident: .accident
+        case .roadworks: .roadworks
+        }
+        self.init(kind: kind, coordinates: incident.points)
     }
 }

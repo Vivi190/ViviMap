@@ -188,6 +188,7 @@ struct HomeScreen: View {
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 maneuverArrow: isNavigating ? navigation?.maneuverArrow ?? [] : [],
                 roadMarks: Self.roadMarks,
+                incidents: showsCityTraffic ? cityTraffic.incidents.map { MapIncident($0) } : [],
                 puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,
                 guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,

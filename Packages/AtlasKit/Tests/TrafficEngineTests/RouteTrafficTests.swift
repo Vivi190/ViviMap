@@ -182,3 +182,45 @@ struct AreaTrafficTests {
         #expect(budget.used(.flow) == 0)
     }
 }
+
+/// Road events on the city layer (HERE Traffic incidents).
+struct IncidentsTests {
+    @Test func closuresAccidentsAndRoadworksOnlyWithTheirStretch() throws {
+        // The answer's shape, trimmed; congestion belongs to the flow layer and is left out.
+        let json = """
+        {"results":[
+          {"location":{"shape":{"links":[{"points":[{"lat":40.84,"lng":29.30},{"lat":40.841,"lng":29.302}]}]}},
+           "incidentDetails":{"type":"roadClosure","criticality":"critical","roadClosed":true,"description":{"value":"Kapalı","language":"tr"}}},
+          {"location":{"shape":{"links":[{"points":[{"lat":40.90,"lng":29.19}]}]}},
+           "incidentDetails":{"type":"accident","roadClosed":false,"description":{"value":"Kaza","language":"tr"}}},
+          {"location":{"shape":{"links":[{"points":[{"lat":40.91,"lng":29.20}]}]}},
+           "incidentDetails":{"type":"congestion","roadClosed":false}},
+          {"location":{"shape":{"links":[{"points":[{"lat":40.92,"lng":29.21}]}]}},
+           "incidentDetails":{"type":"construction","roadClosed":false}}
+        ]}
+        """
+        let incidents = try HEREIncidentsResponse.incidents(from: Data(json.utf8))
+        #expect(incidents.map(\.kind) == [.closure, .accident, .roadworks])
+        #expect(incidents[0].points.count == 2)
+        #expect(incidents[0].summary == "Kapalı")
+        #expect(incidents[2].summary == "")
+    }
+
+    @Test func theRequestAsksForTheBoxWithShapes() throws {
+        let provider = HERETrafficProvider(apiKey: "k", session: .shared, budget: RequestBudget(defaults: UserDefaults(suiteName: "atlas.test.\(UUID())")!))
+        let url = try #require(provider.incidentsRequest(for: TrafficArea(west: 29.1, south: 40.8, east: 29.4, north: 40.95)).url)
+        let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+        #expect(url.path == "/v7/incidents")
+        #expect(items.first { $0.name == "in" }?.value == "bbox:29.1,40.8,29.4,40.95")
+        #expect(items.first { $0.name == "locationReferencing" }?.value == "shape")
+    }
+
+    @Test func roadEventsHaveTheirOwnMonthlyCap() async {
+        let budget = RequestBudget(defaults: UserDefaults(suiteName: "atlas.test.\(UUID())")!, limits: [.incidents: 0, .areaFlow: 5])
+        let provider = HERETrafficProvider(apiKey: "k", session: .shared, budget: budget)
+        await #expect(throws: TrafficError.budgetExhausted) {
+            _ = try await provider.incidents(in: TrafficArea(west: 29.1, south: 40.8, east: 29.4, north: 40.95))
+        }
+        #expect(budget.used(.areaFlow) == 0)
+    }
+}

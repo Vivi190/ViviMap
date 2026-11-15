@@ -10,9 +10,11 @@ public final class RequestBudget: @unchecked Sendable {
         case routeImport
         /// Traffic along a route (route card, guidance).
         case flow
-        /// The city traffic layer. Both flow kinds are HERE Traffic flow requests: 1 800 + 600 per device
-        /// stay under half of the 5 000 free ones, and the layer cannot eat into guidance.
+        /// The city traffic layer. Both flow kinds and incidents are HERE Traffic requests: 1 000 + 1 000 + 400
+        /// per device stay under half of the 5 000 free ones, and the layer cannot eat into guidance.
         case areaFlow
+        /// Road events on the city layer.
+        case incidents
     }
 
     public static let shared = RequestBudget()
@@ -24,9 +26,9 @@ public final class RequestBudget: @unchecked Sendable {
 
     public init(
         defaults: UserDefaults = .standard,
-        // Flow split 1 200 / 1 200 (was 1 800 / 600) once the city layer was on by default: the same 2 400 per
-        // phone, so two phones still stay under the 5 000 free calls.
-        limits: [Kind: Int] = [.routeImport: 1_200, .flow: 1_200, .areaFlow: 1_200],
+        // Traffic calls split 1 000 / 1 000 / 400 (route, city layer, road events) once the city layer was on by
+        // default: the same 2 400 per phone as before, so two phones still stay under the 5 000 free calls.
+        limits: [Kind: Int] = [.routeImport: 1_200, .flow: 1_000, .areaFlow: 1_000, .incidents: 400],
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.defaults = defaults
