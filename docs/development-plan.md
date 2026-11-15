@@ -16,7 +16,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 
 ## TestFlight'ta ne denenecek
 
-**Son yüklenen: build 23 (14.11.2026, işlendi).** Depo herkese açık olduğu için GitHub Actions dakikaları artık ücretsiz ([setup-testflight.md](setup-testflight.md#github-actions-ve-açık-depo)).
+**Son işlenen: build 23; build 24 yükleniyor (15.11.2026).** Depo herkese açık olduğu için GitHub Actions dakikaları artık ücretsiz ([setup-testflight.md](setup-testflight.md#github-actions-ve-açık-depo)).
 - Build 17: trafik katmanı, tür kelimeli arama düzeltmesi.
 - Build 18: ücretli yollardan kaçınma, varışımı paylaş, Siri kısayolu, hız sınırı uyarısı, "Yakında" düğmeleri.
 - Build 19: yenilenen rota kartı ve navigasyon alt çubuğu, havalimanı/hastane/AVM rotalarının alanın önündeki yolda bitmesi, telefondaki en kaliteli Türkçe ses, navigasyonda yumuşak yakınlaşma.
@@ -24,8 +24,9 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 21: yerle işi bitince aramanın baştan (son aramalar, kısayollar, "Yakında") açılması, göbekte dönüş okunun çıkış yoluna kadar uzaması, kayıtlıysa "Ev" ve "İş"in arama çubuğunun altında tek dokunuşla rota açması.
 - Build 22: varışta alt çubukta "Otopark" düğmesi, ayarlarda sesli yönlendirme için "Örnek dinle", arama çubuğunda "Nereye?".
 - Build 23: "semt + tür" ("esentepe eczane") ve "semt + marka" ("kurtköy migros") aramalarının o semtin çevresinde yapılması.
+- Build 24 (yükleniyor): Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları; trafik ışığındaki dönüşte "Işıklarda sağa dön"; yol numaraları tabela gibi kutularda (D-100 mavi, O-4 yeşil).
 
-Sıradaki build'de gelecekler (main'de): Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları; trafik ışığındaki dönüşte "Işıklarda sağa dön"; yol numaraları tabela gibi kutularda (D-100 mavi, O-4 yeşil).
+Sıradaki build'de gelecekler: şimdilik yok (main'deki her şey build 24'te).
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -73,10 +74,10 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 23. **Ev / İş kısayolu (build 21+):** bir yeri kartın "…" menüsünden Ev ya da İş olarak kaydet. Ana ekranda arama çubuğunun altında "Ev" / "İş" kapsülü çıkmalı; dokununca doğrudan o yere rota kartı açılmalı.
 24. **Varışta otopark (build 22+):** navigasyonla bir yere var. Alt çubukta "Vardın"ın yanında "Otopark" düğmesi çıkmalı; dokununca navigasyon biter ve hedefin çevresindeki otoparklar, hedefe uzaklıklarıyla listelenir.
 25. **Semt + tür / marka (build 23+):** "esentepe eczane", "aydınlı benzinlik", "kurtköy migros" yaz. Sonuçlar o semtin çevresinden gelmeli (Esentepe için Kartal'daki, Şişli'deki değil).
-26. **Yer rozetleri (sıradaki build):** haritayı biraz yakınlaştır (sokak düzeyi). Restoran, eczane, okul, cami, park gibi yerler renkli daire içinde simgeyle ve renkli adıyla görünmeli (yemek turuncu, sağlık kırmızı, ulaşım mavi, doğa yeşil…). Navigasyonda bunlar gizlenir.
-27. **Trafik (sıradaki build):** uygulamayı aç; trafik katmanı kendiliğinden açık olmalı. Ana yollar yeşil (akıcı), sarı-turuncu (yavaş), kırmızı (yoğun), koyu kırmızı (durmuş) çizilir; arama çubuğunun altında "Trafik 3/10 · akıcı" gibi bölge puanı çıkar. Sağdaki arabalı düğmeyle kapanır.
-28. **Kasis, kamera, ışık (sıradaki build):** sokak düzeyine yakınlaş. Trafik ışıkları küçük üç renkli sinyal, kasisler kırmızı kenarlı üçgen levha, kameralar kırmızı rozet olarak görünmeli; navigasyonda da görünür.
-29. **Işıklarda dönüş (sıradaki build):** trafik ışıklı bir kavşakta dönen bir rota seç (simülasyon da olur). Bant ve ses "Işıklarda sağa dön" demeli; ışıksız kavşakta yalnızca "Sağa dön". OSM'de her ışık işli değil.
+26. **Yer rozetleri (build 24+):** haritayı biraz yakınlaştır (sokak düzeyi). Restoran, eczane, okul, cami, park gibi yerler renkli daire içinde simgeyle ve renkli adıyla görünmeli (yemek turuncu, sağlık kırmızı, ulaşım mavi, doğa yeşil…). Navigasyonda bunlar gizlenir.
+27. **Trafik (build 24+):** uygulamayı aç; trafik katmanı kendiliğinden açık olmalı. Ana yollar yeşil (akıcı), sarı-turuncu (yavaş), kırmızı (yoğun), koyu kırmızı (durmuş) çizilir; arama çubuğunun altında "Trafik 3/10 · akıcı" gibi bölge puanı çıkar. Sağdaki arabalı düğmeyle kapanır.
+28. **Kasis, kamera, ışık (build 24+):** sokak düzeyine yakınlaş. Trafik ışıkları küçük üç renkli sinyal, kasisler kırmızı kenarlı üçgen levha, kameralar kırmızı rozet olarak görünmeli; navigasyonda da görünür.
+29. **Işıklarda dönüş (build 24+):** trafik ışıklı bir kavşakta dönen bir rota seç (simülasyon da olur). Bant ve ses "Işıklarda sağa dön" demeli; ışıksız kavşakta yalnızca "Sağa dön". OSM'de her ışık işli değil.
 
 **Bilinen sınırlar:**
 
