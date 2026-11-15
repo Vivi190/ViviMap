@@ -61,7 +61,7 @@ let package = Package(
         ),
         .target(name: "TrafficEngine"),
         // Cameras and bumps from OSM, refreshed with Tools/hazards/fetch_hazards.py.
-        .target(name: "RoadHazards", resources: [.copy("Resources/hazards-istanbul.json")]),
+        .target(name: "RoadHazards", resources: [.copy("Resources/hazards-istanbul.json"), .copy("Resources/signals-istanbul.json")]),
         .target(name: "TripHistory"),
         .target(name: "NavigationActivity"),
         .testTarget(name: "AppCoreTests", dependencies: ["AppCore"]),

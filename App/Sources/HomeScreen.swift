@@ -187,6 +187,7 @@ struct HomeScreen: View {
                 areaTraffic: showsCityTraffic ? cityTraffic.lines : [],
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 maneuverArrow: isNavigating ? navigation?.maneuverArrow ?? [] : [],
+                roadMarks: Self.roadMarks,
                 puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,
                 guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,
@@ -725,6 +726,15 @@ struct HomeScreen: View {
         search.showNearby(.parking, around: destination)
         sheet = .search
     }
+
+    /// Bundled OSM bumps, cameras and traffic lights drawn on the map, read once.
+    private static let roadMarks: RoadMarks = {
+        let hazards = HazardCatalog.bundled()?.hazards ?? []
+        let points = { (kind: Hazard.Kind) in
+            hazards.filter { $0.kind == kind }.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        }
+        return RoadMarks(bumps: points(.bump), cameras: points(.camera), lights: TrafficSignals.bundled)
+    }()
 
     private func clearPlace() {
         selectedPlace = nil

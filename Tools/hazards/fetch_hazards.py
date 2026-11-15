@@ -36,8 +36,9 @@ def query():
 out body;"""
 
 
-def fetch():
-    data = urllib.parse.urlencode({"data": query()}).encode()
+def fetch(overpass_query=None):
+    """Elements for `overpass_query` (default: cameras and bumps) from the first public server that answers."""
+    data = urllib.parse.urlencode({"data": overpass_query or query()}).encode()
     for server in SERVERS:
         for attempt in range(2):
             try:

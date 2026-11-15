@@ -114,3 +114,18 @@ struct HazardCatalogTests {
         ])
     }
 }
+
+struct TrafficSignalsTests {
+    @Test func readsPairsAndSkipsMalformedOnes() throws {
+        let json = #"{"source":"x","fetched":"2026-11-15","count":3,"points":[[40.88925,29.18712],[41.0],[40.9,29.2]]}"#
+        let points = try TrafficSignals.decode(Data(json.utf8))
+        #expect(points.count == 2)
+        #expect(points[0].latitude == 40.88925 && points[0].longitude == 29.18712)
+    }
+
+    @Test func theShippedFileHasIstanbulsLights() {
+        // 4 118 nodes on 15.11.2026; refreshed with Tools/hazards/fetch_signals.py.
+        #expect(TrafficSignals.bundled.count > 3_000)
+        #expect(TrafficSignals.bundled.allSatisfy { (40.75 ... 41.6).contains($0.latitude) && (28.0 ... 29.95).contains($0.longitude) })
+    }
+}

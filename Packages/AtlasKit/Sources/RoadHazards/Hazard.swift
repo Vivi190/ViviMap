@@ -65,3 +65,21 @@ public struct HazardCatalog: Sendable {
         )
     }
 }
+
+/// Traffic lights from OpenStreetMap (Tools/hazards/fetch_signals.py; 4 118 in Istanbul, 15.11.2026), for the
+/// map only: guidance does not warn about them.
+public enum TrafficSignals {
+    public static let bundled: [CLLocationCoordinate2D] = {
+        guard let url = Bundle.module.url(forResource: "signals-istanbul", withExtension: "json"),
+              let data = try? Data(contentsOf: url)
+        else { return [] }
+        return (try? decode(data)) ?? []
+    }()
+
+    static func decode(_ data: Data) throws -> [CLLocationCoordinate2D] {
+        struct File: Decodable { let points: [[Double]] }
+        return try JSONDecoder().decode(File.self, from: data).points.compactMap { pair in
+            pair.count == 2 ? CLLocationCoordinate2D(latitude: pair[0], longitude: pair[1]) : nil
+        }
+    }
+}

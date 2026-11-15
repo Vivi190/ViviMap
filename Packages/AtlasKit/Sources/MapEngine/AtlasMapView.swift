@@ -45,6 +45,7 @@ public struct AtlasMapView: View {
     private let areaTraffic: [TrafficLine]
     private let marks: [MapMark]
     private let maneuverArrow: [[CLLocationCoordinate2D]]
+    private let roadMarks: RoadMarks
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
@@ -65,6 +66,7 @@ public struct AtlasMapView: View {
         areaTraffic: [TrafficLine] = [],
         marks: [MapMark] = [],
         maneuverArrow: [[CLLocationCoordinate2D]] = [],
+        roadMarks: RoadMarks = .none,
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         guidanceZoom: Double? = nil,
@@ -82,6 +84,7 @@ public struct AtlasMapView: View {
         self.areaTraffic = areaTraffic
         self.marks = marks
         self.maneuverArrow = maneuverArrow
+        self.roadMarks = roadMarks
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.guidanceZoom = guidanceZoom
@@ -101,6 +104,7 @@ public struct AtlasMapView: View {
     @ViewBuilder
     private func map(size: CGSize) -> some View {
         let show3D = showsBuildings3D
+        let roadSigns = roadMarks
         let guiding = isGuiding
         let zoom = guidanceZoom
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
@@ -235,6 +239,7 @@ public struct AtlasMapView: View {
                 // and drops images added at runtime.
                 style.layer(withIdentifier: MapLayerID.buildings3D)?.isVisible = show3D
                 POIIcons.register(in: style)
+                roadSigns.add(to: style)
             }
             .unsafeMapViewControllerModifier { controller in
                 let mapView = controller.mapView
