@@ -143,7 +143,7 @@ Her modül `Packages/AtlasKit` içinde bir hedef olarak yaşar. Sağlayıcıya b
 |---|---|---|---|
 | AppCore | Ayarlar, güneş hesabı, ortak tipler | 1 | ✅ |
 | DesignSystem | Renk/aralık token'ları, yüzen kontroller, hız rozeti | 1 | ✅ |
-| MapEngine | MapLibre görünümü, stiller, kamera takibi, atıf | 1 | ✅ |
+| MapEngine | MapLibre görünümü, stiller, kamera takibi, atıf; yer rozetleri (POI, SF Symbols'ten uygulamada çizilir), kasis/kamera/trafik ışığı işaretleri (stile bir kez eklenir), trafik katmanı | 1 / 3 / 5 / 6 | ✅ |
 | LocationEngine | CoreLocation, hız tahmini, GPS kalitesi | 1 | ✅ (map matching Faz 2) |
 | Diagnostics | Canlı GPS tanılama ekranı | 1 | ✅ |
 | SearchEngine | Photon arama ve ters arama, tür kelimesi için filtreli ikinci istek, adres yazımı, tek başına tür için en yakınlar; çevrimdışı İstanbul dizini (FTS4) | 2 / 4 | ✅ ölçüm: ilk sonuç 64/64, mesajda yazıldığı gibi 7 adres dahil (14.11.2026) |

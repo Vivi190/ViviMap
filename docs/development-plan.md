@@ -25,7 +25,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 22: varışta alt çubukta "Otopark" düğmesi, ayarlarda sesli yönlendirme için "Örnek dinle", arama çubuğunda "Nereye?".
 - Build 23: "semt + tür" ("esentepe eczane") ve "semt + marka" ("kurtköy migros") aramalarının o semtin çevresinde yapılması.
 
-Sıradaki build'de gelecekler: şimdilik yok (main'deki her şey build 23'te).
+Sıradaki build'de gelecekler (main'de): Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları.
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -73,6 +73,9 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 23. **Ev / İş kısayolu (build 21+):** bir yeri kartın "…" menüsünden Ev ya da İş olarak kaydet. Ana ekranda arama çubuğunun altında "Ev" / "İş" kapsülü çıkmalı; dokununca doğrudan o yere rota kartı açılmalı.
 24. **Varışta otopark (build 22+):** navigasyonla bir yere var. Alt çubukta "Vardın"ın yanında "Otopark" düğmesi çıkmalı; dokununca navigasyon biter ve hedefin çevresindeki otoparklar, hedefe uzaklıklarıyla listelenir.
 25. **Semt + tür / marka (build 23+):** "esentepe eczane", "aydınlı benzinlik", "kurtköy migros" yaz. Sonuçlar o semtin çevresinden gelmeli (Esentepe için Kartal'daki, Şişli'deki değil).
+26. **Yer rozetleri (sıradaki build):** haritayı biraz yakınlaştır (sokak düzeyi). Restoran, eczane, okul, cami, park gibi yerler renkli daire içinde simgeyle ve renkli adıyla görünmeli (yemek turuncu, sağlık kırmızı, ulaşım mavi, doğa yeşil…). Navigasyonda bunlar gizlenir.
+27. **Trafik (sıradaki build):** uygulamayı aç; trafik katmanı kendiliğinden açık olmalı. Ana yollar yeşil (akıcı), sarı-turuncu (yavaş), kırmızı (yoğun), koyu kırmızı (durmuş) çizilir; arama çubuğunun altında "Trafik 3/10 · akıcı" gibi bölge puanı çıkar. Sağdaki arabalı düğmeyle kapanır.
+28. **Kasis, kamera, ışık (sıradaki build):** sokak düzeyine yakınlaş. Trafik ışıkları küçük üç renkli sinyal, kasisler kırmızı kenarlı üçgen levha, kameralar kırmızı rozet olarak görünmeli; navigasyonda da görünür.
 
 **Bilinen sınırlar:**
 
