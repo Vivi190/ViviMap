@@ -227,8 +227,10 @@ public struct AtlasMapView: View {
                 if context.state == .began { onLongPress?(context.coordinate) }
             }
             .onMapStyleLoaded { style in
-                // A day/night switch reloads the style, which resets layer visibility to the JSON default.
+                // A day/night switch reloads the style, which resets layer visibility to the JSON default
+                // and drops images added at runtime.
                 style.layer(withIdentifier: MapLayerID.buildings3D)?.isVisible = show3D
+                POIIcons.register(in: style)
             }
             .unsafeMapViewControllerModifier { controller in
                 let mapView = controller.mapView
@@ -236,6 +238,12 @@ public struct AtlasMapView: View {
                 if !mapView.showsUserHeadingIndicator { mapView.showsUserHeadingIndicator = true }
                 if let layer = mapView.style?.layer(withIdentifier: MapLayerID.buildings3D), layer.isVisible != show3D {
                     layer.isVisible = show3D
+                }
+                // Shops and cafés are noise while driving; street and place names stay.
+                for id in MapLayerID.places {
+                    if let layer = mapView.style?.layer(withIdentifier: id), layer.isVisible == guiding {
+                        layer.isVisible = !guiding
+                    }
                 }
                 // Guidance: puck at ~70 % of the height (centre of the area below a 40 % top inset); on its side
                 // the panels take a left column, so the puck centres in the map area to their right.

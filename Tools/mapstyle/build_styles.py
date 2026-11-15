@@ -103,6 +103,50 @@ def width(*stops):
 
 RAMP = ["case", ["==", ["get", "ramp"], 1], 0.7, 1]
 
+# Places shown as Apple Maps-style badges: OpenMapTiles poi classes by group, with the label colour for day and
+# night. The badges themselves (a white SF Symbol on a circle in the group colour) are drawn by the app and
+# registered as "poi-<class>" (MapEngine/POIIcons.swift); keep the two lists in step. Bus stops stay off: Istanbul
+# has so many that they buried everything else.
+POI_GROUPS = [
+    (["restaurant", "fast_food", "cafe", "bar", "beer", "ice_cream"], "#B85B00", "#FFB25E"),  # food
+    (["shop", "grocery", "clothing_store"], "#946C00", "#F2C94C"),  # shopping
+    (["hospital", "pharmacy", "doctors", "dentist"], "#C62F2F", "#FF8A80"),  # health
+    (["school", "college", "library"], "#7E5C36", "#D9B98C"),  # education
+    (["railway", "harbor", "ferry_terminal", "fuel", "parking", "aerialway"], "#1E66C4", "#82B6FF"),  # transport
+    (["park", "zoo", "campsite", "golf", "playground"], "#277A40", "#7FD49A"),  # nature
+    (["place_of_worship"], "#5E5E64", "#B8B8BE"),  # worship
+    (["attraction", "art_gallery", "castle", "museum", "theatre", "cinema"], "#93398E", "#E39BE0"),  # culture
+    (["lodging"], "#4B49C2", "#A5A4FF"),  # lodging
+    (["town_hall", "post", "police", "fire_station", "bank", "atm"], "#4E5D75", "#A9B6CC"),  # services
+    (["stadium", "swimming", "sports_centre"], "#17808F", "#7FD3E0"),  # sports
+]
+POI_CLASSES = [c for classes, _, _ in POI_GROUPS for c in classes]
+
+
+def poi_layers(name, p):
+    """Important places from z15, all from z16.5; the more important (lower rank) win when labels collide."""
+    column = 1 if name == "day" else 2
+    color = ["match", ["get", "class"]]
+    for group in POI_GROUPS:
+        color += [group[0], group[column]]
+    color.append(p["label_secondary"])
+    layout = {
+        "icon-image": ["concat", "poi-", ["get", "class"]],
+        "text-field": NAME, "text-font": FONT_REGULAR,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10.5, 18, 12.5],
+        "text-anchor": "top", "text-offset": [0, 1.0], "text-max-width": 8,
+        "text-optional": True, "symbol-sort-key": ["coalesce", ["get", "rank"], 99],
+    }
+    paint = {"text-color": color, "text-halo-color": p["label_halo"], "text-halo-width": 1.3}
+    known = ["match", ["get", "class"], POI_CLASSES, True, False]
+    return [
+        {"id": "poi-major", "type": "symbol", "source": "openmaptiles", "source-layer": "poi",
+         "minzoom": 15, "maxzoom": 16.5, "filter": ["all", known, ["has", "name"], ["<=", ["coalesce", ["get", "rank"], 99], 20]],
+         "layout": layout, "paint": paint},
+        {"id": "poi-all", "type": "symbol", "source": "openmaptiles", "source-layer": "poi",
+         "minzoom": 16.5, "filter": ["all", known, ["has", "name"]], "layout": layout, "paint": paint},
+    ]
+
 
 def road_width(curve, extra=0.0):
     """Apply the ramp factor (and casing extra) inside each stop.
@@ -284,6 +328,8 @@ def build(name, p):
          "layout": {"text-field": ["get", "housenumber"], "text-font": FONT_REGULAR, "text-size": 10,
                     "text-padding": 3},
          "paint": {"text-color": p["label_house"], "text-halo-color": p["label_halo"], "text-halo-width": 1}},
+        # Above road names and house numbers, below place names (higher layers place their labels first).
+        *poi_layers(name, p),
         {"id": "label-neighbourhood", "type": "symbol", "source": "openmaptiles", "source-layer": "place",
          "minzoom": 13, "filter": classes("neighbourhood", "quarter"),
          "layout": {"text-field": NAME, "text-font": FONT_REGULAR,

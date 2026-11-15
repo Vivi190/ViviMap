@@ -15,4 +15,6 @@ public enum MapAppearance: String, Sendable {
 /// Style layer ids the app changes at runtime; must match Tools/mapstyle/build_styles.py.
 enum MapLayerID {
     static let buildings3D = "building-3d"
+    /// Place badges (Tools/mapstyle: poi_layers); hidden while guiding, as Apple Maps thins them out.
+    static let places = ["poi-major", "poi-all"]
 }
