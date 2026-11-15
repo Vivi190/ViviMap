@@ -102,11 +102,11 @@ public struct HERETrafficProvider: TrafficProvider {
             in: .init(type: "bbox", west: area.west, south: area.south, east: area.east, north: area.north),
             locationReferencing: ["shape"],
             // Flowing roads too, drawn green. Measured 14.11.2026 on a 0.30° x 0.15° box around Kartal–Tuzla:
-            // classes 1–3 gave 815 segments in 200 KB (gzip), 1–4 gave 5 098 in 944 KB; so the farther out,
-            // the fewer road classes.
+            // classes 1–3 gave 815 segments in 200 KB (gzip), 1–4 gave 5 098 in 944 KB. Never class 5 (local
+            // streets): rarely any traffic there, and every segment is redrawn on each map update (swiftui-dsl).
             minJamFactor: 0,
             maxJamFactor: 10,
-            functionalClasses: area.span > 0.15 ? [1, 2, 3] : area.span > 0.05 ? [1, 2, 3, 4] : nil
+            functionalClasses: area.span > 0.15 ? [1, 2, 3] : [1, 2, 3, 4]
         ))
         return request
     }

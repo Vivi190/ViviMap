@@ -149,11 +149,11 @@ struct AreaTrafficTests {
         #expect(body["maxJamFactor"] as? Double == 10) // without it HERE ignores the minimum
         #expect(body["functionalClasses"] as? [Int] == [1, 2, 3, 4])
         #expect(body["locationReferencing"] as? [String] == ["shape"])
-        // Close in: every road class.
+        // Close in too: no local streets (class 5).
         let close = try provider.areaFlowRequest(for: TrafficArea(west: 29.18, south: 40.88, east: 29.22, north: 40.91))
         let closeData = try #require(close.httpBody)
         let closeBody = try #require(try JSONSerialization.jsonObject(with: closeData) as? [String: Any])
-        #expect(closeBody["functionalClasses"] == nil)
+        #expect(closeBody["functionalClasses"] as? [Int] == [1, 2, 3, 4])
     }
 
     @Test func zoomedOutAsksForMainRoadsOnly() throws {
