@@ -27,6 +27,9 @@ final class HomeScreenshotTests: XCTestCase {
         app.buttons["search.open"].tap()
         let field = app.searchFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5), "search field missing")
+        // The sheet focuses its field by itself, but on a slow runner it had not yet ("no keyboard focus", CI
+        // 15.11.2026, cold launch at 128 s instead of 36 s); a tap on a focused field changes nothing.
+        field.tap()
         field.typeText("Kartal Adliyesi")
         let result = app.buttons.matching(identifier: "search.result").firstMatch
         // Photon is a shared public server and failed once in CI (14.11.2026): one retry, with the evidence kept.
