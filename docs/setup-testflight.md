@@ -1,79 +1,79 @@
-# TestFlight kurulumu (Mac olmadan)
+# TestFlight setup (without a Mac)
 
-**Durum:** 13.11.2026'da kuruldu.
+**Status:** set up on 2026-11-13.
 
-| Kayıt | Değer |
+| Item | Value |
 |---|---|
 | Bundle ID | `com.vivimap.atlas` |
-| App Store Connect uygulaması | "Atlas Navigasyon" |
-| Dağıtım sertifikası | 13.11.2027'ye kadar geçerli |
-| TestFlight dahili grubu | "Ben" |
+| App Store Connect app | "Atlas Navigasyon" |
+| Distribution certificate | Valid until 2027-11-13 |
+| TestFlight internal group | One group; the account holder is its tester |
 
-İmza dosyaları yalnızca bilgisayarında, `C:\Users\Vivi\atlas-signing` klasöründe ve GitHub Secrets'ta durur; depoya asla girmez (`.gitignore` bunları engelliyor). **Bu klasörü yedekle.**
+Signing files exist only in a local folder outside the repository (which must be backed up) and in GitHub Secrets; `.gitignore` keeps them out of the repository.
 
-## Build gönderme
+## Uploading a build
 
 ```bash
 gh workflow run testflight.yml -R Vivi190/ViviMap
 gh run watch -R Vivi190/ViviMap
 ```
 
-Apple build'i işledikten sonra (genellikle birkaç dakika) iPhone'daki TestFlight uygulamasında görünür. Dahili test için Beta App Review gerekmez.
+After Apple processes it (usually a few minutes), the build appears in TestFlight on the iPhone. Internal testing needs no Beta App Review.
 
-## GitHub Actions ve açık depo
+## GitHub Actions and the public repository
 
-Depo 14.11.2026'dan beri herkese açık. Önceden özelken macOS dakikaları 10 kat sayılıyordu ve GitHub Free'nin aylık 2.000 dakikası bir gecede doldu. Açık depoda standart runner'lar ücretsiz.
+The repository has been public since 2026-11-14. While private, macOS minutes counted tenfold and GitHub Free's 2,000 monthly minutes ran out overnight. Standard runners are free for public repositories.
 
-| İş | Süre |
+| Job | Duration |
 |---|---|
-| CI (derleme, birim ve UI testleri) | ~8 dk |
-| TestFlight yüklemesi | ~3 dk |
+| CI (build, unit and UI tests) | ~17 min |
+| TestFlight upload | ~6 min |
 
-Açık depoda üç kural geçerli:
+Rules for a public repository:
 
-- **Log'lar herkese açık.** İş akışları gizli bilgi, gizli bilginin uzunluğunu ya da özetini, imza kimliğini (geliştiricinin adı) yazdırmaz. Açılmadan önce eski TestFlight log'ları silindi.
-- **Gizli bilgi kodda ya da geçmişte yok.** Anahtarlar ve sertifikalar GitHub Secrets'ta durur. Açmadan önce bütün geçmiş tarandı; commit'lerde yalnızca GitHub'ın noreply e-postası var.
-- **HERE verisi depoya konmaz.** Koşulları içeriğini dağıtmayı kısıtlıyor. Test örnekleri sentetik; kaydedilmiş iki HERE yanıtı geçmişten çıkarıldı. OSM verisi ODbL atfıyla serbest.
+- **Logs are public.** Workflows never print a secret, its length or hash, or the signing identity (which contains the developer's name). Old TestFlight logs were deleted before going public.
+- **No secrets in code or history.** Keys and certificates live in GitHub Secrets. The full history was scanned before going public; commits carry only GitHub's noreply email.
+- **No HERE data in the repository.** HERE's terms restrict redistributing its content. Test fixtures are synthetic; two recorded HERE responses were removed from history. OSM data is free to use with ODbL attribution.
 
-Geçmişin yeniden yazılmasından önceki commit'ler, eski kimliklerini bilen birine eski Actions koşu sayfalarından ve PR #1'in zaman çizelgesinden bir süre daha görünebilir. Tamamen silinmeleri için GitHub desteğinden önbellek temizliği istenebilir.
+Pre-rewrite commits may stay visible for a while, to anyone who knows their old IDs, via old Actions run pages and the PR #1 timeline. Asking GitHub Support to purge the cache removes them completely.
 
-## Nasıl kuruldu
+## How it was set up
 
-Apple'ın web arayüzünde yalnızca iki şey elle yapıldı; geri kalan her şey App Store Connect API üzerinden çalışan [Tools/appstore/provision.mjs](../Tools/appstore/provision.mjs) betiğiyle yapıldı.
+Only two steps were manual, in Apple's web interface; [Tools/appstore/provision.mjs](../Tools/appstore/provision.mjs) did the rest through the App Store Connect API.
 
-1. Anahtar ve CSR bu bilgisayarda üretildi:
+1. The key and CSR were generated locally:
    ```bash
    MSYS_NO_PATHCONV=1 openssl req -new -newkey rsa:2048 -nodes -keyout dist.key -out dist.csr -subj "/CN=Atlas Distribution/C=TR"
    ```
-2. App Store Connect'te **Users and Access → Integrations → Team Keys** altında "Atlas CI" adında, **Admin** rollü bir API anahtarı oluşturuldu. `.p8` dosyası `atlas-signing` klasörüne kaydedildi.
-3. Betik Bundle ID'yi, sertifikayı (CSR'den) ve App Store profilini oluşturdu:
+2. An API key "Atlas CI" with the **Admin** role was created in App Store Connect under **Users and Access → Integrations → Team Keys**; its `.p8` file went into the local signing folder.
+3. The script created the Bundle ID, the certificate (from the CSR) and the App Store profile:
    ```bash
-   node Tools/appstore/provision.mjs --key ~/atlas-signing/AuthKey_<KEYID>.p8 --issuer <ISSUER_ID> \
-     --csr ~/atlas-signing/dist.csr --out ~/atlas-signing --steps bundle,cert,profile
+   node Tools/appstore/provision.mjs --key <signing-dir>/AuthKey_<KEYID>.p8 --issuer <ISSUER_ID> \
+     --csr <signing-dir>/dist.csr --out <signing-dir> --steps bundle,cert,profile
    ```
-4. Web arayüzünde **Apps → New App** ile uygulama kaydı oluşturuldu. Apple bu işlemi API'ye açmıyor.
-5. Betik `--steps testflight` ile dahili grubu kurdu ve hesap sahibini gruba ekledi.
-6. Sertifika eski algoritmalarla .p12'ye çevrildi ve 6 secret yüklendi:
+4. The app record was created on the web under **Apps → New App**; the API does not offer this.
+5. With `--steps testflight`, the script created the internal group and added the account holder to it.
+6. The certificate was converted to a .p12 with legacy algorithms, and 6 secrets were uploaded:
    - `DIST_P12_BASE64`, `DIST_P12_PASSWORD`
    - `PROFILE_BASE64`
    - `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`
 
-## Canlı trafik anahtarı (isteğe bağlı)
+## Live traffic key (optional)
 
-HERE anahtarı yoksa build trafiksiz çıkar ve rota kartı "Trafik dahil değil" der. Anahtarı eklemek için:
+Without a HERE key the build has no traffic; the route card says "Trafik dahil değil" (traffic not included). To add the key:
 
 1. https://platform.here.com → **Access Manager → Apps → Register new app** → **Credentials → API Keys → Create API key**.
-2. Anahtarı GitHub Secret olarak kaydet: `gh secret set HERE_API_KEY -R Vivi190/ViviMap` (komut değeri sorar; koda ve depoya yazılmaz).
-3. Yeni bir TestFlight build'i gönder. Anahtar derlemede Info.plist'e girer.
+2. Store the key as a GitHub Secret: `gh secret set HERE_API_KEY -R Vivi190/ViviMap` (the command prompts for the value, so it never lands in code or the repository).
+3. Upload a new TestFlight build. The build writes the key into Info.plist.
 
-Kota: uygulama her cihazda ayda en fazla 1.200 rota içe aktarma ve 2.400 trafik akışı isteği yapar (HERE'in ücretsiz kotasının yarısından az).
+Quota: at most 1,200 route imports and 2,400 traffic flow requests per device per month (under half of HERE's free quota).
 
-## Yıllık yenileme (sertifika süresi dolunca)
+## Annual renewal (when the certificate expires)
 
-3. adımı ve 6. adımı tekrarla. Yeni bir CSR gerekmez; aynı `dist.csr` kullanılabilir.
+Repeat steps 3 and 6. No new CSR is needed: reuse `dist.csr`.
 
-## Tuzaklar
+## Pitfalls
 
-- **Windows'taki OpenSSL çıktısı CRLF ile biter.** Parola üretirken `tr -d '\r\n'` kullan. Sondaki görünmez `\r`, .p12'yi şifrelerken parolanın içinde kalıyor; `gh secret set` ise yüklerken onu kırpıyor. Sonuç: CI'da "passphrase not correct" hatası.
-- Git Bash'te OpenSSL'e `file:/c/...` biçiminde yol verilemez. Parolayı `env:` veya `stdin` ile geçir.
-- Depo herkese açık olduğundan iş akışı log'ları da açıktır. Bu yüzden "Check secrets" adımı yalnızca eksik secret'ları söyler; uzunluk ve özet yazdırmaz. İmza kimliği de, geliştiricinin adını taşıdığı için log'a yazılmaz. Bir secret'tan şüphelenirsen yerelde karşılaştır, log'a yazdırma.
+- **OpenSSL output on Windows ends in CRLF.** Strip it with `tr -d '\r\n'` when generating the password: an invisible trailing `\r` stays in the password that encrypts the .p12, but `gh secret set` trims it on upload, and CI fails with "passphrase not correct".
+- In Git Bash, OpenSSL cannot take a path in `file:/c/...` form; pass the password via `env:` or `stdin`.
+- Workflow logs are public, so the "Check secrets" step names only missing secrets, with no length or hash, and the signing identity (the developer's name) is never logged. To check a suspect secret, compare it locally; never print it to the log.

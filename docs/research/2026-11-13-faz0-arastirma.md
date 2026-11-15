@@ -30,7 +30,7 @@
    - Hız kamerası Pendik'te 1, Kartal ve Tuzla'da 0.
    - Kasis sayısı gerçeğin çok altında.
 3. **TomTom teknik olarak en iyi trafik API'si, ama şartları "navigasyon işlevini" ve CarPlay'i yazılı anlaşma olmadan yasaklıyor.** Google, Mapbox, Yandex MapKit ve Apple bu mimaride lisans gereği kullanılamıyor.
-4. **Radar uyarısı hukuki gri alanda.** KTK md. 51 (7574 sayılı kanun, RG 27.02.2026) radar tespit/ikaz *cihazlarını* yasaklıyor; uygulamalar metinde geçmiyor. Kamera uyarısı senin kararına bağlı.
+4. **Radar uyarısı hukuki gri alanda.** KTK md. 51 (7574 sayılı kanun, RG 27.02.2026) radar tespit/ikaz *cihazlarını* yasaklıyor; uygulamalar metinde geçmiyor. Kamera uyarısı proje sahibinin kararına bağlı (sonradan alındı: ADR-9).
 5. **CarPlay navigasyon yetkisinin kişisel bir uygulamaya verilme ihtimali düşük ve ne zaman sonuçlanacağı belirsiz.** iOS 26'da Live Activity, CarPlay Dashboard'da yetki gerektirmeden görünebiliyor.
 
 ---
@@ -281,7 +281,7 @@ Overpass API, 13.11.2026. Uzunluklar yol geometrisinden hesaplandı (km).
   - KTK md. 51 (7574 sayılı kanun, RG 27.02.2026, sayı 33181): radar "yerini tespit veya sürücüyü ikaz eden her türlü cihazın" üretimi, ithalatı ve araçta bulundurulması yasak. Bulundurma cezası 185.000 TL.
   - Uygulamalar metinde geçmiyor; hukukçular bu konuda ayrışıyor (gri alan).
   - EGM sabit radar ve EDS noktalarını harita olarak yayımlamış (NTV, 08.06.2025). Lisansı ve makine tarafından okunabilir olup olmadığı **DOĞRULANMADI**.
-  - **Öneri:** kasis ve tehlike uyarıları serbest. Hız kamerası uyarısı yalnızca senin açık kararınla, yalnızca resmi sabit noktalar ve kendi işaretlediğin noktalar için.
+  - **Öneri:** kasis ve tehlike uyarıları serbest. Hız kamerası uyarısı yalnızca proje sahibinin açık kararıyla, yalnızca resmi sabit noktalar ve kullanıcının işaretlediği noktalar için.
 - **Atıf:** OSM (ODbL), OpenMapTiles, OpenFreeMap; HERE kullanılırsa HERE; İBB verisi kullanılırsa İBB. Uygulamadaki "© OpenStreetMap" bağlantısı bu atıfları gösteriyor.
 
 ---

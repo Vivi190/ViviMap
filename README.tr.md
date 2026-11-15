@@ -65,7 +65,7 @@ Uygulama hedefi ince; asıl iş `Packages/AtlasKit` altındaki Swift paketlerind
 | `TripHistory` | Tahmini ve gerçekleşen sürüş süreleri, kişisel kalibrasyon |
 | `AppCore`, `DesignSystem`, `Diagnostics`, `NavigationActivity` | Ayarlar ve biçimlendirme, arayüz bileşenleri, GPS tanılama, Live Activity |
 
-Kararlar ve gerekçeleri: [docs/architecture.md](docs/architecture.md).
+Kararlar ve gerekçeleri: [docs/architecture.md](docs/architecture.md) (İngilizce); yol haritası ve açık işler: [docs/development-plan.md](docs/development-plan.md); cihaz testleri: [docs/device-testing.tr.md](docs/device-testing.tr.md).
 
 ```
 App/                  iOS uygulama hedefi: ekranlar, varlıklar, UI testleri
@@ -79,7 +79,7 @@ project.yml           XcodeGen proje tanımı
 ## Kalite
 
 - `main`'e her push'ta uygulama derlenir, birim testleri (150+) çalışır ve iOS simülatöründe ekran görüntüleri alınır. Testlerde canlı rota motoruyla gerçek bir Kartal rotasında simüle sürüşler (varış, yeniden rota, yola oturtulmuş konum) ve bellek ölçümlü uzun bir sürüş var.
-- Her TestFlight build'inden önce ekran görüntüleri incelenir; bulgular ve düzeltmeler [geliştirme planında](docs/development-plan.md).
+- Her TestFlight build'inden önce ekran görüntüleri incelenir; her build'in değişiklikleri [değişiklik günlüğünde](CHANGELOG.md).
 - Arama kalitesi OpenStreetMap'e karşı bir ölçüm aracıyla ölçülür (`Tools/searchbench`).
 
 ## Derleme

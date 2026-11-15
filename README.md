@@ -65,7 +65,7 @@ The app target is thin; the work lives in Swift packages under `Packages/AtlasKi
 | `TripHistory` | Predicted against actual trip times, personal calibration |
 | `AppCore`, `DesignSystem`, `Diagnostics`, `NavigationActivity` | Settings and formatting, UI components, GPS diagnostics, Live Activity |
 
-Decisions and trade-offs are recorded in [docs/architecture.md](docs/architecture.md) (in Turkish).
+Decisions and trade-offs are recorded in [docs/architecture.md](docs/architecture.md); the roadmap and open items in [docs/development-plan.md](docs/development-plan.md).
 
 ```
 App/                  iOS app target: screens, assets, UI tests
@@ -79,7 +79,7 @@ project.yml           XcodeGen project definition
 ## Quality
 
 - Every push to `main` builds the app, runs the unit tests (150+) and takes UI screenshots on the iOS simulator. The tests include simulated drives on a real Kartal route with live routing (arrival, rerouting, snapped position) and a long drive with a memory check.
-- The screenshots are reviewed before each TestFlight build; findings and fixes are logged in the [development plan](docs/development-plan.md).
+- The screenshots are reviewed before each TestFlight build; changes per build are listed in the [changelog](CHANGELOG.md).
 - Search quality is measured with a benchmark against OpenStreetMap (`Tools/searchbench`).
 
 ## Building
