@@ -6,32 +6,41 @@ import RoutingEngine
 import SwiftUI
 import TrafficEngine
 
-/// Turn banner: maneuver arrow, distance, Turkish action and the road to take. Solid and high-contrast so
-/// one glance is enough; lanes appear only when the routing data has them.
+/// Turn card, as Yandex draws it: the maneuver on a blue tile, the distance large, the road to take in bold and
+/// the Turkish action under it. A floating card like the rest of the app (dark at night) instead of the solid
+/// blue block it was (15.11.2026: "Başlat"tan sonrası Yandex gibi güzel değil); lanes only when the data has them.
 struct NavigationBanner: View {
     let navigation: NavigationSession
 
+    /// The rows under the headline start where the text does, past the tile.
+    private static let indent: CGFloat = 64 + Spacing.m
+
     var body: some View {
+        // The road leads when there is one ("Hürriyet Caddesi"); the action ("Göbekten sağa çık") follows it.
+        let road = navigation.nextRoad.flatMap { $0.isEmpty ? nil : $0 }
+        let action = navigation.actionText ?? "Rotayı izle"
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(alignment: .center, spacing: Spacing.m) {
                 Image(systemName: navigation.maneuverSymbol)
-                    .font(.system(size: 42, weight: .bold))
-                    .frame(width: 60)
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.white)
                     .contentTransition(.symbolEffect(.replace))
-                VStack(alignment: .leading, spacing: 2) {
+                    .frame(width: 64, height: 64)
+                    .background(Color.atlasAccent, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                VStack(alignment: .leading, spacing: 1) {
                     if let distance = navigation.distanceToManeuver {
                         Text(Formatting.distance(meters: distance))
-                            .font(.system(size: 34, weight: .bold))
+                            .font(.system(size: 32, weight: .bold))
                             .monospacedDigit()
                             .contentTransition(.numericText())
                     }
-                    Text(navigation.actionText ?? "Rotayı izle")
-                        .font(.title3.weight(.semibold))
+                    Text(road ?? action)
+                        .font(.title3.weight(.bold))
                         .lineLimit(2)
-                    if let road = navigation.nextRoad, !road.isEmpty {
-                        Text(road)
-                            .font(.headline)
-                            .opacity(0.85)
+                    if road != nil {
+                        Text(action)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
@@ -45,38 +54,39 @@ struct NavigationBanner: View {
                     Image(systemName: then)
                         .font(.subheadline.weight(.bold))
                 }
+                .foregroundStyle(Color.atlasAccent)
                 .padding(.horizontal, Spacing.m)
                 .padding(.vertical, Spacing.xs)
-                .background(.white.opacity(0.18), in: Capsule())
-                .padding(.leading, 72)
+                .background(Color.atlasAccent.opacity(0.12), in: Capsule())
+                .padding(.leading, Self.indent)
             }
             if !navigation.lanes.isEmpty {
                 HStack(spacing: Spacing.s) {
                     ForEach(Array(navigation.lanes.enumerated()), id: \.offset) { _, lane in
                         Image(systemName: lane.symbol)
                             .font(.system(size: 20, weight: .bold))
-                            .opacity(lane.isActive ? 1 : 0.35)
+                            .foregroundStyle(lane.isActive ? Color.atlasAccent : Color.secondary.opacity(0.45))
                     }
                 }
-                .padding(.leading, 72)
+                .padding(.leading, Self.indent)
                 .accessibilityLabel(Text("Şerit bilgisi"))
             }
             if navigation.isRerouting {
                 Label("Yeni rota hesaplanıyor…", systemImage: "arrow.triangle.2.circlepath")
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.atlasAccent)
             }
         }
-        .foregroundStyle(.white)
-        .padding(Spacing.l)
+        .padding(Spacing.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.atlasNavBanner, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
+        .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("nav.banner")
     }
 }
 
-/// Arrival time first (what the driver plans around), then remaining time and distance; mute and end.
+/// The time left large, as Yandex shows it, with the arrival time and distance beside it and the traffic strip
+/// under; a small end button instead of the big red one.
 struct NavigationBottomBar: View {
     let navigation: NavigationSession
     /// From the last live-traffic round; nil = free-flow estimate, labelled as such.
@@ -88,16 +98,22 @@ struct NavigationBottomBar: View {
     let onEnd: () -> Void
 
     var body: some View {
-        HStack(spacing: Spacing.m) {
+        HStack(alignment: .center, spacing: Spacing.m) {
             if let remaining = navigation.durationRemaining {
                 let arrival = trafficArrival ?? Date.now.addingTimeInterval(remaining)
                 let left = trafficArrival.map { max(0, $0.timeIntervalSinceNow) } ?? remaining
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    // Three columns, figure over label, as navigation apps show them.
-                    HStack(alignment: .top, spacing: Spacing.l) {
-                        metric(arrival.formatted(date: .omitted, time: .shortened), "varış")
-                        metric(Formatting.duration(seconds: left), "kalan")
-                        metric(Formatting.distance(meters: navigation.distanceRemaining ?? 0), "mesafe")
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
+                        Text(Formatting.duration(seconds: left))
+                            .font(.system(size: 28, weight: .bold))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                        Text("\(arrival.formatted(date: .omitted, time: .shortened)) · \(Formatting.distance(meters: navigation.distanceRemaining ?? 0))")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .accessibilityElement(children: .combine)
                     if trafficArrival != nil {
@@ -128,31 +144,18 @@ struct NavigationBottomBar: View {
                 .accessibilityLabel(Text("Hedefin yakınındaki otoparklar"))
             }
             Button(role: .destructive, action: onEnd) {
-                Text("Bitir")
-                    .font(.headline)
-                    .padding(.horizontal, Spacing.s)
-                    .frame(minHeight: 44)
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .bold))
+                    .frame(width: 30, height: 30)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.circle)
             .tint(Color.atlasCritical)
+            .accessibilityLabel(Text("Navigasyonu bitir"))
             .accessibilityIdentifier("nav.end")
         }
         .padding(Spacing.l)
         .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-    }
-
-    private func metric(_ value: String, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(value)
-                .font(.title3.weight(.bold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
     }
 }
 
