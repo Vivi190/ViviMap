@@ -1,8 +1,16 @@
 @preconcurrency import FerrostarCoreFFI
+import CoreLocation
 import Testing
 @testable import NavigationEngine
 
 struct TurkishInstructionsTests {
+    @Test func aTurnAtATrafficLight() {
+        #expect(TurkishInstructions.atLights("Sağa dön") == "Işıklarda sağa dön")
+        #expect(TurkishInstructions.atLights("U dönüşü yap") == "Işıklarda U dönüşü yap")
+        #expect(TurkishInstructions.spoken(action: "Işıklarda sağa dön", distance: 300, road: "Ankara Caddesi")
+            == "300 metre sonra ışıklarda sağa dön, Ankara Caddesi.")
+    }
+
     @Test func turnsAndKeeps() {
         #expect(TurkishInstructions.action(type: .turn, modifier: .left) == "Sola dön")
         #expect(TurkishInstructions.action(type: .turn, modifier: .slightRight) == "Hafif sağa dön")
@@ -75,5 +83,24 @@ struct AnnouncementPlannerTests {
         var planner = AnnouncementPlanner()
         #expect(planner.stage(step: 2, distance: 90, speed: 6) == .close)
         #expect(planner.stage(step: 2, distance: 300, speed: 6) == nil) // never back to a farther stage
+    }
+}
+
+struct TrafficLightManeuverTests {
+    private let junction = CLLocationCoordinate2D(latitude: 40.8890, longitude: 29.1905)
+
+    @Test func aLightAtTheJunctionCountsOneDownTheRoadDoesNot() {
+        let close = CLLocationCoordinate2D(latitude: 40.8890 + 20 / 110_540.0, longitude: 29.1905) // 20 m north
+        let far = CLLocationCoordinate2D(latitude: 40.8890 + 60 / 110_540.0, longitude: 29.1905) // 60 m north
+        #expect(NavigationSession.nearLight(junction, lights: [far, close]))
+        #expect(!NavigationSession.nearLight(junction, lights: [far]))
+    }
+
+    @Test func onlyPlainTurnsAreAtTheLights() {
+        #expect(NavigationSession.turnsAtJunction(.turn))
+        #expect(NavigationSession.turnsAtJunction(.endOfRoad))
+        #expect(!NavigationSession.turnsAtJunction(.roundabout))
+        #expect(!NavigationSession.turnsAtJunction(.offRamp))
+        #expect(!NavigationSession.turnsAtJunction(nil))
     }
 }

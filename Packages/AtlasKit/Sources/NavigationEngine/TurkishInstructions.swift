@@ -101,6 +101,11 @@ public enum TurkishInstructions {
         }
     }
 
+    /// A turn at a traffic light, said the way drivers (and Yandex) say it: "Işıklarda sağa dön".
+    public static func atLights(_ action: String) -> String {
+        "Işıklarda \(action.lowercasedFirst)"
+    }
+
     /// "Sol" / "Sağ" for side-dependent phrases, nil when the side does not matter.
     private static func side(_ modifier: ManeuverModifier?) -> String? {
         switch modifier {

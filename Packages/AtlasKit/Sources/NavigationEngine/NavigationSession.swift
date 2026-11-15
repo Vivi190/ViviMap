@@ -51,6 +51,9 @@ public final class NavigationSession {
     /// Set once per maneuver, not per fix.
     public private(set) var maneuverArrow: [[CLLocationCoordinate2D]] = []
     @ObservationIgnored private var arrowSteps: Int?
+    /// Whether the next maneuver is at a traffic light ("Işıklarda sağa dön"), worked out once per maneuver.
+    @ObservationIgnored private var maneuverAtLight = false
+    @ObservationIgnored private var lightSteps: Int?
     /// The next camera or bump within warning range, for the banner chip.
     public private(set) var hazardAlert: HazardAlert?
     /// Speed limit of the road being driven, km/h, only when the map data has one (OSM `maxspeed` via
@@ -165,9 +168,29 @@ public final class NavigationSession {
         routePath = nil
         maneuverArrow = []
         arrowSteps = nil
+        lightSteps = nil
+        maneuverAtLight = false
         hazardAlert = nil
         speedLimit = nil
         hazardWatch = HazardWatch()
+    }
+
+    /// A traffic light within 35 m of the maneuver: OSM puts the node at the stop line or on the junction.
+    nonisolated static func nearLight(_ point: CLLocationCoordinate2D, lights: [CLLocationCoordinate2D] = TrafficSignals.bundled) -> Bool {
+        let metresPerDegreeLon = 111_320 * cos(point.latitude * .pi / 180)
+        return lights.contains { light in
+            let dx = (light.longitude - point.longitude) * metresPerDegreeLon
+            let dy = (light.latitude - point.latitude) * 110_540
+            return dx * dx + dy * dy < 35 * 35
+        }
+    }
+
+    /// Plain turns at a junction; roundabouts, ramps and forks are not "at the lights".
+    nonisolated static func turnsAtJunction(_ type: ManeuverType?) -> Bool {
+        switch type {
+        case .turn?, .endOfRoad?: true
+        default: false
+        }
     }
 
     /// Ferrostar hands over the current segment's Valhalla annotation as JSON; its `maxspeed` is
@@ -200,6 +223,7 @@ public final class NavigationSession {
             let path = RoutePath(routeCoordinates)
             routePath = path
             arrowSteps = nil // the arrow is rebuilt on the new geometry
+            lightSteps = nil
             hazardWatch = HazardWatch(hazards: RouteHazards.along(path, hazards: hazards + userHazards))
             hazardWatch.kinds = hazardKinds
             spellings = TurkishFold.preferredSpellings((state.remainingSteps ?? []).flatMap { step in
@@ -249,11 +273,19 @@ public final class NavigationSession {
         lanes = laneInfo.map { lane in
             Lane(symbol: ManeuverSymbols.lane(lane.activeDirection ?? lane.directions.first), isActive: lane.active)
         }
-        actionText = TurkishInstructions.action(
+        let maneuverIndex = state.remainingSteps?.count ?? 0
+        if maneuverIndex != lightSteps, let path = routePath {
+            lightSteps = maneuverIndex
+            let at = path.length - progress.distanceRemaining + progress.distanceToNextManeuver
+            maneuverAtLight = Self.nearLight(path.point(at: at).coordinate)
+        }
+        let action = TurkishInstructions.action(
             type: content?.maneuverType,
             modifier: content?.maneuverModifier,
             roundaboutExitDegrees: content?.roundaboutExitDegrees
-        ) ?? content?.text
+        )
+        actionText = (maneuverAtLight && Self.turnsAtJunction(content?.maneuverType) ? action.map(TurkishInstructions.atLights) : action)
+            ?? content?.text
         // The banner text from Valhalla is the next road's name for most maneuvers.
         nextRoad = content.flatMap { $0.maneuverType == .arrive ? nil : $0.text }
             .map { spellings[TurkishFold.fold($0)] ?? $0 }
