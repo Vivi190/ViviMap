@@ -6786,9 +6786,7 @@
       "bar",
       "beer",
       "ice_cream",
-      "shop",
       "grocery",
-      "clothing_store",
       "hospital",
       "pharmacy",
       "doctors",
@@ -6887,7 +6885,6 @@
      1.0
     ],
     "text-max-width": 8,
-    "text-optional": true,
     "symbol-sort-key": [
      "coalesce",
      [
@@ -7097,7 +7094,6 @@
      1.0
     ],
     "text-max-width": 8,
-    "text-optional": true,
     "symbol-sort-key": [
      "coalesce",
      [

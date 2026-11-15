@@ -137,13 +137,16 @@ def poi_layers(name, p):
         "text-field": NAME, "text-font": FONT_REGULAR,
         "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10.5, 18, 12.5],
         "text-anchor": "top", "text-offset": [0, 1.0], "text-max-width": 8,
-        "text-optional": True, "symbol-sort-key": ["coalesce", ["get", "rank"], 99],
+        # Badge and name together or not at all: lone badges cluttered the first CI screenshot (15.11.2026).
+        "symbol-sort-key": ["coalesce", ["get", "rank"], 99],
     }
     paint = {"text-color": color, "text-halo-color": p["label_halo"], "text-halo-width": 1.3}
     known = ["match", ["get", "class"], POI_CLASSES, True, False]
+    # Shops and clothing only from z16.5: there are too many; supermarkets stay, they are landmarks here.
+    major = ["match", ["get", "class"], [c for c in POI_CLASSES if c not in ("shop", "clothing_store")], True, False]
     return [
         {"id": "poi-major", "type": "symbol", "source": "openmaptiles", "source-layer": "poi",
-         "minzoom": 15, "maxzoom": 16.5, "filter": ["all", known, ["has", "name"], ["<=", ["coalesce", ["get", "rank"], 99], 20]],
+         "minzoom": 15, "maxzoom": 16.5, "filter": ["all", major, ["has", "name"], ["<=", ["coalesce", ["get", "rank"], 99], 20]],
          "layout": layout, "paint": paint},
         {"id": "poi-all", "type": "symbol", "source": "openmaptiles", "source-layer": "poi",
          "minzoom": 16.5, "filter": ["all", known, ["has", "name"]], "layout": layout, "paint": paint},
