@@ -26,7 +26,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 23: "semt + tür" ("esentepe eczane") ve "semt + marka" ("kurtköy migros") aramalarının o semtin çevresinde yapılması.
 - Build 24: Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları; trafik ışığındaki dönüşte "Işıklarda sağa dön"; yol numaraları tabela gibi kutularda (D-100 mavi, O-4 yeşil).
 
-Sıradaki build'de gelecekler (main'de): yol olayları haritada (kapalı yol, kaza, yol çalışması); trafik katmanı mahalle sokaklarını istemiyor (akıcılık için); navigasyon alt çubuğunda kalan yolun trafik şeridi.
+Sıradaki build'de gelecekler (main'de): yol olayları haritada (kapalı yol, kaza, yol çalışması); trafik katmanı mahalle sokaklarını istemiyor (akıcılık için); navigasyon alt çubuğunda kalan yolun trafik şeridi; Yandex çizgisinde yeni navigasyon ekranı (açık dönüş kartı, büyük kalan süre); rota seçiminde haritada süre baloncukları ve yan yana rota kutuları; okunan kartlar (yer, rota, navigasyon) opak zeminde; hedef kırmızı iğneyle; navigasyonda rota çizgisi aracın altından başlıyor (geçilen kısım siliniyor).
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -43,7 +43,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
    - Alternatiflerin süreleri de trafikli olur ve en hızlısı seçili gelir.
    - Yoğun saatte rota çizgisinin yavaş kısımları turuncu, kırmızı ya da koyu kırmızı olur. Gece her şey akıcı olduğu için renk görmezsin; bu doğru davranış.
 4. **Navigasyon:** "Başlat"a bas. Şunları kontrol et:
-   - Mavi bantta Türkçe talimat ("300 m · Sola dön · Ankara Caddesi") görünüyor mu?
+   - Üstteki kartta Türkçe talimat ("300 m · Ankara Caddesi · Sola dön") görünüyor mu?
    - Sesli uyarılar zamanında geliyor mu? Şehirde yaklaşık 400 m, 120 m ve dönüşte; hızlı yolda daha erken.
    - Rotadan çıkınca "Yeni rota hesaplanıyor" denip yeni rota çiziliyor mu?
    - Alt çubuk 3 dakikada bir trafikli varış saatine geçer ("Canlı trafikle · © HERE").
@@ -80,6 +80,8 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 29. **Işıklarda dönüş (build 24+):** trafik ışıklı bir kavşakta dönen bir rota seç (simülasyon da olur). Bant ve ses "Işıklarda sağa dön" demeli; ışıksız kavşakta yalnızca "Sağa dön". OSM'de her ışık işli değil.
 30. **Yol olayları (sıradaki build):** trafik katmanı açıkken haritada kapalı yollar kırmızı kesikli çizgi ve başında beyaz çizgili kırmızı daire (girilmez), kazalar turuncu, yol çalışmaları koni işaretiyle görünmeli. Veri HERE'den, en fazla 10 dakikada bir tazelenir.
 31. **Trafik şeridi (sıradaki build):** canlı trafikle navigasyonda, alt çubuktaki saatlerin altında ince bir şerit: soldan sağa kalan yol; yavaş kesimler turuncu, yoğunlar kırmızı, akanlar açık mavi. Yaklaştıkça renkler sola kayar.
+32. **Navigasyon ekranı (sıradaki build):** "Başlat"tan sonra üstte beyaz (gece koyu) bir kart: solda mavi kutuda dönüş oku, yanında büyük mesafe, altında gidilecek yolun adı ve "Sağa dön" gibi talimat. Altta kalan süre büyük, yanında varış saati ve kalan mesafe; sağdaki küçük kırmızı ✕ navigasyonu bitirir. Mavi rota çizgisi konum okunun altından başlamalı; geçtiğin kısım silinir.
+33. **Rota seçimi (sıradaki build):** "Rota"ya bas. Her rotanın süresi haritada, yalnız o rotanın geçtiği yerde bir baloncukta görünmeli; seçili olan mavi. Kartta rotalar yan yana kutular: süre ve "En hızlı" ya da "+N dk". Bir kutuya ya da haritadaki baloncuğa dokununca seçim ve mavi baloncuk değişmeli. Altında seçili rotanın büyük süresi, mesafe · varış, trafik ve ana yollar. Hedef kırmızı bir iğneyle işaretli.
 
 **Bilinen sınırlar:**
 

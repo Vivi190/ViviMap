@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="docs/screenshots/map-day.jpg" width="230" alt="Yer rozetleriyle gündüz haritası">
-  <img src="docs/screenshots/route-card.jpg" width="230" alt="Varış saatleriyle rota seçenekleri">
+  <img src="docs/screenshots/route-card.jpg" width="230" alt="Her birinin süresi haritada rota seçenekleri">
   <img src="docs/screenshots/navigation.jpg" width="230" alt="Rota üzerinde dönüş okuyla adım adım yönlendirme">
 </p>
 <p align="center">
@@ -24,8 +24,9 @@
 
 **Navigasyon**
 - [Ferrostar](https://github.com/stadiamaps/ferrostar) üzerinde, [Valhalla](https://github.com/valhalla/valhalla) rotalarıyla adım adım yönlendirme: alternatifler, otomatik yeniden rota, ekran kilitliyken de süren yönlendirme.
+- Apple Haritalar ve Yandex'teki gibi rota seçimi: her seçeneğin süresi haritada bir baloncukta (dokununca seçilir), seçenekler yan yana ve her birinin ne kadar yavaş olduğu, ücretli geçiş ve feribot uyarısı.
 - Manevra verisinden yazılan Türkçe sesli yönlendirme: *"300 metre sonra ışıklarda sağa dön, Ankara Caddesi."*
-- Rota üzerinde dönüş oku, yola oturtulmuş konum oku, üzerinde olunan yolun adı, hıza ve dönüşe göre yakınlaşma, ardışık manevra ve verisi olan yollarda şeritler.
+- Rota üzerinde dönüş oku, aracın altından başlayan rota çizgisi, yola oturtulmuş konum oku, üzerinde olunan yolun adı, hıza ve dönüşe göre yakınlaşma, ardışık manevra ve verisi olan yollarda şeritler.
 - Havalimanı, hastane ve AVM rotaları alanın ortasında değil, önündeki yolda biter.
 - Kilit ekranında ve Dynamic Island'da Live Activity.
 
@@ -77,7 +78,7 @@ project.yml           XcodeGen proje tanımı
 
 ## Kalite
 
-- `main`'e her push'ta uygulama derlenir, 147 birim testi çalışır ve iOS simülatöründe ekran görüntüleri alınır. Testlerde canlı rota motoruyla gerçek bir Kartal rotasında simüle sürüşler (varış, yeniden rota, yola oturtulmuş konum) ve bellek ölçümlü uzun bir sürüş var.
+- `main`'e her push'ta uygulama derlenir, birim testleri (150+) çalışır ve iOS simülatöründe ekran görüntüleri alınır. Testlerde canlı rota motoruyla gerçek bir Kartal rotasında simüle sürüşler (varış, yeniden rota, yola oturtulmuş konum) ve bellek ölçümlü uzun bir sürüş var.
 - Her TestFlight build'inden önce ekran görüntüleri incelenir; bulgular ve düzeltmeler [geliştirme planında](docs/development-plan.md).
 - Arama kalitesi OpenStreetMap'e karşı bir ölçüm aracıyla ölçülür (`Tools/searchbench`).
 

@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="docs/screenshots/map-day.jpg" width="230" alt="Day map with place badges">
-  <img src="docs/screenshots/route-card.jpg" width="230" alt="Route options with arrival times">
+  <img src="docs/screenshots/route-card.jpg" width="230" alt="Route options with each one's time on the map">
   <img src="docs/screenshots/navigation.jpg" width="230" alt="Turn-by-turn guidance with a turn arrow on the route">
 </p>
 <p align="center">
@@ -24,8 +24,9 @@
 
 **Navigation**
 - Turn-by-turn guidance on [Ferrostar](https://github.com/stadiamaps/ferrostar) with routes from [Valhalla](https://github.com/valhalla/valhalla): alternatives, automatic rerouting, and guidance that continues with the screen locked.
+- Choosing a route as in Apple Maps and Yandex: each option's time in a bubble on the map (tap one to choose it), the options side by side with how much slower each is, tolls and ferries flagged.
 - Turkish voice prompts written from the maneuver data: *"300 metre sonra ışıklarda sağa dön, Ankara Caddesi."*
-- A turn arrow on the route, the position snapped to the road, the name of the street you are on, zoom that follows speed and the next turn, the follow-up maneuver, and lanes where they are mapped.
+- A turn arrow on the route, a route line that starts under the car, the position snapped to the road, the name of the street you are on, zoom that follows speed and the next turn, the follow-up maneuver, and lanes where they are mapped.
 - Routes to airports, hospitals and malls end on the road in front of them, not in the middle of the site.
 - A Live Activity on the lock screen and in the Dynamic Island.
 
@@ -77,7 +78,7 @@ project.yml           XcodeGen project definition
 
 ## Quality
 
-- Every push to `main` builds the app, runs 147 unit tests and takes UI screenshots on the iOS simulator. The tests include simulated drives on a real Kartal route with live routing (arrival, rerouting, snapped position) and a long drive with a memory check.
+- Every push to `main` builds the app, runs the unit tests (150+) and takes UI screenshots on the iOS simulator. The tests include simulated drives on a real Kartal route with live routing (arrival, rerouting, snapped position) and a long drive with a memory check.
 - The screenshots are reviewed before each TestFlight build; findings and fixes are logged in the [development plan](docs/development-plan.md).
 - Search quality is measured with a benchmark against OpenStreetMap (`Tools/searchbench`).
 
