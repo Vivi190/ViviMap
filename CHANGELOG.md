@@ -2,6 +2,13 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
+## Build 27 — 2026-11-15
+
+- Map chrome (search bar, buttons, chips, road name, speed) uses the same opaque surface as the cards instead of glass.
+- Speed shown as a rounded tile with the speed-limit sign above it and a red rim when over the limit.
+- During guidance, a "Rotaya dön" button appears while the map is not following the car.
+- Fix: the route overview during guidance framed half the city instead of the remaining route.
+
 ## Build 26 — 2026-11-15
 
 - Road events (closures, accidents, road works) on the route stay visible during guidance, from the last traffic refresh before the drive; no extra requests.
