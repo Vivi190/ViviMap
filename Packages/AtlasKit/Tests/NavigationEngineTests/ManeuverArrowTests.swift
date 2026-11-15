@@ -61,4 +61,29 @@ struct TrafficStripTests {
         #expect(ranges[1] == nil) // behind
         #expect(ranges[2] == nil) // off the route
     }
+
+    @Test func theLineStartsAtTheCarEvenOnARoadTakenTwice() throws {
+        // North 1 km and back down the same road: the car at 300 m is on both passes.
+        let path = RoutePath([at(0), at(1_000), at(0)])
+        let scale = path.length / 2_000 // the path's metres per "metre" of `at`
+        // Ferrostar's progress is a little off the path's metres; ±20 m stands for that.
+        let out = try #require(NavigationSession.offset(of: at(300), on: path, travelled: 300 * scale + 20))
+        let back = try #require(NavigationSession.offset(of: at(300), on: path, travelled: 1_700 * scale - 20))
+        #expect(abs(out - 300 * scale) < 1)
+        #expect(abs(back - 1_700 * scale) < 1)
+        #expect(NavigationSession.offset(of: CLLocationCoordinate2D(latitude: 40.95, longitude: 29.3), on: path, travelled: 300) == nil)
+    }
+
+    @Test func slowStretchesAreCutAtTheCar() throws {
+        let path = RoutePath([at(0), at(1_000)])
+        let scale = path.length / 1_000
+        let lines = NavigationSession.clip(
+            [[at(400), at(600)], [at(50), at(150)], [CLLocationCoordinate2D(latitude: 40.95, longitude: 29.3)]],
+            on: path, from: 500 * scale
+        )
+        let ahead = try #require(lines[0])
+        #expect(abs(RoutePath(ahead).length - 100 * scale) < 1) // from the car to the stretch's end
+        #expect(lines[1] == nil) // passed
+        #expect(lines[2] == nil) // off the route
+    }
 }

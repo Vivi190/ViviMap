@@ -74,6 +74,8 @@ struct HomeScreen: View {
     @State private var simulator = DriveSimulator()
     /// Feeds the user puck during a simulated drive; nil = real GPS.
     @State private var simulatedPuck: StaticLocationManager?
+    /// Starts the route line at the car on every fix while guiding (NavigationSession.onRouteAhead).
+    @State private var routeTrimmer = RouteLineTrimmer()
     /// Feeds the user puck during real guidance with the fix snapped to the route (NavigationSession.onPuck).
     @State private var guidedPuck: StaticLocationManager?
     @State private var trafficEstimates: [Int: TrafficEstimate] = [:]
@@ -134,6 +136,10 @@ struct HomeScreen: View {
         return { pick($0) }
     }
 
+    private var routeTapHandler: (Int) -> Void {
+        { routeSelection = $0 }
+    }
+
     private var startHandler: (() -> Void)? {
         if navigation == nil { return nil }
         return { startNavigation(simulated: false) }
@@ -144,9 +150,12 @@ struct HomeScreen: View {
         return { startNavigation(simulated: true) }
     }
 
-    /// During guidance the session's geometry wins: it changes after a reroute.
+    /// During guidance the session's geometry wins: it changes after a reroute (read for that, so a reroute redraws
+    /// the map), drawn from the car on (routeAhead, not observed; RouteLineTrimmer moves it between redraws).
     private var displayedRoute: [CLLocationCoordinate2D] {
-        if isNavigating, let coordinates = navigation?.routeCoordinates, coordinates.count > 1 { return coordinates }
+        if isNavigating, let navigation, navigation.routeCoordinates.count > 1 {
+            return navigation.routeAhead.count > 1 ? navigation.routeAhead : navigation.routeCoordinates
+        }
         return activeRoute?.coordinates ?? []
     }
 
@@ -162,12 +171,13 @@ struct HomeScreen: View {
         return routes.filter { $0.index != active.index }.map(\.coordinates)
     }
 
-    /// Every candidate's time on the map while choosing; tapping a row in the card moves the blue bubble.
+    /// Every candidate's time on the map while choosing; tapping a bubble or a tile in the card chooses that route.
     private var routeLabels: [RouteLabel] {
         guard !isNavigating, let active = activeRoute else { return [] }
         return routes.compactMap { option in
             routeLabelPoints[option.index].map {
                 RouteLabel(
+                    route: option.index,
                     coordinate: $0,
                     text: Formatting.duration(seconds: RouteCard.time(of: option, traffic: trafficEstimates, status: trafficStatus)),
                     isSelected: option.index == active.index
@@ -184,8 +194,16 @@ struct HomeScreen: View {
     }
 
     private var displayedTraffic: [TrafficLine] {
-        let sections = isNavigating ? trafficWatch.sections : activeRoute.flatMap { previewTraffic[$0.index] } ?? []
-        return sections.map { TrafficLine($0) }
+        if isNavigating, let navigation { return Self.trafficAhead(trafficWatch.sections, on: navigation) }
+        return (activeRoute.flatMap { previewTraffic[$0.index] } ?? []).map { TrafficLine($0) }
+    }
+
+    /// While guiding, the slow stretches still ahead, cut at the car along the line it drives on, so none floats
+    /// behind it once the line under it is gone (RouteLineTrimmer keeps them so between redraws).
+    private static func trafficAhead(_ sections: [TrafficSection], on navigation: NavigationSession) -> [TrafficLine] {
+        zip(sections, navigation.stretchesAhead(sections.map(\.coordinates))).compactMap { section, line in
+            line.map { TrafficLine(section, coordinates: $0) }
+        }
     }
 
     var body: some View {
@@ -206,10 +224,12 @@ struct HomeScreen: View {
                 maneuverArrow: isNavigating ? navigation?.maneuverArrow ?? [] : [],
                 roadMarks: Self.roadMarks,
                 incidents: showsCityTraffic ? cityTraffic.incidents.map { MapIncident($0) } : [],
+                routeTrimmer: routeTrimmer,
                 puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,
                 guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,
                 isOffline: !connectivity.isOnline,
+                onRouteTap: routeTapHandler,
                 onLongPress: longPressHandler
             ) { proxy in
                 viewport.update(from: proxy)
@@ -637,6 +657,10 @@ struct HomeScreen: View {
             navigation.warnsSpeeding = settings.warnsSpeeding
             navigation.voice.isMuted = isMuted
             try navigation.start(route, from: start)
+            navigation.onRouteAhead = { [routeTrimmer, trafficWatch, weak navigation] ahead in
+                guard let navigation else { return }
+                routeTrimmer.show(ahead, traffic: Self.trafficAhead(trafficWatch.sections, on: navigation))
+            }
             location.setNavigating(true)
             // The screen stays on while guiding (it can still be locked by hand; guidance continues).
             UIApplication.shared.isIdleTimerDisabled = true

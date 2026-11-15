@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import MapEngine
 import Observation
@@ -51,14 +52,15 @@ final class CityTraffic {
 }
 
 extension TrafficLine {
-    init(_ section: TrafficSection) {
+    /// `coordinates` replaces the section's own line (the part still ahead while guiding).
+    init(_ section: TrafficSection, coordinates: [CLLocationCoordinate2D]? = nil) {
         let level: TrafficLine.Level = switch section.level {
         case .free: .free
         case .slow: .slow
         case .heavy: .heavy
         case .stopped: .stopped
         }
-        self.init(level: level, coordinates: section.coordinates)
+        self.init(level: level, coordinates: coordinates ?? section.coordinates)
     }
 }
 

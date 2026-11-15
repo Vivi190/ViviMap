@@ -2,13 +2,16 @@ import CoreLocation
 import UIKit
 
 /// A candidate route's time on the map, as Apple Maps and Yandex label them: a bubble on a stretch only that
-/// route takes; the chosen route's bubble is blue.
+/// route takes; the chosen route's bubble is blue, and tapping another one chooses that route.
 public struct RouteLabel: Sendable {
+    /// The route's index (RouteOption.index), handed back when its bubble is tapped.
+    public let route: Int
     public let coordinate: CLLocationCoordinate2D
     public let text: String
     public let isSelected: Bool
 
-    public init(coordinate: CLLocationCoordinate2D, text: String, isSelected: Bool) {
+    public init(route: Int, coordinate: CLLocationCoordinate2D, text: String, isSelected: Bool) {
+        self.route = route
         self.coordinate = coordinate
         self.text = text
         self.isSelected = isSelected

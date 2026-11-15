@@ -47,6 +47,13 @@ public final class NavigationSession {
     /// Symbol of the maneuver right after the next one when it follows within 150 m ("Sonra ↰").
     public private(set) var thenSymbol: String?
     public private(set) var routeCoordinates: [CLLocationCoordinate2D] = []
+    /// What is left of the route from the car, so the line starts under it and the driven part goes, as Apple Maps
+    /// and Yandex draw it. Not observed: it changes on every fix, and the map takes it through `onRouteAhead`
+    /// rather than a SwiftUI update (swiftui-dsl rebuilds every layer on each one).
+    @ObservationIgnored public private(set) var routeAhead: [CLLocationCoordinate2D] = []
+    @ObservationIgnored public var onRouteAhead: (@MainActor ([CLLocationCoordinate2D]) -> Void)?
+    /// Where routeAhead starts, in the path's metres.
+    @ObservationIgnored private var aheadOffset: CLLocationDistance?
     /// The white arrow on the route at the next turn (shaft, head); empty when it goes straight on or arrives.
     /// Set once per maneuver, not per fix.
     public private(set) var maneuverArrow: [[CLLocationCoordinate2D]] = []
@@ -161,6 +168,35 @@ public final class NavigationSession {
         }
     }
 
+    /// Where the car is on the route, in the path's metres: the snapped position projected near Ferrostar's own
+    /// progress (its metres differ slightly from the path's, so the progress alone would start the line off the
+    /// car, and a road taken twice could match the wrong pass); nil when the car is off the route.
+    nonisolated static func offset(
+        of car: CLLocationCoordinate2D, on path: RoutePath, travelled: CLLocationDistance
+    ) -> CLLocationDistance? {
+        path.project(car, tolerance: 40, within: (travelled - 150)...(travelled + 150))?.offset
+    }
+
+    /// The parts of `stretches` (slow traffic on the route) still ahead of the car, drawn along the route line so
+    /// they sit exactly on it; nil for one already passed or off the route. Without this, a stretch behind the car
+    /// would float there with the route line under it gone (routeAhead).
+    public func stretchesAhead(_ stretches: [[CLLocationCoordinate2D]]) -> [[CLLocationCoordinate2D]?] {
+        guard let path = routePath else { return stretches.map { _ in nil } }
+        return Self.clip(stretches, on: path, from: aheadOffset ?? 0)
+    }
+
+    nonisolated static func clip(
+        _ stretches: [[CLLocationCoordinate2D]], on path: RoutePath, from car: CLLocationDistance
+    ) -> [[CLLocationCoordinate2D]?] {
+        stretches.map { stretch in
+            guard let first = stretch.first, let last = stretch.last,
+                  let a = path.project(first, tolerance: 30)?.offset, let b = path.project(last, tolerance: 30)?.offset
+            else { return nil }
+            let line = path.slice(from: max(min(a, b), car), to: max(a, b))
+            return line.count > 1 ? line : nil
+        }
+    }
+
     /// The rest of the route from the current position, for re-measuring traffic on what is left.
     public func remainingRoute() -> [CLLocationCoordinate2D] {
         guard let remaining = distanceRemaining, let path = routePath else { return [] }
@@ -172,6 +208,7 @@ public final class NavigationSession {
         subscription = nil
         onUpdate = nil
         onPuck = nil
+        onRouteAhead = nil
         voice.stop()
         isActive = false
         isRerouting = false
@@ -185,6 +222,8 @@ public final class NavigationSession {
         lanes = []
         thenSymbol = nil
         routeCoordinates = []
+        routeAhead = []
+        aheadOffset = nil
         routePath = nil
         maneuverArrow = []
         arrowSteps = nil
@@ -239,6 +278,8 @@ public final class NavigationSession {
             || state.routeGeometry.last?.lat != routeCoordinates.last?.latitude
             || state.routeGeometry.first?.lat != routeCoordinates.first?.latitude {
             routeCoordinates = state.routeGeometry.map(\.clLocationCoordinate2D)
+            routeAhead = routeCoordinates
+            aheadOffset = nil
             // New route (start, reroute or a taken suggestion): find the cameras and bumps it passes.
             let path = RoutePath(routeCoordinates)
             routePath = path
@@ -275,6 +316,12 @@ public final class NavigationSession {
         distanceToManeuver = progress.distanceToNextManeuver
         distanceRemaining = progress.distanceRemaining
         durationRemaining = progress.durationRemaining
+        if let path = routePath, let puck = state.preferredUserLocation?.clLocation,
+           let at = Self.offset(of: puck.coordinate, on: path, travelled: path.length - progress.distanceRemaining) {
+            aheadOffset = at
+            routeAhead = path.remainder(after: at)
+            onRouteAhead?(routeAhead)
+        }
         let limit = Self.speedLimit(fromAnnotation: state.currentAnnotationJSON)
         if limit != speedLimit { speedLimit = limit }
         if let warning = speedingWatch.update(speedKmh: lastSpeed * 3.6, limit: limit, at: lastFixTime) { voice.speak(warning) }

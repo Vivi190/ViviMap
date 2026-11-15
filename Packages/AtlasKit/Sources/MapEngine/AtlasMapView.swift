@@ -64,6 +64,8 @@ public struct AtlasMapView: View {
     private let maneuverArrow: [[CLLocationCoordinate2D]]
     private let roadMarks: RoadMarks
     private let incidents: [MapIncident]
+    private let routeTrimmer: RouteLineTrimmer?
+    private let onRouteTap: ((Int) -> Void)?
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
     private let puckSource: StaticLocationManager?
@@ -87,10 +89,12 @@ public struct AtlasMapView: View {
         maneuverArrow: [[CLLocationCoordinate2D]] = [],
         roadMarks: RoadMarks = .none,
         incidents: [MapIncident] = [],
+        routeTrimmer: RouteLineTrimmer? = nil,
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         guidanceZoom: Double? = nil,
         isOffline: Bool = false,
+        onRouteTap: ((Int) -> Void)? = nil,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
     ) {
@@ -107,10 +111,12 @@ public struct AtlasMapView: View {
         self.maneuverArrow = maneuverArrow
         self.roadMarks = roadMarks
         self.incidents = incidents
+        self.routeTrimmer = routeTrimmer
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.guidanceZoom = guidanceZoom
         self.isOffline = isOffline
+        self.onRouteTap = onRouteTap
         self.onLongPress = onLongPress
         self.onViewport = onViewport
     }
@@ -202,7 +208,7 @@ public struct AtlasMapView: View {
                     .renderBelow(.symbols)
             }
             if route.count > 1 {
-                let line = ShapeSource(identifier: "atlas-route") {
+                let line = ShapeSource(identifier: Self.routeSourceID) {
                     MLNPolylineFeature(coordinates: route)
                 }
                 // Below the labels so street names stay readable on top of the route.
@@ -265,15 +271,10 @@ public struct AtlasMapView: View {
                 let pin = ShapeSource(identifier: "atlas-destination") {
                     MLNPointFeature(coordinate: destination)
                 }
-                CircleStyleLayer(identifier: "atlas-destination-halo", source: pin)
-                    .radius(18)
-                    .color(Self.destinationColor)
-                    .circleOpacity(0.18)
-                CircleStyleLayer(identifier: "atlas-destination", source: pin)
-                    .radius(8)
-                    .color(Self.destinationColor)
-                    .strokeWidth(3)
-                    .strokeColor(.white)
+                SymbolStyleLayer(identifier: "atlas-destination", source: pin)
+                    .iconImage(Self.destinationPin)
+                    .iconAnchor("bottom")
+                    .iconAllowsOverlap(true)
             }
             // Each candidate's time on the map, over everything, as Apple Maps and Yandex show it.
             if labels.count > 0 {
@@ -295,6 +296,12 @@ public struct AtlasMapView: View {
                 // Fire once when the press is recognised, not on every movement after it.
                 if context.state == .began { onLongPress?(context.coordinate) }
             }
+            .onTapMapGesture(on: Self.routeLabelLayers) { _, features in
+                // A tapped time bubble chooses its route, as in Apple Maps.
+                if let route = features.lazy.compactMap({ ($0.attributes["route"] as? NSNumber)?.intValue }).first {
+                    onRouteTap?(route)
+                }
+            }
             .onMapStyleLoaded { style in
                 // A day/night switch reloads the style, which resets layer visibility to the JSON default
                 // and drops images added at runtime.
@@ -305,6 +312,7 @@ public struct AtlasMapView: View {
             }
             .unsafeMapViewControllerModifier { controller in
                 let mapView = controller.mapView
+                if let routeTrimmer, routeTrimmer.mapView !== mapView { routeTrimmer.mapView = mapView }
                 if !mapView.showsUserLocation { mapView.showsUserLocation = true }
                 if !mapView.showsUserHeadingIndicator { mapView.showsUserHeadingIndicator = true }
                 if let layer = mapView.style?.layer(withIdentifier: MapLayerID.buildings3D), layer.isVisible != show3D {
@@ -337,6 +345,13 @@ public struct AtlasMapView: View {
             }
     }
 
+    /// The route line's source and its traffic colours' (trafficLayer names them "atlas-traffic-" + name);
+    /// RouteLineTrimmer swaps their data between SwiftUI updates.
+    static let routeSourceID = "atlas-route"
+    static let routeTrafficSources: [(TrafficLine.Level, String)] = [
+        (.slow, "atlas-traffic-route-slow"), (.heavy, "atlas-traffic-route-heavy"), (.stopped, "atlas-traffic-route-stopped"),
+    ]
+
     /// By default as wide as the route's inner line, so a slow stretch reads as the route turning orange or red.
     private static func trafficLayer(
         _ name: String,
@@ -367,14 +382,41 @@ public struct AtlasMapView: View {
             .iconAllowsOverlap(true)
     }
 
+    private static let routeLabelLayers: Set<String> = ["atlas-route-label-0", "atlas-route-label-1", "atlas-route-label-2"]
+
     private static func routeLabelLayer(_ slot: Int, _ label: RouteLabel, night: Bool) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-route-label-\(slot)") {
-            MLNPointFeature(coordinate: label.coordinate)
+            MLNPointFeature(coordinate: label.coordinate) { $0.attributes = ["route": label.route] }
         }
         return SymbolStyleLayer(identifier: "atlas-route-label-\(slot)", source: source)
             .iconImage(RouteLabel.bubble(label.text, selected: label.isSelected, night: night))
             .iconAllowsOverlap(true)
     }
+
+    /// The destination as Apple Maps and Yandex mark it: a red drop with a white rim and dot, its tip on the place
+    /// (bottom-anchored). The dot it replaces sat on the place's own icon and label (CI 3-place).
+    private static let destinationPin: UIImage = {
+        let margin: CGFloat = 3, radius: CGFloat = 14, tipBelowCircle: CGFloat = 14
+        let size = CGSize(width: radius * 2 + margin * 2, height: radius * 2 + tipBelowCircle + margin * 2)
+        return UIGraphicsImageRenderer(size: size).image { context in
+            let center = CGPoint(x: size.width / 2, y: margin + radius)
+            let tip = CGPoint(x: size.width / 2, y: size.height - margin)
+            // The sides run from the tip to where they touch the circle.
+            let touch = acos(radius / (tip.y - center.y))
+            let drop = UIBezierPath(arcCenter: center, radius: radius, startAngle: .pi / 2 + touch, endAngle: .pi / 2 - touch, clockwise: true)
+            drop.addLine(to: tip)
+            drop.close()
+            context.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 3, color: UIColor.black.withAlphaComponent(0.35).cgColor)
+            destinationColor.setFill()
+            drop.fill()
+            context.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
+            UIColor.white.setStroke()
+            drop.lineWidth = 2
+            drop.stroke()
+            UIColor.white.setFill()
+            UIBezierPath(ovalIn: CGRect(x: center.x - 5.5, y: center.y - 5.5, width: 11, height: 11)).fill()
+        }
+    }()
 
     private static let closureColor = UIColor(red: 0.90, green: 0.22, blue: 0.21, alpha: 1)
     /// "No entry": a white bar on a red disc.

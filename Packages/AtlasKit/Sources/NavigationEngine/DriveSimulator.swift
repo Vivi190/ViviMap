@@ -71,13 +71,17 @@ struct RoutePath {
     }
 
     /// Where `point` meets the line, if it is within `tolerance` metres: the distance from the start there
-    /// and the direction of travel. The nearest segment wins.
-    func project(_ point: CLLocationCoordinate2D, tolerance: CLLocationDistance) -> (offset: CLLocationDistance, course: CLLocationDirection)? {
+    /// and the direction of travel. The nearest segment wins; `window` limits the search to one stretch, so a
+    /// road the route takes twice cannot match the wrong pass.
+    func project(
+        _ point: CLLocationCoordinate2D, tolerance: CLLocationDistance, within window: ClosedRange<CLLocationDistance>? = nil
+    ) -> (offset: CLLocationDistance, course: CLLocationDirection)? {
         let metresPerLon = 111_320 * cos(point.latitude * .pi / 180), metresPerLat = 110_540.0
         var best: (distance: Double, offset: Double, course: Double)?
         for index in coordinates.indices.dropLast() {
             let span = offsets[index + 1] - offsets[index]
             guard span > 0 else { continue }
+            if let window, offsets[index + 1] < window.lowerBound || offsets[index] > window.upperBound { continue }
             let a = coordinates[index], b = coordinates[index + 1]
             let ax = (a.longitude - point.longitude) * metresPerLon, ay = (a.latitude - point.latitude) * metresPerLat
             let dx = (b.longitude - a.longitude) * metresPerLon, dy = (b.latitude - a.latitude) * metresPerLat
