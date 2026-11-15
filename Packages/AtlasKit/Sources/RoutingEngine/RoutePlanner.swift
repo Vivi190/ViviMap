@@ -127,7 +127,8 @@ public final class RoutePlanner {
     /// No connection, or the public server failing (busy, down): the device can answer. "No path" cannot:
     /// the same tiles would say the same.
     static func worthTryingOffline(_ error: any Error) -> Bool {
-        if error is URLError { return true }
+        // A cancelled request (the driver picked another place) wants no answer at all, not one from the device.
+        if let error = error as? URLError { return error.code != .cancelled }
         if case let PlanningError.service(status) = error { return status == 429 || status >= 500 || status == 0 }
         return false
     }

@@ -210,7 +210,8 @@ public struct FallbackSearchProvider: PlaceSearchProvider {
     /// No connection, or the server down or rate-limiting (the public Photon answers 502/503 at busy times):
     /// the shipped index can answer. Anything else is a real failure to report.
     static func isOutage(_ error: any Error) -> Bool {
-        if error is URLError { return true }
+        // A cancelled search (the next keystroke) wants no answer, not one from the shipped index.
+        if let error = error as? URLError { return error.code != .cancelled }
         guard let http = error as? PhotonSearchProvider.HTTPError else { return false }
         return http.status >= 500 || http.status == 429
     }

@@ -155,6 +155,9 @@ struct FallbackSearchProviderTests {
         await #expect(throws: CocoaError.self) { try await broken.search("kartal", near: nil) }
         let noIndex = FallbackSearchProvider(primary: Failing(error: URLError(.timedOut)), fallback: nil)
         await #expect(throws: URLError.self) { try await noIndex.search("kartal", near: nil) }
+        // Cancelled by the next keystroke: nobody waits for an answer, so the index is not asked.
+        let cancelled = FallbackSearchProvider(primary: Failing(error: URLError(.cancelled)), fallback: Fixed())
+        await #expect(throws: URLError.self) { try await cancelled.search("kartal", near: nil) }
     }
 
     @Test func aServerOutageAlsoFallsBack() async throws {

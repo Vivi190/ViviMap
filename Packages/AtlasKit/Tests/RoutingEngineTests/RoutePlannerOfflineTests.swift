@@ -155,6 +155,8 @@ struct RoutePlannerOfflineTests {
         #expect(RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.service(status: 429)))
         #expect(!RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.noRoute))
         #expect(!RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.service(status: 403)))
+        // A prefetch dropped for another place: no device answer either.
+        #expect(!RoutePlanner.worthTryingOffline(URLError(.cancelled)))
     }
 }
 
