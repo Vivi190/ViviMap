@@ -25,7 +25,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 22: varışta alt çubukta "Otopark" düğmesi, ayarlarda sesli yönlendirme için "Örnek dinle", arama çubuğunda "Nereye?".
 - Build 23: "semt + tür" ("esentepe eczane") ve "semt + marka" ("kurtköy migros") aramalarının o semtin çevresinde yapılması.
 
-Sıradaki build'de gelecekler (main'de): Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları.
+Sıradaki build'de gelecekler (main'de): Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları; trafik ışığındaki dönüşte "Işıklarda sağa dön"; yol numaraları tabela gibi kutularda (D-100 mavi, O-4 yeşil).
 
 "Sıradaki build" yazan maddeler o build'le gelir.
 
@@ -76,6 +76,7 @@ Sürüş testlerini **yolcuyken** yap, ya da uygulamayla yalnızca araç dururke
 26. **Yer rozetleri (sıradaki build):** haritayı biraz yakınlaştır (sokak düzeyi). Restoran, eczane, okul, cami, park gibi yerler renkli daire içinde simgeyle ve renkli adıyla görünmeli (yemek turuncu, sağlık kırmızı, ulaşım mavi, doğa yeşil…). Navigasyonda bunlar gizlenir.
 27. **Trafik (sıradaki build):** uygulamayı aç; trafik katmanı kendiliğinden açık olmalı. Ana yollar yeşil (akıcı), sarı-turuncu (yavaş), kırmızı (yoğun), koyu kırmızı (durmuş) çizilir; arama çubuğunun altında "Trafik 3/10 · akıcı" gibi bölge puanı çıkar. Sağdaki arabalı düğmeyle kapanır.
 28. **Kasis, kamera, ışık (sıradaki build):** sokak düzeyine yakınlaş. Trafik ışıkları küçük üç renkli sinyal, kasisler kırmızı kenarlı üçgen levha, kameralar kırmızı rozet olarak görünmeli; navigasyonda da görünür.
+29. **Işıklarda dönüş (sıradaki build):** trafik ışıklı bir kavşakta dönen bir rota seç (simülasyon da olur). Bant ve ses "Işıklarda sağa dön" demeli; ışıksız kavşakta yalnızca "Sağa dön". OSM'de her ışık işli değil.
 
 **Bilinen sınırlar:**
 
