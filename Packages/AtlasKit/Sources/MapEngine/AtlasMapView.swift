@@ -7,8 +7,9 @@ import SwiftUI
 
 /// A stretch of the route drawn in a traffic colour (MapEngine stays independent of the traffic provider).
 public struct TrafficLine: Sendable {
+    /// `free` (green) only on the city layer.
     public enum Level: Hashable, Sendable {
-        case slow, heavy, stopped
+        case free, slow, heavy, stopped
     }
 
     public let level: Level
@@ -105,12 +106,15 @@ public struct AtlasMapView: View {
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
         let slow = byLevel[.slow] ?? [], heavy = byLevel[.heavy] ?? [], stopped = byLevel[.stopped] ?? []
         let area = Dictionary(grouping: areaTraffic, by: \.level).mapValues { $0.map(\.coordinates) }
-        let areaSlow = area[.slow] ?? [], areaHeavy = area[.heavy] ?? [], areaStopped = area[.stopped] ?? []
+        let areaFree = area[.free] ?? [], areaSlow = area[.slow] ?? [], areaHeavy = area[.heavy] ?? [], areaStopped = area[.stopped] ?? []
         let cameraMarks = marks.filter(\.isCamera).map(\.coordinate), bumpMarks = marks.filter { !$0.isCamera }.map(\.coordinate)
         // Without a connection the shipped Istanbul tiles take over (when this build has them).
         let style = isOffline ? OfflineMap.styleURL(appearance) ?? appearance.styleURL : appearance.styleURL
         MapView(styleURL: style, camera: $camera, locationManager: puckSource) {
-            // City traffic layer ("Trafik"): lowest of ours and thinner, so routes and their colours stay on top.
+            // City traffic layer ("Trafik"): lowest of ours, so routes and their colours stay on top; worst on top.
+            if !areaFree.isEmpty {
+                Self.trafficLayer("area-free", areaFree, Self.trafficFree, widths: Self.areaWidths)
+            }
             if !areaSlow.isEmpty {
                 Self.trafficLayer("area-slow", areaSlow, Self.trafficSlow, widths: Self.areaWidths)
             }
@@ -286,7 +290,8 @@ public struct AtlasMapView: View {
             .renderBelow(.symbols)
     }
 
-    private static let areaWidths: [Int: Double] = [10: 1.5, 14: 3.5, 18: 9]
+    /// About the width of the road it covers, as Yandex draws traffic.
+    private static let areaWidths: [Int: Double] = [10: 2, 13: 3, 15: 4.5, 18: 11]
 
     private static func markLayer(_ name: String, _ points: [CLLocationCoordinate2D], _ color: UIColor) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-mark-\(name)") {
@@ -299,6 +304,7 @@ public struct AtlasMapView: View {
             .strokeColor(.white)
     }
 
+    private static let trafficFree = UIColor(red: 0.20, green: 0.70, blue: 0.33, alpha: 1)
     private static let trafficSlow = UIColor(red: 0.96, green: 0.62, blue: 0.04, alpha: 1)
     private static let trafficHeavy = UIColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 1)
     private static let trafficStopped = UIColor(red: 0.50, green: 0.11, blue: 0.11, alpha: 1)

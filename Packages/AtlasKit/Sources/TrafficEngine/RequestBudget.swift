@@ -24,7 +24,9 @@ public final class RequestBudget: @unchecked Sendable {
 
     public init(
         defaults: UserDefaults = .standard,
-        limits: [Kind: Int] = [.routeImport: 1_200, .flow: 1_800, .areaFlow: 600],
+        // Flow split 1 200 / 1 200 (was 1 800 / 600) once the city layer was on by default: the same 2 400 per
+        // phone, so two phones still stay under the 5 000 free calls.
+        limits: [Kind: Int] = [.routeImport: 1_200, .flow: 1_200, .areaFlow: 1_200],
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.defaults = defaults

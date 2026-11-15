@@ -102,14 +102,25 @@ struct AreaTrafficTests {
         FlowSegment(points: points.map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }, jamFactor: jam, isClosed: closed)
     }
 
-    @Test func drawsOnlySlowAndWorse() {
+    @Test func drawsEveryRoadFlowingOnesGreen() {
         let sections = AreaTraffic.sections([
             segment([(40.90, 29.20), (40.90, 29.21)], jam: 2),
             segment([(40.91, 29.20), (40.91, 29.21)], jam: 6),
             segment([(40.92, 29.20), (40.92, 29.21)], jam: 1, closed: true),
             segment([(40.93, 29.20)], jam: 9), // a single point draws nothing
         ])
-        #expect(sections.map(\.level) == [.slow, .stopped])
+        #expect(sections.map(\.level) == [.free, .slow, .stopped])
+    }
+
+    @Test func theScoreWeighsRoadsByLength() {
+        // About 1 km flowing and 100 m at a standstill: mostly flowing.
+        let score = AreaTraffic.score([
+            segment([(40.900, 29.200), (40.900, 29.2119)], jam: 0),
+            segment([(40.910, 29.200), (40.910, 29.2012)], jam: 10),
+        ])
+        #expect(score == 1)
+        #expect(AreaTraffic.score([segment([(40.9, 29.2), (40.9, 29.21)], jam: 3, closed: true)]) == 10)
+        #expect(AreaTraffic.score([]) == nil)
     }
 
     @Test func eachDirectionMovesToItsRightSide() {
@@ -122,9 +133,9 @@ struct AreaTrafficTests {
         #expect(north[0].latitude == 40.90)
     }
 
-    @Test func requestIsABoxPostForSlowRoadsOnly() throws {
+    @Test func requestIsABoxPostForEveryJamLevel() throws {
         let provider = HERETrafficProvider(apiKey: "k", session: .shared, budget: RequestBudget(defaults: UserDefaults(suiteName: "atlas.test.\(UUID())")!))
-        // The box measured on 14.11.2026 (HERETrafficProvider.flow(in:)): close enough for every road class.
+        // A 0.1° box: main roads and the next class down (HERETrafficProvider.areaFlowRequest).
         let request = try provider.areaFlowRequest(for: TrafficArea(west: 29.15, south: 40.86, east: 29.25, north: 40.93))
         #expect(request.httpMethod == "POST")
         #expect(request.url?.host == "data.traffic.hereapi.com")
@@ -134,10 +145,15 @@ struct AreaTrafficTests {
         #expect(box["type"] as? String == "bbox")
         #expect(box["west"] as? Double == 29.15)
         #expect(box["north"] as? Double == 40.93)
-        #expect(body["minJamFactor"] as? Double == 4)
+        #expect(body["minJamFactor"] as? Double == 0) // flowing roads too, drawn green
         #expect(body["maxJamFactor"] as? Double == 10) // without it HERE ignores the minimum
-        #expect(body["functionalClasses"] == nil) // close in: every road
+        #expect(body["functionalClasses"] as? [Int] == [1, 2, 3, 4])
         #expect(body["locationReferencing"] as? [String] == ["shape"])
+        // Close in: every road class.
+        let close = try provider.areaFlowRequest(for: TrafficArea(west: 29.18, south: 40.88, east: 29.22, north: 40.91))
+        let closeData = try #require(close.httpBody)
+        let closeBody = try #require(try JSONSerialization.jsonObject(with: closeData) as? [String: Any])
+        #expect(closeBody["functionalClasses"] == nil)
     }
 
     @Test func zoomedOutAsksForMainRoadsOnly() throws {

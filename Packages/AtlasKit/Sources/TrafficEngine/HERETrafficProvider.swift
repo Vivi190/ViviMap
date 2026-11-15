@@ -101,9 +101,12 @@ public struct HERETrafficProvider: TrafficProvider {
         request.httpBody = try JSONEncoder().encode(AreaFlowBody(
             in: .init(type: "bbox", west: area.west, south: area.south, east: area.east, north: area.north),
             locationReferencing: ["shape"],
-            minJamFactor: 4,
+            // Flowing roads too, drawn green. Measured 14.11.2026 on a 0.30° x 0.15° box around Kartal–Tuzla:
+            // classes 1–3 gave 815 segments in 200 KB (gzip), 1–4 gave 5 098 in 944 KB; so the farther out,
+            // the fewer road classes.
+            minJamFactor: 0,
             maxJamFactor: 10,
-            functionalClasses: area.span > 0.15 ? [1, 2, 3] : nil
+            functionalClasses: area.span > 0.15 ? [1, 2, 3] : area.span > 0.05 ? [1, 2, 3, 4] : nil
         ))
         return request
     }

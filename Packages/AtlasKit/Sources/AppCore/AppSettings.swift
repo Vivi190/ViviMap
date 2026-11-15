@@ -73,7 +73,8 @@ public final class AppSettings {
         warnsCameras = defaults.object(forKey: Keys.cameras) as? Bool ?? true
         warnsBumps = defaults.object(forKey: Keys.bumps) as? Bool ?? true
         warnsSpeeding = defaults.object(forKey: Keys.speeding) as? Bool ?? true
-        showsTrafficLayer = defaults.bool(forKey: Keys.trafficLayer)
+        // On unless the driver switched it off: green-to-red roads are what a traffic app is opened for.
+        showsTrafficLayer = defaults.object(forKey: Keys.trafficLayer) as? Bool ?? true
         avoidsTolls = defaults.bool(forKey: Keys.avoidsTolls)
     }
 

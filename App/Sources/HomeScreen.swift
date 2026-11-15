@@ -275,6 +275,13 @@ struct HomeScreen: View {
                     if !connectivity.isOnline { offlineChip }
                     if settings.showsTrafficLayer, let notice = cityTraffic.notice {
                         StatusChip(systemImage: "car.2.fill", title: notice, tone: .warning)
+                    } else if showsCityTraffic, let score = cityTraffic.score {
+                        // Yandex-style score for the roads around, 0 flowing … 10 standstill (AreaTraffic.score).
+                        StatusChip(
+                            systemImage: "car.2.fill",
+                            title: "Trafik \(score)/10 · \(score >= 7 ? "çok yoğun" : score >= 4 ? "yoğun" : "akıcı")",
+                            tone: score >= 7 ? .critical : score >= 4 ? .warning : .neutral
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

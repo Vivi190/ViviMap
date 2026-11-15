@@ -17,24 +17,41 @@ public struct FlowSegment: Sendable {
 
 /// A stretch of the route to colour by traffic.
 public struct TrafficSection: Sendable {
+    /// `free` only on the city layer; a route's flowing stretches stay route-blue.
     public enum Level: Int, Sendable, CaseIterable {
-        case slow = 1, heavy, stopped
+        case free = 0, slow, heavy, stopped
     }
 
     public let level: Level
     public let coordinates: [CLLocationCoordinate2D]
 }
 
-/// The city traffic layer: each slow, queuing or stopped stretch in HERE's own geometry (there is no route
-/// to snap it to).
+/// The city traffic layer: every stretch in HERE's own geometry (there is no route to snap it to), flowing
+/// ones too, green as Yandex draws them: with only the slow ones coloured, a quiet hour looked like no data.
 public enum AreaTraffic {
     /// Segments are directional: each is moved a few metres to the right of its travel direction (traffic
     /// keeps right), so the two directions of a street show side by side instead of one hiding the other.
     public static func sections(_ segments: [FlowSegment]) -> [TrafficSection] {
         segments.compactMap { segment in
-            guard segment.points.count > 1, let level = RouteTraffic.level(segment) else { return nil }
-            return TrafficSection(level: level, coordinates: offsetRight(segment.points, metres: 4))
+            guard segment.points.count > 1 else { return nil }
+            return TrafficSection(level: RouteTraffic.level(segment) ?? .free, coordinates: offsetRight(segment.points, metres: 4))
         }
+    }
+
+    /// How busy the roads in the answer are, 0 (flowing) to 10 (standstill): HERE's jam factor averaged over
+    /// their length, so a long empty highway counts for more than a short jammed side street. nil when empty.
+    public static func score(_ segments: [FlowSegment]) -> Int? {
+        var weighted = 0.0, total = 0.0
+        for segment in segments {
+            let length = zip(segment.points, segment.points.dropFirst()).reduce(0.0) { sum, pair in
+                let dx = (pair.1.longitude - pair.0.longitude) * 111_320 * cos(pair.0.latitude * .pi / 180)
+                let dy = (pair.1.latitude - pair.0.latitude) * 110_540
+                return sum + (dx * dx + dy * dy).squareRoot()
+            }
+            weighted += min(segment.isClosed ? 10 : segment.jamFactor, 10) * length
+            total += length
+        }
+        return total > 0 ? Int((weighted / total).rounded()) : nil
     }
 
     /// Each vertex shifted along the right-hand normal of the line through its neighbours.
