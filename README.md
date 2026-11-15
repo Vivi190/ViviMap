@@ -105,4 +105,4 @@ No accounts, analytics or tracking. Saved places and trip history stay on the ph
 
 ## License
 
-No license has been granted yet: the source is published for reference and all rights are reserved.
+All rights reserved: the source is public to be read, not reused. See [LICENSE](LICENSE); third-party components and OpenStreetMap data keep their own licenses.

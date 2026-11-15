@@ -105,4 +105,4 @@ Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda
 
 ## Lisans
 
-Henüz bir lisans verilmedi: kaynak kod incelemek için yayımlanıyor, tüm hakları saklıdır.
+Tüm hakları saklıdır: kaynak kod incelemek için açık, yeniden kullanmak için değil. Bkz. [LICENSE](LICENSE); üçüncü taraf bileşenler ve OpenStreetMap verisi kendi lisanslarıyla gelir.
