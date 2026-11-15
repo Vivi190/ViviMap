@@ -39,7 +39,7 @@ public extension MapViewCamera {
 
     /// The same tracking mode with a new zoom and pitch. The pitch is pinned with a fixed range: for
     /// tracking cameras the DSL only sets pitch bounds, so a pitch inside free bounds never moved
-    /// (navigation stayed top-down in CI screenshots).
+    /// (navigation otherwise stayed top-down).
     func retracked(zoom: Double, pitch: Double) -> MapViewCamera {
         switch state {
         case let .trackingUserLocation(_, _, _, direction):
