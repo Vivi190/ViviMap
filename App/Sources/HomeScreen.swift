@@ -150,15 +150,19 @@ struct HomeScreen: View {
 
     private var isNavigating: Bool { navigation?.isActive == true }
 
-    // Explicitly typed: a `cond ? nil : method` ternary inside the view builder broke the type checker
-    // ("failed to produce diagnostic for expression").
-    private var longPressHandler: ((CLLocationCoordinate2D) -> Void)? {
-        if isNavigating { return nil }
-        return { pick($0) }
+    // swiftui-dsl registers a map gesture once, when the map appears, with the closure from that first render:
+    // returning nil while guiding never reached it, and a long press mid-drive replaced the destination (trip
+    // log, arrival sharing, parking). So the closure itself checks, when the press happens.
+    private var longPressHandler: (CLLocationCoordinate2D) -> Void {
+        { coordinate in
+            if navigation?.isActive != true { pick(coordinate) }
+        }
     }
 
     private var routeTapHandler: (Int) -> Void {
-        { routeSelection = $0 }
+        { index in
+            if navigation?.isActive != true { routeSelection = index }
+        }
     }
 
     private var startHandler: (() -> Void)? {
