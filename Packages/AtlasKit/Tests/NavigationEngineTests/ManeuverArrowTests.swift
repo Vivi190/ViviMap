@@ -51,9 +51,10 @@ struct TrafficStripTests {
 
     @Test func stretchesLandWhereTheyLieOnWhatIsLeft() throws {
         let path = RoutePath([at(0), at(1_000)])
+        // In the path's own (geodesic) metres, as the session passes them: "1 km" here is ~1 004.6 m of it.
         let ranges = NavigationSession.fractions(
             of: [[at(400), at(600)], [at(50), at(150)], [CLLocationCoordinate2D(latitude: 40.95, longitude: 29.3)]],
-            on: path, travelled: 200, remaining: 800
+            on: path, travelled: path.length * 0.2, remaining: path.length * 0.8
         )
         let ahead = try #require(ranges[0])
         #expect(abs(ahead.lowerBound - 0.25) < 0.001 && abs(ahead.upperBound - 0.5) < 0.001)
