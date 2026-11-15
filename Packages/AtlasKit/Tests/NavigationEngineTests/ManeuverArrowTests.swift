@@ -42,3 +42,22 @@ struct ManeuverArrowTests {
         #expect(ManeuverArrow.reach(type: .turn, nextStep: 400) == 15)
     }
 }
+
+struct TrafficStripTests {
+    /// 1 km due north; 200 m already driven, 800 m to go.
+    private func at(_ metres: Double) -> CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: 40.9 + metres / 110_540, longitude: 29.2)
+    }
+
+    @Test func stretchesLandWhereTheyLieOnWhatIsLeft() throws {
+        let path = RoutePath([at(0), at(1_000)])
+        let ranges = NavigationSession.fractions(
+            of: [[at(400), at(600)], [at(50), at(150)], [CLLocationCoordinate2D(latitude: 40.95, longitude: 29.3)]],
+            on: path, travelled: 200, remaining: 800
+        )
+        let ahead = try #require(ranges[0])
+        #expect(abs(ahead.lowerBound - 0.25) < 0.001 && abs(ahead.upperBound - 0.5) < 0.001)
+        #expect(ranges[1] == nil) // behind
+        #expect(ranges[2] == nil) // off the route
+    }
+}

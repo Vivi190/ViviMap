@@ -141,6 +141,26 @@ public final class NavigationSession {
         voice.speak("Daha hızlı rotaya geçildi.")
     }
 
+    /// Where stretches of the route lie on what is left of it, from here (0) to the destination (1); nil for a
+    /// stretch off the route or already behind. For the traffic strip under the arrival time, as Yandex shows it.
+    public func remainingFractions(of stretches: [[CLLocationCoordinate2D]]) -> [ClosedRange<Double>?] {
+        guard let path = routePath, let remaining = distanceRemaining, remaining > 0 else { return stretches.map { _ in nil } }
+        return Self.fractions(of: stretches, on: path, travelled: max(0, path.length - remaining), remaining: remaining)
+    }
+
+    nonisolated static func fractions(
+        of stretches: [[CLLocationCoordinate2D]], on path: RoutePath, travelled: Double, remaining: Double
+    ) -> [ClosedRange<Double>?] {
+        stretches.map { stretch in
+            guard let first = stretch.first, let last = stretch.last,
+                  let a = path.project(first, tolerance: 30)?.offset, let b = path.project(last, tolerance: 30)?.offset
+            else { return nil }
+            let from = (min(a, b) - travelled) / remaining, to = (max(a, b) - travelled) / remaining
+            guard to > 0, from < 1 else { return nil }
+            return max(0, from) ... min(1, to)
+        }
+    }
+
     /// The rest of the route from the current position, for re-measuring traffic on what is left.
     public func remainingRoute() -> [CLLocationCoordinate2D] {
         guard let remaining = distanceRemaining, let path = routePath else { return [] }

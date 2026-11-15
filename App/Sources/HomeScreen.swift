@@ -578,6 +578,7 @@ struct HomeScreen: View {
                 navigation: navigation,
                 trafficArrival: trafficWatch.arrival,
                 onParking: search.canShowNearby ? { findParking() } : nil,
+                trafficSections: trafficWatch.sections,
                 onEnd: { endNavigation() }
             )
         }

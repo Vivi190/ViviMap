@@ -4,6 +4,7 @@ import NavigationEngine
 import RoadHazards
 import RoutingEngine
 import SwiftUI
+import TrafficEngine
 
 /// Turn banner: maneuver arrow, distance, Turkish action and the road to take. Solid and high-contrast so
 /// one glance is enough; lanes appear only when the routing data has them.
@@ -82,6 +83,8 @@ struct NavigationBottomBar: View {
     let trafficArrival: Date?
     /// On arrival: car parks around the destination (the first need on arriving in Istanbul); nil hides it.
     var onParking: (() -> Void)? = nil
+    /// Slow stretches on the rest of the route (TrafficWatch), for the strip under the times.
+    var trafficSections: [TrafficSection] = []
     let onEnd: () -> Void
 
     var body: some View {
@@ -97,6 +100,12 @@ struct NavigationBottomBar: View {
                         metric(Formatting.distance(meters: navigation.distanceRemaining ?? 0), "mesafe")
                     }
                     .accessibilityElement(children: .combine)
+                    if trafficArrival != nil {
+                        let stretches = navigation.remainingFractions(of: trafficSections.map(\.coordinates))
+                        RouteTrafficStrip(stretches: zip(stretches, trafficSections).compactMap { range, section in
+                            range.map { (range: $0, level: section.level) }
+                        })
+                    }
                     // Always says where the time comes from.
                     Text(trafficArrival == nil ? "Trafik hariç" : "Canlı trafikle · © HERE")
                         .font(.caption2.weight(.medium))
@@ -161,6 +170,38 @@ struct CurrentRoadLabel: View {
             .frame(maxWidth: 200)
             .accessibilityLabel(Text("Şu anki yol: \(road)"))
             .accessibilityIdentifier("nav.road")
+    }
+}
+
+/// The rest of the route as a strip, as Yandex shows it: from here (left) to the destination (right), flowing
+/// in light route blue, slow stretches coloured where they lie.
+struct RouteTrafficStrip: View {
+    let stretches: [(range: ClosedRange<Double>, level: TrafficSection.Level)]
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Color.atlasAccent.opacity(0.3)
+                ForEach(stretches.indices, id: \.self) { index in
+                    let stretch = stretches[index]
+                    Self.color(stretch.level)
+                        .frame(width: max(3, geometry.size.width * (stretch.range.upperBound - stretch.range.lowerBound)))
+                        .offset(x: geometry.size.width * stretch.range.lowerBound)
+                }
+            }
+        }
+        .frame(height: 6)
+        .clipShape(Capsule())
+        .accessibilityHidden(true) // the arrival time already carries the traffic
+    }
+
+    private static func color(_ level: TrafficSection.Level) -> Color {
+        switch level {
+        case .free: Color.atlasAccent.opacity(0.3)
+        case .slow: Color(red: 0.96, green: 0.62, blue: 0.04)
+        case .heavy: Color(red: 0.86, green: 0.15, blue: 0.15)
+        case .stopped: Color(red: 0.50, green: 0.11, blue: 0.11)
+        }
     }
 }
 
