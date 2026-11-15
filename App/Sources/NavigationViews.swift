@@ -79,7 +79,7 @@ struct NavigationBanner: View {
         }
         .padding(Spacing.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .atlasCardSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("nav.banner")
     }
@@ -155,7 +155,7 @@ struct NavigationBottomBar: View {
             .accessibilityIdentifier("nav.end")
         }
         .padding(Spacing.l)
-        .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .atlasCardSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 }
 
@@ -263,7 +263,7 @@ struct RouteSuggestionBanner: View {
         }
         .font(.headline)
         .padding(Spacing.m)
-        .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .atlasCardSurface(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .task {
             // Unanswered while driving means "keep my route"; a tap cancels this first.
             if (try? await Task.sleep(for: .seconds(20))) != nil { onDismiss() }

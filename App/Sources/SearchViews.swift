@@ -298,7 +298,7 @@ struct PlaceCard: View {
         }
         .padding(Spacing.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .atlasCardSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("place.card")
     }
@@ -372,9 +372,14 @@ struct RouteCard: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    /// Live-traffic time when every alternative was measured, otherwise Valhalla's free-flow estimate.
+    /// Live-traffic time when every alternative was measured, otherwise Valhalla's free-flow estimate. The map's
+    /// time bubbles use the same, so card and map never disagree.
+    static func time(of option: RouteOption, traffic: [Int: TrafficEstimate], status: TrafficStatus) -> TimeInterval {
+        status == .ready ? traffic[option.index]?.duration ?? option.duration : option.duration
+    }
+
     private func duration(_ option: RouteOption) -> TimeInterval {
-        trafficStatus == .ready ? traffic[option.index]?.duration ?? option.duration : option.duration
+        Self.time(of: option, traffic: traffic, status: trafficStatus)
     }
 
     var body: some View {
@@ -403,12 +408,15 @@ struct RouteCard: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Rotayı kapat"))
             }
-            VStack(spacing: Spacing.xs) {
-                // Fastest first, by the same time the rows show (selection follows `index`, not the row).
-                ForEach(routes.sorted { duration($0) < duration($1) }) { option in
-                    routeRow(option, isSelected: option.index == route.index, fastest: fastest)
+            if routes.count > 1 {
+                // Side by side, fastest first, as Yandex lays them out; the map carries the same times in bubbles.
+                HStack(spacing: Spacing.s) {
+                    ForEach(routes.sorted { duration($0) < duration($1) }) { option in
+                        optionTile(option, isSelected: option.index == route.index, fastest: fastest)
+                    }
                 }
             }
+            summary(route)
             if route.isOffline {
                 // No connection: computed on the phone from the shipped Istanbul tiles, so no traffic either.
                 Label("Çevrimdışı rota · cihazdaki İstanbul verisiyle, trafiksiz", systemImage: "wifi.slash")
@@ -444,81 +452,77 @@ struct RouteCard: View {
         }
         .padding(Spacing.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .atlasFloatingSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .atlasCardSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("route.card")
         .animation(.snappy(duration: 0.25), value: selection)
         .animation(.snappy(duration: 0.25), value: trafficStatus)
     }
 
-    /// One candidate: time and how much slower than the fastest, distance and arrival. The chosen one also
-    /// shows its main roads, the traffic delay and tolls or ferries; the others stay one line high, so three
-    /// of them leave the map its room.
-    private func routeRow(_ option: RouteOption, isSelected: Bool, fastest: TimeInterval) -> some View {
+    /// One candidate as a tile: its time, and "En hızlı" or how much slower; the chosen one outlined in blue.
+    private func optionTile(_ option: RouteOption, isSelected: Bool, fastest: TimeInterval) -> some View {
         let time = duration(option)
         let extra = time - fastest
-        let arrival = Date.now.addingTimeInterval(time).formatted(date: .omitted, time: .shortened)
-        let estimate = trafficStatus == .ready ? traffic[option.index] : nil
-        let choosable = routes.count > 1
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         return Button { selection = option.index } label: {
-            HStack(alignment: .top, spacing: Spacing.m) {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
-                        Text(Formatting.duration(seconds: time))
-                            .font(.title2.weight(.bold))
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                        if choosable, extra >= 60 {
-                            Text("+\(Formatting.duration(seconds: extra))")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        } else if choosable {
-                            Text("En hızlı")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(Color.atlasAccent)
-                        }
-                    }
-                    Text("\(Formatting.distance(meters: option.distance)) · Varış \(arrival)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                    if isSelected {
-                        if let estimate {
-                            TrafficDelayLabel(estimate: estimate)
-                        }
-                        if !option.mainRoads.isEmpty {
-                            Label(option.mainRoads.joined(separator: " → "), systemImage: "road.lanes")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        if let notes = Self.notes(option.notes, avoidsTolls: avoidsTolls) {
-                            Label(notes, systemImage: option.notes.hasFerry ? "ferry" : "turkishlirasign.circle")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                    }
-                }
-                Spacer(minLength: 0)
-                if choosable {
-                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundStyle(isSelected ? Color.atlasAccent : Color.secondary.opacity(0.5))
-                }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(Formatting.duration(seconds: time))
+                    .font(.headline.weight(.bold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                Text(extra >= 60 ? "+\(Formatting.duration(seconds: extra))" : "En hızlı")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(extra >= 60 ? Color.secondary : Color.atlasAccent)
             }
-            .padding(Spacing.m)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.s)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                (isSelected && choosable ? Color.atlasAccent.opacity(0.12) : Color.primary.opacity(0.04)),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(isSelected ? Color.atlasAccent.opacity(0.1) : Color.primary.opacity(0.05), in: shape)
+            .overlay(shape.strokeBorder(isSelected ? Color.atlasAccent : Color.clear, lineWidth: 2))
+            .contentShape(shape)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text("\(Formatting.duration(seconds: time)), \(Formatting.distance(meters: option.distance)), varış \(arrival)"))
+        .accessibilityLabel(Text("\(Formatting.duration(seconds: time)), \(Formatting.distance(meters: option.distance))"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// The chosen route: time large, then distance and arrival, as the guidance bar shows them; under it the
+    /// traffic delay, the main roads and tolls or ferries.
+    private func summary(_ option: RouteOption) -> some View {
+        let time = duration(option)
+        let arrival = Date.now.addingTimeInterval(time).formatted(date: .omitted, time: .shortened)
+        return VStack(alignment: .leading, spacing: Spacing.xs) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
+                Text(Formatting.duration(seconds: time))
+                    .font(.system(size: 28, weight: .bold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                Text("\(Formatting.distance(meters: option.distance)) · Varış \(arrival)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .accessibilityElement(children: .combine)
+            if trafficStatus == .ready, let estimate = traffic[option.index] {
+                TrafficDelayLabel(estimate: estimate)
+            }
+            if !option.mainRoads.isEmpty {
+                Label(option.mainRoads.joined(separator: " → "), systemImage: "road.lanes")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if let notes = Self.notes(option.notes, avoidsTolls: avoidsTolls) {
+                Label(notes, systemImage: option.notes.hasFerry ? "ferry" : "turkishlirasign.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
     }
 
     /// Always says where the time comes from; HERE's terms require the attribution where its data shows.

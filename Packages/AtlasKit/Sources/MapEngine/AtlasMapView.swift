@@ -57,6 +57,7 @@ public struct AtlasMapView: View {
     private let destination: CLLocationCoordinate2D?
     private let route: [CLLocationCoordinate2D]
     private let alternatives: [[CLLocationCoordinate2D]]
+    private let routeLabels: [RouteLabel]
     private let traffic: [TrafficLine]
     private let areaTraffic: [TrafficLine]
     private let marks: [MapMark]
@@ -79,6 +80,7 @@ public struct AtlasMapView: View {
         destination: CLLocationCoordinate2D? = nil,
         route: [CLLocationCoordinate2D] = [],
         alternatives: [[CLLocationCoordinate2D]] = [],
+        routeLabels: [RouteLabel] = [],
         traffic: [TrafficLine] = [],
         areaTraffic: [TrafficLine] = [],
         marks: [MapMark] = [],
@@ -98,6 +100,7 @@ public struct AtlasMapView: View {
         self.destination = destination
         self.route = route
         self.alternatives = alternatives
+        self.routeLabels = routeLabels
         self.traffic = traffic
         self.areaTraffic = areaTraffic
         self.marks = marks
@@ -135,6 +138,9 @@ public struct AtlasMapView: View {
         let closureStarts = starts[.closure] ?? [], accidentStarts = starts[.accident] ?? [], roadworkStarts = starts[.roadworks] ?? []
         let areaFree = area[.free] ?? [], areaSlow = area[.slow] ?? [], areaHeavy = area[.heavy] ?? [], areaStopped = area[.stopped] ?? []
         let cameraMarks = marks.filter(\.isCamera).map(\.coordinate), bumpMarks = marks.filter { !$0.isCamera }.map(\.coordinate)
+        // The chosen route's time last, so it sits on top where bubbles meet (Valhalla gives at most three).
+        let labels = routeLabels.filter { !$0.isSelected } + routeLabels.filter(\.isSelected)
+        let night = appearance == .night
         // Without a connection the shipped Istanbul tiles take over (when this build has them).
         let style = isOffline ? OfflineMap.styleURL(appearance) ?? appearance.styleURL : appearance.styleURL
         MapView(styleURL: style, camera: $camera, locationManager: puckSource) {
@@ -269,6 +275,16 @@ public struct AtlasMapView: View {
                     .strokeWidth(3)
                     .strokeColor(.white)
             }
+            // Each candidate's time on the map, over everything, as Apple Maps and Yandex show it.
+            if labels.count > 0 {
+                Self.routeLabelLayer(0, labels[0], night: night)
+            }
+            if labels.count > 1 {
+                Self.routeLabelLayer(1, labels[1], night: night)
+            }
+            if labels.count > 2 {
+                Self.routeLabelLayer(2, labels[2], night: night)
+            }
         }
             .mapControls {
                 // Empty: compass, logo and attribution are drawn by the app (attribution stays one tap away).
@@ -348,6 +364,15 @@ public struct AtlasMapView: View {
         }
         return SymbolStyleLayer(identifier: "atlas-incident-\(name)", source: source)
             .iconImage(sign)
+            .iconAllowsOverlap(true)
+    }
+
+    private static func routeLabelLayer(_ slot: Int, _ label: RouteLabel, night: Bool) -> some StyleLayerDefinition {
+        let source = ShapeSource(identifier: "atlas-route-label-\(slot)") {
+            MLNPointFeature(coordinate: label.coordinate)
+        }
+        return SymbolStyleLayer(identifier: "atlas-route-label-\(slot)", source: source)
+            .iconImage(RouteLabel.bubble(label.text, selected: label.isSelected, night: night))
             .iconAllowsOverlap(true)
     }
 

@@ -67,6 +67,8 @@ struct HomeScreen: View {
     @State private var selectedPlace: Place?
     @State private var routes: [RouteOption] = []
     @State private var routeSelection = 0
+    /// Where each candidate's time bubble sits (RouteLabel.place), worked out once per route request.
+    @State private var routeLabelPoints: [Int: CLLocationCoordinate2D] = [:]
     @State private var isPlanning = false
     @State private var routeError: String?
     @State private var simulator = DriveSimulator()
@@ -160,6 +162,20 @@ struct HomeScreen: View {
         return routes.filter { $0.index != active.index }.map(\.coordinates)
     }
 
+    /// Every candidate's time on the map while choosing; tapping a row in the card moves the blue bubble.
+    private var routeLabels: [RouteLabel] {
+        guard !isNavigating, let active = activeRoute else { return [] }
+        return routes.compactMap { option in
+            routeLabelPoints[option.index].map {
+                RouteLabel(
+                    coordinate: $0,
+                    text: Formatting.duration(seconds: RouteCard.time(of: option, traffic: trafficEstimates, status: trafficStatus)),
+                    isSelected: option.index == active.index
+                )
+            }
+        }
+    }
+
     private var hazardKinds: Set<Hazard.Kind> {
         var kinds: Set<Hazard.Kind> = []
         if settings.warnsCameras { kinds.insert(.camera) }
@@ -183,6 +199,7 @@ struct HomeScreen: View {
                 destination: selectedPlace?.point.coordinate,
                 route: displayedRoute,
                 alternatives: alternativeRoutes,
+                routeLabels: routeLabels,
                 traffic: displayedTraffic,
                 areaTraffic: showsCityTraffic ? cityTraffic.lines : [],
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
@@ -766,6 +783,10 @@ struct HomeScreen: View {
                 let found = try await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan)
                 guard generation == planGeneration else { return }
                 routeSelection = 0
+                routeLabelPoints = Dictionary(uniqueKeysWithValues: found.compactMap { option in
+                    RouteLabel.place(on: option.coordinates, awayFrom: found.filter { $0.index != option.index }.map(\.coordinates))
+                        .map { (option.index, $0) }
+                })
                 routes = found
                 scoreTraffic(found, generation: generation)
                 // Every candidate in view: the alternatives are drawn too.

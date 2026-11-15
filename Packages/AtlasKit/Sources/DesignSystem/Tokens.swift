@@ -26,6 +26,8 @@ public extension Color {
     static let atlasAccent = Color(light: 0x1F6FEB, dark: 0x4C8DFF)
     static let atlasWarning = Color(light: 0xC2410C, dark: 0xFB923C)
     static let atlasCritical = Color(light: 0xD7263D, dark: 0xFF5A6A)
+    /// Ground of the reading panels (atlasCardSurface).
+    static let atlasCard = Color(light: 0xFFFFFF, dark: 0x1C1C1E)
 }
 
 extension Color {
