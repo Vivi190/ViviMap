@@ -112,6 +112,8 @@ struct HomeScreen: View {
     @State private var isMuted = false
     /// Returns a guided map to the car after the driver looked around (see `.onChange(of: camera)`).
     @State private var recenterTask: Task<Void, Never>?
+    /// The 0.6 s between centring on the car and following it (recenterOnCourse): not "the driver moved the map".
+    @State private var isRecentering = false
     @State private var guidanceActivity = GuidanceActivity()
     /// What the driver was told when a real (not simulated) drive started, for the trip log.
     @State private var tripStart: TripStart?
@@ -661,7 +663,20 @@ struct HomeScreen: View {
             SpeedOverlay(limit: navigation.speedLimit)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .overlay(alignment: .bottom) {
-                    if let road = navigation.currentRoad { CurrentRoadLabel(road: road) }
+                    if camera.trackingMode == .none, !isRecentering {
+                        // The driver moved the map: one clear way back, as Yandex offers (it also returns by itself).
+                        Button { recenterOnCourse(zoom: navigation.guidanceZoom) } label: {
+                            Label("Rotaya dön", systemImage: "location.north.line.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, Spacing.s)
+                                .frame(minHeight: 36)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
+                        .accessibilityIdentifier("nav.recenter")
+                    } else if let road = navigation.currentRoad {
+                        CurrentRoadLabel(road: road)
+                    }
                 }
             NavigationBottomBar(
                 navigation: navigation,
@@ -748,11 +763,13 @@ struct HomeScreen: View {
     private func recenterOnCourse(zoom: Double) {
         guard let here = (simulatedPuck ?? guidedPuck)?.lastLocation ?? location.lastLocation else { return followCourse(zoom: zoom) }
         let direction = here.course >= 0 ? here.course : viewport.bearing
+        isRecentering = true
         camera = .center(here.coordinate, zoom: zoom, pitch: Self.pitch3D, direction: direction)
         // After MapLibre's 0.3 s centre and pitch animations; following earlier would cut them short too.
         Task {
             try? await Task.sleep(for: .milliseconds(600))
             if isNavigating { followCourse(zoom: zoom) }
+            isRecentering = false
         }
     }
 

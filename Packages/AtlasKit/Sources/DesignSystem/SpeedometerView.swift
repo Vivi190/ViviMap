@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// Round speed badge. Shows an en dash when there is no usable measurement and dims the number when the
+/// Speed tile, as Yandex shows it: the number large on a rounded square, the road's limit sign above it, a red rim
+/// when over the limit. Shows an en dash when there is no usable measurement and dims the number when the
 /// receiver reports poor speed accuracy, so an unreliable value never looks authoritative.
 public struct SpeedometerView: View {
     private let kmh: Int?
     private let isReliable: Bool
     private let limit: Int?
-    @ScaledMetric(relativeTo: .title) private var scaledDiameter: CGFloat = 68
+    @ScaledMetric(relativeTo: .title) private var scaledSize: CGFloat = 64
 
     /// - Parameter limit: the road's speed limit when the map data has one; shown as a sign, and the speed
     ///   turns red more than 5 km/h above it (GPS speed noise would make it flicker right at the limit).
@@ -22,23 +23,28 @@ public struct SpeedometerView: View {
     }
 
     public var body: some View {
-        let diameter = min(scaledDiameter, 96)
-        VStack(spacing: 0) {
-            Text(kmh.map(String.init) ?? "–")
-                .font(.system(size: diameter * 0.4, weight: .bold).monospacedDigit())
-                .foregroundStyle(isSpeeding ? Color.atlasCritical : isReliable ? Color.primary : Color.secondary)
-                .contentTransition(.numericText(value: Double(kmh ?? 0)))
-            Text("km/sa")
-                .font(.system(size: diameter * 0.15, weight: .semibold))
-                .foregroundStyle(.secondary)
-        }
-        .frame(width: diameter, height: diameter)
-        .atlasFloatingSurface(in: Circle())
-        .overlay(alignment: .topTrailing) {
+        let size = min(scaledSize, 88)
+        let tile = RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+        // Above, not on a corner: the tile keeps its width, so the road name beside it stays clear.
+        VStack(spacing: Spacing.s) {
             if let limit {
-                SpeedLimitSign(limit: limit, diameter: diameter * 0.48)
-                    .offset(x: diameter * 0.18, y: -diameter * 0.12)
+                SpeedLimitSign(limit: limit, diameter: size * 0.66)
+                    .shadow(color: .black.opacity(0.16), radius: 6, x: 0, y: 2)
                     .transition(.scale.combined(with: .opacity))
+            }
+            VStack(spacing: -2) {
+                Text(kmh.map(String.init) ?? "–")
+                    .font(.system(size: size * 0.44, weight: .bold).monospacedDigit())
+                    .foregroundStyle(isSpeeding ? Color.atlasCritical : isReliable ? Color.primary : Color.secondary)
+                    .contentTransition(.numericText(value: Double(kmh ?? 0)))
+                Text("km/sa")
+                    .font(.system(size: size * 0.16, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: size, height: size)
+            .atlasFloatingSurface(in: tile)
+            .overlay {
+                if isSpeeding { tile.strokeBorder(Color.atlasCritical, lineWidth: 2.5) }
             }
         }
         .animation(.snappy(duration: 0.25), value: kmh)
