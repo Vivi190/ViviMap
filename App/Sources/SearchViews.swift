@@ -314,16 +314,23 @@ struct PlaceCard: View {
                 Text(place.name)
                     .font(.headline)
                     .lineLimit(2)
+                // "Adliye · 3,0 km" under the name, as Apple Maps shows it; just the distance for other places.
+                let kind = PlaceSymbol.kind(for: place.category)
+                if let here = location.lastLocation?.coordinate {
+                    let distance = Formatting.distance(meters: GeoPoint(here).distance(to: place.point))
+                    Text(kind.map { "\($0) · \(distance)" } ?? "\(distance) uzaklıkta")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                } else if let kind {
+                    Text(kind)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 if !place.subtitle.isEmpty {
                     Text(place.subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
-                }
-                if let here = location.lastLocation?.coordinate {
-                    Text(Formatting.distance(meters: GeoPoint(here).distance(to: place.point)) + " uzaklıkta")
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(.secondary)
                 }
             }
             Spacer(minLength: 0)
@@ -588,6 +595,42 @@ enum PlaceSymbol {
             default: return "mappin"
             }
         default: return "mappin"
+        }
+    }
+
+    /// The kind of place in Turkish for the place card ("Adliye"); nil when the tag tells a driver nothing.
+    static func kind(for category: String?) -> String? {
+        switch category ?? "" {
+        case "amenity=courthouse": "Adliye"
+        case "amenity=hospital": "Hastane"
+        case "amenity=clinic", "amenity=doctors": "Sağlık merkezi"
+        case "amenity=pharmacy": "Eczane"
+        case "amenity=fuel": "Benzin istasyonu"
+        case "amenity=charging_station": "Şarj istasyonu"
+        case "amenity=parking": "Otopark"
+        case "amenity=school": "Okul"
+        case "amenity=university": "Üniversite"
+        case "amenity=kindergarten": "Anaokulu"
+        case "amenity=restaurant": "Restoran"
+        case "amenity=cafe": "Kafe"
+        case "amenity=fast_food": "Fast food"
+        case "amenity=place_of_worship": "İbadet yeri"
+        case "amenity=townhall": "Belediye"
+        case "amenity=police": "Polis"
+        case "amenity=bank": "Banka"
+        case "amenity=atm": "ATM"
+        case "amenity=post_office": "Postane"
+        case "amenity=ferry_terminal": "İskele"
+        case "shop=supermarket": "Süpermarket"
+        case "shop=mall": "AVM"
+        case "shop=bakery": "Fırın"
+        case "railway=station", "public_transport=station": "İstasyon"
+        case "highway=bus_stop": "Otobüs durağı"
+        case "aeroway=aerodrome": "Havalimanı"
+        case "leisure=park": "Park"
+        case "tourism=hotel": "Otel"
+        case "tourism=museum": "Müze"
+        default: nil
         }
     }
 
