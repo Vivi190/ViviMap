@@ -782,10 +782,12 @@ struct HomeScreen: View {
         let rest = navigation.remainingRoute()
         guard rest.count > 1 else { return }
         let lats = rest.map(\.latitude), lons = rest.map(\.longitude)
+        // MapLibre adds this padding to the guidance content inset, which already keeps the top 40 % (turn card)
+        // clear: a 230 pt top padding left the route about 60 pt of map and zoomed out to half the city.
         camera = .fitting(
             southWest: CLLocationCoordinate2D(latitude: lats.min()!, longitude: lons.min()!),
             northEast: CLLocationCoordinate2D(latitude: lats.max()!, longitude: lons.max()!),
-            padding: UIEdgeInsets(top: 230, left: 50, bottom: 230, right: 80)
+            padding: UIEdgeInsets(top: 40, left: 40, bottom: 210, right: 70)
         )
     }
 
