@@ -19,18 +19,20 @@ FONT_BOLD = ["Noto Sans Bold"]
 FONT_ITALIC = ["Noto Sans Italic"]
 
 PALETTES = {
+    # Day leans to Apple Maps: warm off-white land, clear greens and a bright sea (15.11.2026: the greyer first
+    # palette read as dull next to it).
     "day": {
-        "background": "#F2F1EC",
-        "residential": "#ECEAE4",
+        "background": "#F6F3EC",
+        "residential": "#F0EDE6",
         "industrial": "#E8E6E3",
         "institutional": "#F0E9E1",
-        "park": "#D8E9CF",
-        "wood": "#CFE3C3",
-        "sand": "#F3EDDC",
-        "water": "#A8CDE9",
-        "waterway": "#9CC5E5",
-        "building": "#E4E0D8",
-        "building_outline": "#D6D1C7",
+        "park": "#C8E8BC",
+        "wood": "#BCDDAC",
+        "sand": "#F4EAD0",
+        "water": "#9CCFF0",
+        "waterway": "#92C8EC",
+        "building": "#E7E2D9",
+        "building_outline": "#D9D2C6",
         "building_3d": "#E1DDD5",
         "building_opacity": 0.92,
         "aeroway": "#E0DED9",

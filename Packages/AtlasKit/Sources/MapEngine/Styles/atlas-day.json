@@ -16,7 +16,7 @@
    "id": "background",
    "type": "background",
    "paint": {
-    "background-color": "#F2F1EC"
+    "background-color": "#F6F3EC"
    }
   },
   {
@@ -39,7 +39,7 @@
     false
    ],
    "paint": {
-    "fill-color": "#ECEAE4",
+    "fill-color": "#F0EDE6",
     "fill-opacity": [
      "interpolate",
      [
@@ -126,7 +126,7 @@
     false
    ],
    "paint": {
-    "fill-color": "#CFE3C3",
+    "fill-color": "#BCDDAC",
     "fill-antialias": false
    }
   },
@@ -150,7 +150,7 @@
     false
    ],
    "paint": {
-    "fill-color": "#D8E9CF",
+    "fill-color": "#C8E8BC",
     "fill-opacity": 0.7,
     "fill-antialias": false
    }
@@ -175,7 +175,7 @@
     false
    ],
    "paint": {
-    "fill-color": "#F3EDDC"
+    "fill-color": "#F4EAD0"
    }
   },
   {
@@ -200,7 +200,7 @@
     false
    ],
    "paint": {
-    "fill-color": "#D8E9CF"
+    "fill-color": "#C8E8BC"
    }
   },
   {
@@ -209,7 +209,7 @@
    "source": "openmaptiles",
    "source-layer": "park",
    "paint": {
-    "fill-color": "#D8E9CF",
+    "fill-color": "#C8E8BC",
     "fill-opacity": 0.85
    }
   },
@@ -227,7 +227,7 @@
     "tunnel"
    ],
    "paint": {
-    "fill-color": "#A8CDE9"
+    "fill-color": "#9CCFF0"
    }
   },
   {
@@ -256,7 +256,7 @@
     ]
    ],
    "paint": {
-    "line-color": "#9CC5E5",
+    "line-color": "#92C8EC",
     "line-width": [
      "interpolate",
      [
@@ -367,8 +367,8 @@
    "source-layer": "building",
    "minzoom": 13,
    "paint": {
-    "fill-color": "#E4E0D8",
-    "fill-outline-color": "#D6D1C7",
+    "fill-color": "#E7E2D9",
+    "fill-outline-color": "#D9D2C6",
     "fill-opacity": [
      "interpolate",
      [
