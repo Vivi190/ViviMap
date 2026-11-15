@@ -16,7 +16,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 
 ## TestFlight'ta ne denenecek
 
-**Son işlenen: build 23; build 24 yükleniyor (15.11.2026).** Depo herkese açık olduğu için GitHub Actions dakikaları artık ücretsiz ([setup-testflight.md](setup-testflight.md#github-actions-ve-açık-depo)).
+**Son yüklenen: build 24 (15.11.2026, işlendi).** Depo herkese açık olduğu için GitHub Actions dakikaları artık ücretsiz ([setup-testflight.md](setup-testflight.md#github-actions-ve-açık-depo)).
 - Build 17: trafik katmanı, tür kelimeli arama düzeltmesi.
 - Build 18: ücretli yollardan kaçınma, varışımı paylaş, Siri kısayolu, hız sınırı uyarısı, "Yakında" düğmeleri.
 - Build 19: yenilenen rota kartı ve navigasyon alt çubuğu, havalimanı/hastane/AVM rotalarının alanın önündeki yolda bitmesi, telefondaki en kaliteli Türkçe ses, navigasyonda yumuşak yakınlaşma.
@@ -24,7 +24,7 @@ Her faz bir öncekinin **doğrulanmasından** sonra başlar. "Doğrulama" sütun
 - Build 21: yerle işi bitince aramanın baştan (son aramalar, kısayollar, "Yakında") açılması, göbekte dönüş okunun çıkış yoluna kadar uzaması, kayıtlıysa "Ev" ve "İş"in arama çubuğunun altında tek dokunuşla rota açması.
 - Build 22: varışta alt çubukta "Otopark" düğmesi, ayarlarda sesli yönlendirme için "Örnek dinle", arama çubuğunda "Nereye?".
 - Build 23: "semt + tür" ("esentepe eczane") ve "semt + marka" ("kurtköy migros") aramalarının o semtin çevresinde yapılması.
-- Build 24 (yükleniyor): Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları; trafik ışığındaki dönüşte "Işıklarda sağa dön"; yol numaraları tabela gibi kutularda (D-100 mavi, O-4 yeşil).
+- Build 24: Apple Haritalar tarzı yer rozetleri (POI) ve daha canlı gündüz paleti; Yandex gibi trafik (varsayılan açık, akan yollar yeşil, bölge puanı); haritada kasis, kamera ve trafik ışıkları; trafik ışığındaki dönüşte "Işıklarda sağa dön"; yol numaraları tabela gibi kutularda (D-100 mavi, O-4 yeşil).
 
 Sıradaki build'de gelecekler (main'de): yol olayları haritada (kapalı yol, kaza, yol çalışması); trafik katmanı mahalle sokaklarını istemiyor (akıcılık için).
 
