@@ -69,6 +69,27 @@ struct HomeScreen: View {
     @State private var routeSelection = 0
     /// Where each candidate's time bubble sits (RouteLabel.place), worked out once per route request.
     @State private var routeLabelPoints: [Int: CLLocationCoordinate2D] = [:]
+    /// Routes to the place on the card, asked for as soon as the card opens (as Apple Maps does), so "Rota" shows
+    /// the route card at once instead of after a server round trip.
+    @State private var prefetch: RoutePrefetch?
+
+    struct RoutePrefetch {
+        let id: UUID
+        let point: GeoPoint
+        let origin: CLLocation
+        let date: Date
+        let avoidsTolls: Bool
+        /// Done once `routes` is in (still nil then: the request failed). RouteOption is not Sendable, so the
+        /// task hands its result over through this state rather than as its value.
+        let task: Task<Void, Never>
+        var routes: [RouteOption]?
+
+        /// Still the routes the driver would get now: same place and setting, asked for moments ago from here.
+        func fits(_ point: GeoPoint, from here: CLLocation, avoidsTolls: Bool) -> Bool {
+            point == self.point && avoidsTolls == self.avoidsTolls
+                && here.distance(from: origin) < 150 && Date.now.timeIntervalSince(date) < 120
+        }
+    }
     @State private var isPlanning = false
     @State private var routeError: String?
     @State private var simulator = DriveSimulator()
@@ -482,8 +503,25 @@ struct HomeScreen: View {
     private func show(_ place: Place) {
         routes = []
         routeError = nil
+        // Routes still coming for the previous place must not land on this one's card.
+        planGeneration += 1
+        isPlanning = false
         selectedPlace = place
         sheet = nil
+        prefetchRoutes(to: place)
+    }
+
+    private func prefetchRoutes(to place: Place) {
+        prefetch?.task.cancel()
+        prefetch = nil
+        guard let planner, let here = location.lastLocation else { return }
+        planner.avoidsTolls = settings.avoidsTolls
+        let id = UUID()
+        let task = Task {
+            let found = try? await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan)
+            if prefetch?.id == id { prefetch?.routes = found }
+        }
+        prefetch = RoutePrefetch(id: id, point: place.point, origin: here, date: .now, avoidsTolls: settings.avoidsTolls, task: task)
     }
 
     private func placeCard(_ place: Place) -> some View {
@@ -783,6 +821,11 @@ struct HomeScreen: View {
         selectedPlace = nil
         routes = []
         routeError = nil
+        // Routes still coming would draw lines with no card under them.
+        planGeneration += 1
+        isPlanning = false
+        prefetch?.task.cancel()
+        prefetch = nil
         // Done with this place: the next search opens on recents, shortcuts and "Yakında", not the old results
         // (CI screenshot 2a after a drive still showed the previous query).
         search.query = ""
@@ -801,10 +844,23 @@ struct HomeScreen: View {
         routeError = nil
         planGeneration += 1
         let generation = planGeneration
+        planner.avoidsTolls = settings.avoidsTolls
+        let pending = prefetch.flatMap { $0.fits(place.point, from: here, avoidsTolls: planner.avoidsTolls) ? $0 : nil }
         Task {
             do {
-                planner.avoidsTolls = settings.avoidsTolls
-                let found = try await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan)
+                // The routes asked for when the card opened; a fresh request only if that one failed.
+                var ready: [RouteOption]?
+                if let pending {
+                    await pending.task.value
+                    if prefetch?.id == pending.id { ready = prefetch?.routes }
+                }
+                guard generation == planGeneration else { return }
+                let found: [RouteOption]
+                if let ready {
+                    found = ready
+                } else {
+                    found = try await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan)
+                }
                 guard generation == planGeneration else { return }
                 routeSelection = 0
                 routeLabelPoints = Dictionary(uniqueKeysWithValues: found.compactMap { option in
@@ -829,11 +885,13 @@ struct HomeScreen: View {
                 }
             } catch RoutePlanner.PlanningError.noRoute where planner.avoidsTolls {
                 // "No path" here usually means no toll-free path, not a closed-off destination.
-                routeError = "Ücretli yollardan kaçınan bir rota bulunamadı. Harita ayarları → Rota'dan kapatmayı dene."
+                if generation == planGeneration {
+                    routeError = "Ücretli yollardan kaçınan bir rota bulunamadı. Harita ayarları → Rota'dan kapatmayı dene."
+                }
             } catch {
-                routeError = error.localizedDescription
+                if generation == planGeneration { routeError = error.localizedDescription }
             }
-            isPlanning = false
+            if generation == planGeneration { isPlanning = false }
         }
     }
 
