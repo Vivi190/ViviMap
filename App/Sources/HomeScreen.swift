@@ -223,6 +223,16 @@ struct HomeScreen: View {
         return (activeRoute.flatMap { previewTraffic[$0.index] } ?? []).map { TrafficLine($0) }
     }
 
+    /// Closures, accidents and road works: all around with the "Trafik" layer; while guiding, the ones on the route
+    /// (from the last city-traffic round, no new request), as Yandex shows road events on the way.
+    private var displayedIncidents: [MapIncident] {
+        if showsCityTraffic { return cityTraffic.incidents.map { MapIncident($0) } }
+        guard isNavigating, settings.showsTrafficLayer, let navigation, !cityTraffic.incidents.isEmpty else { return [] }
+        let incidents = cityTraffic.incidents
+        let onRoute = navigation.onRoute(incidents.map { $0.points.first ?? CLLocationCoordinate2D() })
+        return zip(incidents, onRoute).compactMap { incident, isOn in isOn ? MapIncident(incident) : nil }
+    }
+
     /// While guiding, the slow stretches still ahead, cut at the car along the line it drives on, so none floats
     /// behind it once the line under it is gone (RouteLineTrimmer keeps them so between redraws).
     private static func trafficAhead(_ sections: [TrafficSection], on navigation: NavigationSession) -> [TrafficLine] {
@@ -248,7 +258,7 @@ struct HomeScreen: View {
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 maneuverArrow: isNavigating ? navigation?.maneuverArrow ?? [] : [],
                 roadMarks: Self.roadMarks,
-                incidents: showsCityTraffic ? cityTraffic.incidents.map { MapIncident($0) } : [],
+                incidents: displayedIncidents,
                 routeTrimmer: routeTrimmer,
                 puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,

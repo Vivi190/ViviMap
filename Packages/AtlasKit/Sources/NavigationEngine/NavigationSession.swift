@@ -185,6 +185,13 @@ public final class NavigationSession {
         return Self.clip(stretches, on: path, from: aheadOffset ?? 0)
     }
 
+    /// Which of `points` lie on the route (within 30 m), for road events to show while guiding. Reads no observed
+    /// state, so a view asking once per update is not redrawn on every fix.
+    public func onRoute(_ points: [CLLocationCoordinate2D]) -> [Bool] {
+        guard let path = routePath else { return points.map { _ in false } }
+        return points.map { path.project($0, tolerance: 30) != nil }
+    }
+
     nonisolated static func clip(
         _ stretches: [[CLLocationCoordinate2D]], on path: RoutePath, from car: CLLocationDistance
     ) -> [[CLLocationCoordinate2D]?] {
