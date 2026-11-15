@@ -321,13 +321,17 @@ def build(name, p):
                     "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10.5, 16, 13.5, 18, 16],
                     "text-max-angle": 28, "symbol-spacing": 320, "text-padding": 2},
          "paint": {"text-color": p["label_road"], "text-halo-color": p["label_halo"], "text-halo-width": 1.6}},
-        # Road numbers (D-100, O-4 …) as plain bold text until we ship shield images.
+        # Road numbers (D-100, O-4 …) on sign-like shields, green for motorways and blue for the rest, as on
+        # Turkish signs; the stretchable shields are drawn by the app (MapEngine/RoadShields.swift).
         {"id": "label-road-ref", "type": "symbol", "source": "openmaptiles", "source-layer": "transportation_name",
          "minzoom": 9, "filter": ["all", classes("motorway", "trunk", "primary"), ["has", "ref"]],
          "layout": {"symbol-placement": "line", "text-field": ["get", "ref"], "text-font": FONT_BOLD,
-                    "text-size": ["interpolate", ["linear"], ["zoom"], 9, 9.5, 14, 11.5],
+                    "text-size": ["interpolate", ["linear"], ["zoom"], 9, 9.5, 14, 11],
+                    "icon-image": ["case", ["==", ["get", "class"], "motorway"], "shield-motorway", "shield-road"],
+                    "icon-text-fit": "both", "icon-text-fit-padding": [2, 4, 2, 4],
+                    "icon-rotation-alignment": "viewport",
                     "symbol-spacing": 700, "text-rotation-alignment": "viewport", "text-padding": 6},
-         "paint": {"text-color": p["label_road"], "text-halo-color": p["label_halo"], "text-halo-width": 2}},
+         "paint": {"text-color": "#FFFFFF"}},
         {"id": "label-housenumber", "type": "symbol", "source": "openmaptiles", "source-layer": "housenumber",
          "minzoom": 17,
          "layout": {"text-field": ["get", "housenumber"], "text-font": FONT_REGULAR, "text-size": 10,

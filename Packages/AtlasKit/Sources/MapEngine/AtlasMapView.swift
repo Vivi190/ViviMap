@@ -239,6 +239,7 @@ public struct AtlasMapView: View {
                 // and drops images added at runtime.
                 style.layer(withIdentifier: MapLayerID.buildings3D)?.isVisible = show3D
                 POIIcons.register(in: style)
+                RoadShields.register(in: style)
                 roadSigns.add(to: style)
             }
             .unsafeMapViewControllerModifier { controller in

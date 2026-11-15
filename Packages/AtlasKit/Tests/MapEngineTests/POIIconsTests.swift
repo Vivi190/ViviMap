@@ -19,6 +19,10 @@ struct POIIconsTests {
         }
     }
 
+    @Test func roadShieldsStretchAroundTheNumberKeepingTheirCorners() {
+        #expect(RoadShields.shield(.blue).capInsets == UIEdgeInsets(top: 5, left: 5, bottom: 5, right: 5))
+    }
+
     @Test func aBadgeIsARoundImageOfTheAskedSize() {
         let badge = POIIcons.badge("fork.knife", color: .orange)
         #expect(badge.size == CGSize(width: 22, height: 22))
