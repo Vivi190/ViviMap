@@ -1,4 +1,6 @@
 import CoreLocation
+@preconcurrency import FerrostarCore
+@preconcurrency import FerrostarCoreFFI
 import Foundation
 import SearchEngine
 import Testing
@@ -9,6 +11,38 @@ private final class NoConnection: URLProtocol {
     override class func canInit(with _: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() { client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet)) }
+    override func stopLoading() {}
+}
+
+/// Stands in for the server answering with the recorded bridge route (11.2 km).
+private final class ServerWithTheBridgeRoute: URLProtocol {
+    override class func canInit(with _: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        guard let file = Bundle.module.url(forResource: "valhalla-osrm-bridge", withExtension: "json", subdirectory: "Fixtures"),
+              let answer = try? Data(contentsOf: file)
+        else {
+            client?.urlProtocol(self, didFailWithError: URLError(.fileDoesNotExist))
+            return
+        }
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: answer)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
+/// Stands in for the server refusing the request.
+private final class Forbidden: URLProtocol {
+    override class func canInit(with _: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let response = HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data())
+        client?.urlProtocolDidFinishLoading(self)
+    }
     override func stopLoading() {}
 }
 
@@ -77,6 +111,43 @@ struct RoutePlannerOfflineTests {
         } catch let error as RoutePlanner.PlanningError {
             #expect(error.errorDescription?.contains("İstanbul") == true)
         }
+    }
+
+    /// Any server failure but "no path" is worth asking the device: it could answer a request the server refused.
+    @Test func aRefusingServerFallsBackToTheDevice() async throws {
+        let answer = try recordedAnswer()
+        let planner = try RoutePlanner(session: session(Forbidden.self)) { _ in answer }
+        let routes = try await planner.routes(from: kartal, to: destination)
+        #expect(routes.first?.isOffline == true)
+        #expect(abs((routes.first?.distance ?? 0) - 5163) < 1)
+    }
+
+    /// A reroute while driving: the device answers first (milliseconds, no connection needed); planning still
+    /// asks the server first.
+    @Test func reroutesAskTheDeviceBeforeTheServer() async throws {
+        let answer = try recordedAnswer() // Kartal, 5.2 km; the server here would send the bridge route, 11.2 km
+        let planner = try RoutePlanner(session: session(ServerWithTheBridgeRoute.self)) { _ in answer }
+        let waypoint = RoutePlanner.waypoint(destination, areaSpan: nil)
+        let rerouted = try await planner.getRoutes(userLocation: UserLocation(clLocation: kartal), waypoints: [waypoint])
+        #expect(abs((rerouted.first?.distance ?? 0) - 5163) < 1)
+        let planned = try await planner.routes(from: kartal, to: destination)
+        #expect(planned.first?.isOffline == false)
+        #expect(abs((planned.first?.distance ?? 0) - 11176) < 1)
+    }
+
+    @Test func aRerouteTheDeviceCannotAnswerGoesToTheServer() async throws {
+        let planner = try RoutePlanner(session: session(ServerWithTheBridgeRoute.self)) { _ in throw URLError(.cannotDecodeContentData) }
+        let waypoint = RoutePlanner.waypoint(destination, areaSpan: nil)
+        let rerouted = try await planner.getRoutes(userLocation: UserLocation(clLocation: kartal), waypoints: [waypoint])
+        #expect(abs((rerouted.first?.distance ?? 0) - 11176) < 1)
+    }
+
+    /// Builds without the tiles: a reroute is the server's, as before.
+    @Test func withoutTilesARerouteIsTheServers() async throws {
+        let planner = try RoutePlanner(session: session(ServerWithTheBridgeRoute.self), offline: nil)
+        let waypoint = RoutePlanner.waypoint(destination, areaSpan: nil)
+        let rerouted = try await planner.getRoutes(userLocation: UserLocation(clLocation: kartal), waypoints: [waypoint])
+        #expect(abs((rerouted.first?.distance ?? 0) - 11176) < 1)
     }
 
     /// Altunizade → Ortaköy over the Bosphorus bridge, as FOSSGIS Valhalla answered on 2026-11-14.
@@ -153,10 +224,15 @@ struct RoutePlannerOfflineTests {
         #expect(RoutePlanner.worthTryingOffline(URLError(.timedOut)))
         #expect(RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.service(status: 503)))
         #expect(RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.service(status: 429)))
+        // A server that refuses, or whose answer cannot be read, is no reason to leave the driver without a route.
+        #expect(RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.service(status: 403)))
+        #expect(RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.service(status: 404)))
+        #expect(RoutePlanner.worthTryingOffline(URLError(.cannotParseResponse)))
+        // "No path" (HTTP 400): the same tiles would say the same.
         #expect(!RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.noRoute))
-        #expect(!RoutePlanner.worthTryingOffline(RoutePlanner.PlanningError.service(status: 403)))
         // A prefetch dropped for another place: no device answer either.
         #expect(!RoutePlanner.worthTryingOffline(URLError(.cancelled)))
+        #expect(!RoutePlanner.worthTryingOffline(CancellationError()))
     }
 }
 
