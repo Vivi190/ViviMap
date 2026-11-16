@@ -76,11 +76,17 @@ public struct TrafficArea: Sendable, Equatable {
         west <= other.west && south <= other.south && east >= other.east && north >= other.north
     }
 
-    /// Grown by `fraction` of its size on every side, so small pans stay inside what was fetched; kept under
-    /// HERE's 1° limit (0.99, so rounding cannot tip it over).
+    /// The least margin `expanded` adds on a side, in degrees (about 3 km).
+    static let minimumMargin = 0.03
+
+    /// Grown by `fraction` of its size on every side, so small pans stay inside what was fetched, and by at
+    /// least `minimumMargin`: the map reports its box in steps of 0.01°, and at street zoom a fraction of the
+    /// box is less than one step, so a map following the car would leave the fetched area every kilometre.
+    /// Kept under HERE's 1° limit (0.99, so rounding cannot tip it over).
     public func expanded(by fraction: Double) -> TrafficArea {
-        let dx = min((east - west) * fraction, max(0, (0.99 - (east - west)) / 2))
-        let dy = min((north - south) * fraction, max(0, (0.99 - (north - south)) / 2))
+        let width: Double = east - west, height: Double = north - south
+        let dx: Double = min(max(width * fraction, Self.minimumMargin), max(0, (0.99 - width) / 2))
+        let dy: Double = min(max(height * fraction, Self.minimumMargin), max(0, (0.99 - height) / 2))
         return TrafficArea(west: west - dx, south: south - dy, east: east + dx, north: north + dy)
     }
 }

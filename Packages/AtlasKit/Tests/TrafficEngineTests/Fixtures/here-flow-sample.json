@@ -22,7 +22,8 @@
          "lng": 29.202
         }
        ],
-       "length": 100.0
+       "length": 100.0,
+       "functionalClass": 3
       },
       {
        "points": [
@@ -39,7 +40,8 @@
          "lng": 29.204
         }
        ],
-       "length": 100.0
+       "length": 100.0,
+       "functionalClass": 3
       }
      ]
     }
@@ -70,7 +72,8 @@
          "lng": 29.21
         }
        ],
-       "length": 100.0
+       "length": 100.0,
+       "functionalClass": 2
       },
       {
        "points": [
@@ -83,7 +86,8 @@
          "lng": 29.21
         }
        ],
-       "length": 100.0
+       "length": 100.0,
+       "functionalClass": 2
       },
       {
        "points": [
@@ -100,7 +104,8 @@
          "lng": 29.21
         }
        ],
-       "length": 100.0
+       "length": 100.0,
+       "functionalClass": 2
       }
      ]
     }
@@ -139,7 +144,8 @@
          "lng": 29.223
         }
        ],
-       "length": 100.0
+       "length": 100.0,
+       "functionalClass": 4
       }
      ]
     }
@@ -151,6 +157,89 @@
     "jamFactor": 0.0,
     "confidence": 0.99,
     "traversability": "open"
+   }
+  },
+  {
+   "location": {
+    "description": "Örnek Otoyol",
+    "length": 400.0,
+    "shape": {
+     "links": [
+      {
+       "points": [
+        {
+         "lat": 40.92,
+         "lng": 29.23
+        },
+        {
+         "lat": 40.92,
+         "lng": 29.231
+        },
+        {
+         "lat": 40.92,
+         "lng": 29.232
+        }
+       ],
+       "length": 200.0,
+       "functionalClass": 2
+      },
+      {
+       "points": [
+        {
+         "lat": 40.92,
+         "lng": 29.232
+        },
+        {
+         "lat": 40.92,
+         "lng": 29.233
+        },
+        {
+         "lat": 40.92,
+         "lng": 29.234
+        }
+       ],
+       "length": 200.0,
+       "functionalClass": 1
+      }
+     ]
+    }
+   },
+   "currentFlow": {
+    "speed": 9.7,
+    "speedUncapped": 9.7,
+    "freeFlow": 25.0,
+    "jamFactor": 5.2,
+    "confidence": 0.93,
+    "traversability": "open",
+    "subSegments": [
+     {
+      "length": 100.0,
+      "speed": 22.2,
+      "speedUncapped": 24.1,
+      "freeFlow": 25.0,
+      "jamFactor": 0.4,
+      "confidence": 0.95,
+      "traversability": "open"
+     },
+     {
+      "length": 150.0,
+      "speed": 11.0,
+      "speedUncapped": 11.0,
+      "freeFlow": 25.0,
+      "jamFactor": 5.6,
+      "confidence": 0.93,
+      "traversability": "open"
+     },
+     {
+      "length": 150.0,
+      "speed": 5.5,
+      "speedUncapped": 5.5,
+      "freeFlow": 25.0,
+      "jamFactor": 8.8,
+      "confidence": 0.9,
+      "traversability": "open"
+     }
+    ]
    }
   }
  ]

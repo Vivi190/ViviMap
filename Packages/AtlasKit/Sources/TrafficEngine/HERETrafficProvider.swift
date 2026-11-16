@@ -52,7 +52,11 @@ public struct HERETrafficProvider: TrafficProvider {
         return request
     }
 
-    /// Traffic v7 flow in a 20 m corridor around the route (POST: a long corridor overflows the URL).
+    /// Traffic v7 flow in a 400 m corridor around the route (POST: a long corridor overflows the URL). Wide
+    /// enough for the roads beside the route as well, so one answer colours the route and draws the traffic
+    /// around it while guiding. Classes 1–4, as on the city layer: measured 2026-11-16 on a 19.6 km route
+    /// through Istanbul, 89 KB gzipped (541 results), against 33 KB for a 20 m corridor of every class, in
+    /// which only 2 of 163 results were local streets.
     /// https://docs.here.com/traffic-api/docs/geospatial-filters-here-traffic-api-v7-concepts
     public func flow(along route: [CLLocationCoordinate2D]) async throws -> [FlowSegment] {
         guard route.count >= 2 else { return [] }
@@ -73,16 +77,15 @@ public struct HERETrafficProvider: TrafficProvider {
         // HERE caps a corridor at 300 points.
         let corridor = HERETrace.points(route, limit: 300).map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
         request.httpBody = try JSONEncoder().encode(FlowBody(
-            in: .init(type: "corridor", corridor: FlexiblePolyline.encode(corridor), radius: 20),
-            locationReferencing: ["shape"]
+            in: .init(type: "corridor", corridor: FlexiblePolyline.encode(corridor), radius: Self.corridorRadius),
+            locationReferencing: ["shape"],
+            functionalClasses: [1, 2, 3, 4]
         ))
         return request
     }
 
-    /// Traffic v7 flow in a box, only roads at the slow band or worse (RouteTraffic's 4 and up): free-flowing
-    /// roads are not drawn. Measured 2026-11-14 on a 0.10° × 0.07° Kartal box: 1.7 MB unfiltered, 11 KB
-    /// filtered (night); HERE ignores minJamFactor unless maxJamFactor is sent too. Wider than 0.15° only main
-    /// roads (functional classes 1–3): their unfiltered answer was 2.2 MB for 0.30° × 0.20°.
+    /// Traffic v7 flow in a box, at every jam factor: flowing roads are drawn too, green. The wider the box, the
+    /// fewer road classes it asks for, so the answer stays a size a phone can take (areaFlowRequest).
     public func flow(in area: TrafficArea) async throws -> [FlowSegment] {
         guard area.fitsHERE else { return [] }
         guard budget.spend(.areaFlow) else { throw TrafficError.budgetExhausted }
@@ -120,15 +123,32 @@ public struct HERETrafficProvider: TrafficProvider {
         request.httpMethod = "POST"
         request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Fewer road classes the larger the box, as Yandex thins its traffic out with the zoom (motorways and
+        // trunk roads only from about zoom 11 out) and so the answer stays a size a phone can take. Measured
+        // 2026-11-14 on a 0.30° x 0.15° box around Kartal–Tuzla: classes 1–3 gave 815 segments in 200 KB
+        // (gzip), 1–4 gave 5 098 in 944 KB; the widest box the layer asks for, 0.99° x 0.7° over the whole city
+        // with classes 1–2 (2026-11-16), gave 712 results in 223 KB. Never class 5 (local streets): asked for,
+        // they were 8 of 750 results; HERE barely measures them.
+        //
+        // The box is built from 0.01° steps and a fixed margin, so its span is often one of these limits give or
+        // take the last digit of a Double. That digit must not decide: the classes would change from one pan to
+        // the next.
+        let span: Double = area.span - 1e-9
+        let classes: [Int]
+        if span > 0.30 {
+            classes = [1, 2]
+        } else if span > 0.20 {
+            classes = [1, 2, 3]
+        } else {
+            classes = [1, 2, 3, 4]
+        }
         request.httpBody = try JSONEncoder().encode(AreaFlowBody(
             in: .init(type: "bbox", west: area.west, south: area.south, east: area.east, north: area.north),
             locationReferencing: ["shape"],
-            // Flowing roads too, drawn green. Measured 2026-11-14 on a 0.30° x 0.15° box around Kartal–Tuzla:
-            // classes 1–3 gave 815 segments in 200 KB (gzip), 1–4 gave 5 098 in 944 KB. Never class 5 (local
-            // streets): rarely any traffic there, and every segment is redrawn on each map update (swiftui-dsl).
+            // Flowing roads too, drawn green; HERE ignores minJamFactor unless maxJamFactor is sent too.
             minJamFactor: 0,
             maxJamFactor: 10,
-            functionalClasses: area.span > 0.15 ? [1, 2, 3] : [1, 2, 3, 4]
+            functionalClasses: classes
         ))
         return request
     }
@@ -163,7 +183,11 @@ public struct HERETrafficProvider: TrafficProvider {
 
         let `in`: Area
         let locationReferencing: [String]
+        let functionalClasses: [Int]
     }
+
+    /// Metres on each side of the route in a corridor flow request.
+    static let corridorRadius = 400
 }
 
 /// The key comes from the HERE_API_KEY build setting via Info.plist (CI secret), never from the source.
