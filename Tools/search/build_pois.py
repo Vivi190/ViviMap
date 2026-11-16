@@ -40,7 +40,9 @@ SPECIFIC = {
     "warehouse_club_store": "shop=supermarket", "convenience_store": "shop=convenience",
     "department_store": "shop=department_store", "shopping_mall": "shop=mall",
     "pharmacy": "amenity=pharmacy", "atm": "amenity=atm", "bank": "amenity=bank", "bank_or_credit_union": "amenity=bank",
-    "gas_station": "amenity=fuel", "parking": "amenity=parking",
+    "gas_station": "amenity=fuel", "parking": "amenity=parking", "ev_charging_station": "amenity=charging_station",
+    "post_office": "amenity=post_office", "currency_exchange": "amenity=bureau_de_change", "notary_public": "office=notary",
+    "towing_service": "shop=car_repair", "auto_glass_service": "shop=car_repair", "car_inspection": "amenity=vehicle_inspection",
     "car_wash": "amenity=car_wash", "auto_detailing": "amenity=car_wash",
     "automotive_repair": "shop=car_repair", "auto_body_shop": "shop=car_repair", "automotive_service": "shop=car_repair",
     "tire_dealer_and_repair": "shop=tyres", "tire_shop": "shop=tyres",
@@ -213,6 +215,7 @@ if __name__ == "__main__":
         assert category("doner_kebab_restaurant", None) == "amenity=restaurant"
         assert category("grocery_store", "food_and_beverage_store") == "shop=supermarket"
         assert category("barber", "personal_or_beauty_service") == "shop=hairdresser"
+        assert category("ev_charging_station", None) == "amenity=charging_station"
         assert category("lighting_store", "hardware_home_and_garden_store") == "shop=yes"
         assert category("real_estate_agent", "real_estate_service") is None
         assert category(None, None) is None

@@ -279,6 +279,8 @@ enum PlaceRanking {
             (["sinema"], ["amenity:cinema"]),
             (["cami"], ["amenity:place_of_worship"]),
             (["araç kiralama", "rent a car"], ["amenity:car_rental"]),
+            (["noter"], ["office:notary"]),
+            (["döviz", "döviz bürosu"], ["amenity:bureau_de_change"]),
         ]
         return Dictionary(table.flatMap { row in row.words.map { ($0, row.tags) } }, uniquingKeysWith: { first, _ in first })
     }()
