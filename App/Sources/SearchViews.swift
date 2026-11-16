@@ -269,6 +269,7 @@ struct PlaceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
             details
+            actions
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote)
@@ -297,21 +298,10 @@ struct PlaceCard: View {
                     if let onParking {
                         Button("Yakındaki otoparklar", systemImage: "parkingsign", action: onParking)
                     }
-                    if let isSaved {
-                        Button(isSaved ? "Kaydedilenlerden çıkar" : "Kaydet", systemImage: isSaved ? "star.slash" : "star", action: onToggleSaved)
-                    }
                     Button("Ev olarak kaydet", systemImage: "house.fill") { onSave(.home) }
                     Button("İş olarak kaydet", systemImage: "briefcase.fill") { onSave(.work) }
-                    if let link = PlaceLinks.share(place) {
-                        ShareLink(item: link, subject: Text(place.name), message: Text(place.name)) {
-                            Label("Yeri paylaş", systemImage: "square.and.arrow.up")
-                        }
-                    }
                     // Reviews, photos and opening hours are those services' own: the app can link to them, not show them.
                     Section("Yorumlar ve fotoğraflar") {
-                        if let website = contact?.website {
-                            Button("Web sitesi", systemImage: "safari") { openURL(website) }
-                        }
                         if let google = PlaceLinks.google(place) {
                             Button("Google Haritalar'da aç", systemImage: "star.bubble") { openURL(google) }
                         }
@@ -338,6 +328,37 @@ struct PlaceCard: View {
         .atlasCardSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("place.card")
+    }
+
+    /// What can be done with the place besides driving there, in reach of a thumb: calling it, its website,
+    /// starring and sharing it. In a row that scrolls sideways, so a place with all four fits a narrow phone.
+    private var actions: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Spacing.s) {
+                if let phone = contact?.phone, let call = PlaceLinks.call(phone) {
+                    Link(destination: call) { Label("Ara", systemImage: "phone.fill") }
+                        .accessibilityLabel(Text("Ara: \(phone)"))
+                }
+                if let website = contact?.website {
+                    Link(destination: website) { Label("Web sitesi", systemImage: "safari") }
+                }
+                if let isSaved {
+                    Button(action: onToggleSaved) {
+                        Label(isSaved ? "Kaydedildi" : "Kaydet", systemImage: isSaved ? "star.fill" : "star")
+                    }
+                    .accessibilityIdentifier("place.save")
+                }
+                if let link = PlaceLinks.share(place) {
+                    ShareLink(item: link, subject: Text(place.name), message: Text(place.name)) {
+                        Label("Paylaş", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+            .font(.subheadline.weight(.medium))
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .tint(Color.atlasAccent)
+        }
     }
 
     private var details: some View {
@@ -368,14 +389,6 @@ struct PlaceCard: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
-                }
-                if let phone = contact?.phone, let call = PlaceLinks.call(phone) {
-                    Link(destination: call) {
-                        Label(phone, systemImage: "phone.fill")
-                            .font(.subheadline.weight(.medium).monospacedDigit())
-                    }
-                    .padding(.top, 2)
-                    .accessibilityLabel(Text("Ara: \(phone)"))
                 }
             }
             Spacer(minLength: 0)
