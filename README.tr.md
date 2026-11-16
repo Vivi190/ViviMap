@@ -15,7 +15,7 @@
 </p>
 <p align="center">
   <img src="docs/screenshots/map-3d.jpg" width="230" alt="3D binalar, trafik ışıkları ve kasisler">
-  <img src="docs/screenshots/map-night.jpg" width="230" alt="Gece haritası">
+  <img src="docs/screenshots/map-night.jpg" width="230" alt="Gece haritasında arama sonuçları iğne olarak">
   <img src="docs/screenshots/search.jpg" width="230" alt="Kısayollar ve son aramalarla arama">
 </p>
 <p align="center"><sub>iOS simülatöründe, İstanbul Kartal'da alınmış CI ekran görüntüleri. Canlı trafik görünmüyor, çünkü CI derlemeleri trafik anahtarı olmadan çalışıyor.</sub></p>

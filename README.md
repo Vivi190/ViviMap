@@ -15,7 +15,7 @@
 </p>
 <p align="center">
   <img src="docs/screenshots/map-3d.jpg" width="230" alt="3D buildings, traffic lights and speed bumps">
-  <img src="docs/screenshots/map-night.jpg" width="230" alt="Night map">
+  <img src="docs/screenshots/map-night.jpg" width="230" alt="Night map with a search's results as pins">
   <img src="docs/screenshots/search.jpg" width="230" alt="Search with shortcuts and recent places">
 </p>
 <p align="center"><sub>CI screenshots from the iOS simulator in Kartal, Istanbul. Live traffic is not shown: CI builds run without a traffic key.</sub></p>
