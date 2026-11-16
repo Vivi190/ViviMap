@@ -60,6 +60,18 @@ jobs:
           python3 Tools/search/build_index.py --self-test
           python3 Tools/search/build_index.py named.geojsonseq places.sqlite
 
+      - name: Business search index
+        run: |
+          # Shops, restaurants, offices: the places theme of Overture Maps for the same box. It is not
+          # OpenStreetMap data and has other licences, so it gets a file of its own (Tools/search/build_pois.py).
+          python3 -m venv overture-env
+          overture-env/bin/pip install --quiet overturemaps==2.1.1
+          overture-env/bin/overturemaps releases latest | tee overture-release.txt
+          overture-env/bin/overturemaps download --bbox="$BBOX" -f geojsonseq --type=place -o overture-places.geojsonseq
+          python3 Tools/search/build_pois.py --self-test
+          python3 Tools/search/build_pois.py overture-places.geojsonseq pois.sqlite
+          rm overture-places.geojsonseq
+
       - name: Map fonts (offline labels)
         run: |
           # The stacks our style uses; ranges for Latin, Turkish (ğ ı ş İ in 256-511) and punctuation (’ – …).
@@ -78,6 +90,7 @@ jobs:
             echo "Valhalla tiles (tar): $(du -h valhalla/valhalla_tiles.tar | cut -f1)"
             echo "Map tiles (pmtiles):  $(du -h istanbul.pmtiles | cut -f1)"
             echo "Search index:         $(du -h places.sqlite | cut -f1)"
+            echo "Business index:       $(du -h pois.sqlite | cut -f1), Overture $(tail -1 overture-release.txt)"
             gzip -9 -c valhalla/valhalla_tiles.tar > valhalla_tiles.tar.gz
             echo "Valhalla tiles (gz):  $(du -h valhalla_tiles.tar.gz | cut -f1)"
           } | tee sizes.txt
@@ -88,6 +101,10 @@ jobs:
         run: |
           tag="offline-data-$(date -u +%Y%m%d)-${{ github.run_number }}"
           cp valhalla/valhalla_tiles.tar .
-          gh release create "$tag" valhalla_tiles.tar istanbul.pmtiles places.sqlite fonts.zip sizes.txt \
+          gh release create "$tag" valhalla_tiles.tar istanbul.pmtiles places.sqlite pois.sqlite fonts.zip sizes.txt \
             --repo "${{ github.repository }}" --prerelease --title "$tag" \
-            --notes "Istanbul offline packages (Valhalla 3.9.0 tiles, OpenMapTiles PMTiles, fonts). Data © OpenStreetMap contributors, ODbL."
+            --notes "Istanbul offline packages: Valhalla 3.9.0 tiles, OpenMapTiles PMTiles, search indexes, fonts.
+
+          valhalla_tiles.tar, istanbul.pmtiles and places.sqlite: © OpenStreetMap contributors, Open Database License 1.0 (https://www.openstreetmap.org/copyright).
+
+          pois.sqlite: the places theme of the Overture Maps Foundation (https://docs.overturemaps.org/attribution/). Its records come from Meta, Microsoft and others under CDLA-Permissive-2.0 (https://cdla.dev/permissive-2-0/), from Foursquare under Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0) and from AllThePlaces under CC0-1.0. It holds no OpenStreetMap data."
