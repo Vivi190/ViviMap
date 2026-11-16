@@ -39,6 +39,7 @@
 - Businesses by name, nearest first, also without a connection: an on-device index of 390 000 shops, restaurants, offices and services from the open places data of Overture Maps. They show as badges on the map at street zoom (a plain dot where the kind is unknown), and their cards carry phone number and website where the data has them.
 - A list of results can go on the map as pins, all in view; a tap on one opens its card.
 - Addresses as people write them: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
+- Home and Work one tap away under the search bar, with the drive there now in live traffic (*"Ev · 24 dk"*).
 - Kinds of places near you (*"benzinlik"*, *"en yakın eczane"*), in a district (*"esentepe eczane"*), and car parks around a destination, İSPARK's with their free spaces right now.
 - Charging stations from the energy regulator's register: Istanbul's 1 800 public stations with their fastest current and their sockets (*"şarj"*, *"zes"*).
 - Measured against OpenStreetMap: the first result is the intended place for 64 of 64 benchmark queries ([report](docs/research/2026-11-14-arama-olcumu.md), in Turkish).

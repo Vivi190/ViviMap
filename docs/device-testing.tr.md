@@ -24,6 +24,8 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
 12. Tür sözcükleri deneyin: "kargo", "terzi", "çilingir", "kuru temizleme", "noter", "emlakçı", "avukat", "düğün salonu". En yakınlar listelenmeli; kartlarında türleri yazmalı ("Kargo", "Noter", "Hukuk bürosu").
 13. Birinin gönderdiği konumu yapıştırın: WhatsApp konumu (maps.google.com/?q=…), Google, Apple ya da Yandex Haritalar'dan kopyalanmış uzun bağlantı. Tek sonuç "Paylaşılan konum" olarak gelmeli ve doğru noktayı göstermeli. Google Haritalar uygulamasının "Paylaş" ile verdiği kısa bağlantı (maps.app.goo.gl/…) da açılmalı: Atlas bağlantının nereyi gösterdiğini bir kez Google'a sorar; yer adıyla birlikte "Paylaşılan konum" olarak gelir.
 14. "eczane" ya da "kafe" yazın ve listenin üstündeki "… sonucu haritada göster"e dokunun: sonuçlar haritada adlarıyla mavi iğneler olarak, hepsi ekrana sığacak biçimde görünmeli. Bir iğneye dokunun: o yerin kartı açılmalı, kartı kapatınca iğneler yerinde kalmalı. Arama çubuğunun altındaki çipe dokununca liste yeniden açılmalı, ✕ iğneleri kaldırmalı.
+15. Ev ve İş kayıtlıyken, ikisinden de 1 km'den uzaktayken, arama çubuğunun altındaki çiplerde birkaç saniye içinde trafikli süre görünmeli ("Ev · 24 dk"); Yandex'teki süreyle karşılaştırın. Uygulama arka plandayken süre yenilenmemeli.
+16. Bir İSPARK otoparkını açın ("otopark" yazıp listeden İSPARK olanı seçin): kartta ücret satırı görünmeli ("1 sa 110 TL · 2 sa 140 TL · Tam gün 370 TL · İlk 15 dk ücretsiz"); otoparkın tabelasıyla karşılaştırın.
 
 ## Rota seçimi
 
