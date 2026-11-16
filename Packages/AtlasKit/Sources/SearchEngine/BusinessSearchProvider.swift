@@ -29,7 +29,7 @@ public struct BusinessSearchProvider: PlaceSearchProvider {
             if !listed.isEmpty || !surveyed.isEmpty { return Self.nearest(surveyed, listed, near: center) }
         }
         async let answered = base.search(query, near: near)
-        let local = (try? candidates(query, near: near)) ?? ([], query)
+        let local: (places: [Place], query: String) = (try? candidates(query, near: near)) ?? ([], query)
         let found: [Place]
         do {
             found = try await answered
