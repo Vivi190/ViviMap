@@ -221,10 +221,10 @@ enum PlaceRanking {
         (["havalimanı", "havaalanı"], ["aeroway=aerodrome"]),
         (["adliye"], ["amenity=courthouse"]),
     ]
-    private static let stops: Set<String> = ["highway=bus_stop", "public_transport=platform", "public_transport=stop_position"]
+    static let stops: Set<String> = ["highway=bus_stop", "public_transport=platform", "public_transport=stop_position"]
     /// Lines and plans, never where a driver is headed: "cevizli tugay yolu" first found "Tugay Yolu", a metro
     /// line under construction (search benchmark 2026-11-14).
-    private static let lines: Set<String> = [
+    static let lines: Set<String> = [
         "railway=rail", "railway=subway", "railway=light_rail", "railway=tram", "railway=monorail",
         "railway=narrow_gauge", "railway=funicular", "railway=construction", "railway=proposed",
         "railway=abandoned", "railway=disused", "highway=construction", "highway=proposed",
@@ -266,6 +266,19 @@ enum PlaceRanking {
             (["ptt", "postane"], ["amenity:post_office"]),
             (["tuvalet", "wc"], ["amenity:toilets"]),
             (["otel"], ["tourism:hotel"]),
+            (["kuaför", "berber"], ["shop:hairdresser"]),
+            (["güzellik salonu", "güzellik merkezi"], ["shop:beauty"]),
+            (["oto servis", "oto tamir", "oto tamirci", "tamirci", "oto sanayi"], ["shop:car_repair"]),
+            (["veteriner"], ["amenity:veterinary"]),
+            (["dişçi", "diş hekimi", "diş kliniği"], ["amenity:dentist"]),
+            (["kasap"], ["shop:butcher"]),
+            (["manav"], ["shop:greengrocer"]),
+            (["çiçekçi"], ["shop:florist"]),
+            (["kırtasiye"], ["shop:stationery"]),
+            (["spor salonu", "fitness"], ["leisure:fitness_centre"]),
+            (["sinema"], ["amenity:cinema"]),
+            (["cami"], ["amenity:place_of_worship"]),
+            (["araç kiralama", "rent a car"], ["amenity:car_rental"]),
         ]
         return Dictionary(table.flatMap { row in row.words.map { ($0, row.tags) } }, uniquingKeysWith: { first, _ in first })
     }()
@@ -362,19 +375,25 @@ enum PlaceRanking {
         return nil
     }
 
+    /// The kinds of place a query's words ask for: "kartal adliyesi" courthouses, "kartal metro istasyonu"
+    /// stations. Empty when it names a street, whose words lift no kind of place.
+    static func wantedKinds(_ query: String) -> Set<String> {
+        let text = address(query).text.lowercased(with: Locale(identifier: "tr"))
+        if let kind = focus(query) {
+            // The kind asked for, not one its name suggests: "istanbul havalimanı otopark" wants the car park.
+            return Set(kind.tags.map { $0.replacingOccurrences(of: ":", with: "=") })
+        }
+        guard text.range(of: streetWord, options: .regularExpression) == nil else { return [] }
+        return boosts.filter { rule in rule.words.contains { text.contains($0) } }
+            .reduce(into: Set<String>()) { $0.formUnion($1.categories) }
+    }
+
     static func rank(_ places: [Place], query: String) -> [Place] {
         let text = address(query).text.lowercased(with: Locale(identifier: "tr"))
         let asked = comparable(text)
         // The query names a street: streets lead, and its words lift no kind of place.
         let street = text.range(of: streetWord, options: .regularExpression) != nil
-        var boosted = Set<String>()
-        if let kind = focus(query) {
-            // The kind asked for, not one its name suggests: "istanbul havalimanı otopark" wants the car park.
-            boosted = Set(kind.tags.map { $0.replacingOccurrences(of: ":", with: "=") })
-        } else if !street {
-            boosted = boosts.filter { rule in rule.words.contains { text.contains($0) } }
-                .reduce(into: Set<String>()) { $0.formUnion($1.categories) }
-        }
+        let boosted = wantedKinds(query)
         // Turkish softens k → ğ before a vowel suffix: "durak" but "durağı".
         let wantsStops = !street && (text.contains("durak") || text.contains("durağ"))
 

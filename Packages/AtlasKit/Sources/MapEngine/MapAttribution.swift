@@ -11,6 +11,10 @@ public struct MapAttributionView: View {
                 link("© OpenMapTiles", "https://www.openmaptiles.org/")
                 link("Karolar: OpenFreeMap", "https://openfreemap.org/")
             }
+            Section("İşletmeler") {
+                // Per record CDLA-Permissive-2.0, Apache-2.0 or CC0-1.0; the licences ask for this notice.
+                link("Overture Maps Foundation: Meta, Microsoft, Foursquare ve diğer kaynaklar", "https://docs.overturemaps.org/attribution/")
+            }
             Section("Trafik") {
                 link("Canlı trafik ve trafikli süreler: © HERE", "https://legal.here.com/")
             }

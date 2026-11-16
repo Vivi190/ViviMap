@@ -33,10 +33,18 @@ public final class SearchController {
     private static let recentsKey = "atlas.recentPlaces"
     private static let maxRecents = 12
 
-    public init(
-        provider: any PlaceSearchProvider = FallbackSearchProvider(
+    /// Photon online, the shipped street index without a connection, and with either the shipped business index
+    /// (in builds that carry them).
+    public nonisolated static var standardProvider: any PlaceSearchProvider {
+        let streets = FallbackSearchProvider(
             primary: PhotonSearchProvider(districts: OfflinePlaceIndex.bundled), fallback: OfflinePlaceIndex.bundled
-        ),
+        )
+        guard let businesses = OfflinePlaceIndex.businesses else { return streets }
+        return BusinessSearchProvider(base: streets, businesses: businesses)
+    }
+
+    public init(
+        provider: any PlaceSearchProvider = SearchController.standardProvider,
         nearbyIndex: OfflinePlaceIndex? = OfflinePlaceIndex.bundled,
         defaults: UserDefaults = .standard
     ) {

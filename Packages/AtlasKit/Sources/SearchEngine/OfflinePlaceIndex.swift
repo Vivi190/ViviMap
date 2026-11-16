@@ -59,18 +59,26 @@ public enum NearbyKind: String, CaseIterable, Sendable {
 /// OpenStreetMap). Prefix matching on folded names, ranked by how well the name matches, then by distance.
 public struct OfflinePlaceIndex: PlaceSearchProvider {
     let url: URL
+    /// Leads each place's id, so rows of two indexes never share one.
+    let idPrefix: String
 
-    init(url: URL) {
+    init(url: URL, idPrefix: String = "offline") {
         self.url = url
+        self.idPrefix = idPrefix
     }
 
     /// Present only in builds that carry the offline packages.
-    public static let bundled: OfflinePlaceIndex? = {
-        guard let url = Bundle.main.url(forResource: "Offline", withExtension: nil)?.appendingPathComponent("places.sqlite"),
+    public static let bundled: OfflinePlaceIndex? = shipped("places.sqlite", idPrefix: "offline")
+    /// Shops, restaurants, offices and other businesses, in the same schema (Tools/search/build_pois.py,
+    /// Overture Maps places): about ten times the businesses OpenStreetMap has for Istanbul.
+    public static let businesses: OfflinePlaceIndex? = shipped("pois.sqlite", idPrefix: "poi")
+
+    private static func shipped(_ file: String, idPrefix: String) -> OfflinePlaceIndex? {
+        guard let url = Bundle.main.url(forResource: "Offline", withExtension: nil)?.appendingPathComponent(file),
               FileManager.default.fileExists(atPath: url.path)
         else { return nil }
-        return OfflinePlaceIndex(url: url)
-    }()
+        return OfflinePlaceIndex(url: url, idPrefix: idPrefix)
+    }
 
     public func search(_ query: String, near: GeoPoint?) async throws -> [Place] {
         // "benzinlik", "marketler": the nearest of that kind (the index keeps every named place's category).
@@ -82,13 +90,13 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         var words = TurkishFold.fold(address.text).split { !$0.isLetter && !$0.isNumber }.map(String.init)
             .filter { $0 != address.houseNumber }
         guard !words.isEmpty else { return [] }
-        var found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
+        var found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "), near: near)
         var center = near
         // "ankara caddesi kartal": the index holds names only, so a district named last finds nothing. Without
         // it, and nearest to that district first.
         if found.isEmpty, words.count > 1, let area = try place(named: words[words.count - 1], near: near) {
             words.removeLast()
-            found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "))
+            found = try rows(matching: words.map { $0 + "*" }.joined(separator: " "), near: area.point)
             center = area.point
         }
         let wanted = words.joined(separator: " ")
@@ -148,14 +156,30 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         }.first
     }
 
-    private func rows(matching expression: String) throws -> [Place] {
+    /// The places whose names have every word of `query` (as typed so far: the last one may be unfinished),
+    /// nearest first. For a caller that ranks them itself (BusinessSearchProvider).
+    func matches(_ query: String, near: GeoPoint?, limit: Int = 60) throws -> [Place] {
+        let words = TurkishFold.fold(query).split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        guard !words.isEmpty else { return [] }
+        return try rows(matching: words.map { $0 + "*" }.joined(separator: " "), near: near, limit: limit)
+    }
+
+    /// The nearest matches: a common word is in thousands of names, and any 200 of them would leave out the
+    /// ones around the corner.
+    private func rows(matching expression: String, near: GeoPoint?, limit: Int = 200) throws -> [Place] {
+        let center = near ?? GeoPoint(latitude: 41.01, longitude: 28.98) // no fix yet: the city centre
         let sql = """
         SELECT p.id, p.name, p.subtitle, p.category, p.lat, p.lon
         FROM place_fts JOIN place p ON p.id = place_fts.docid
-        WHERE place_fts MATCH ? LIMIT 200
+        WHERE place_fts MATCH ?1
+        ORDER BY (p.lat - ?2) * (p.lat - ?2) + ((p.lon - ?3) * ?4) * ((p.lon - ?3) * ?4) LIMIT ?5
         """
         return try rows(sql) { statement in
             sqlite3_bind_text(statement, 1, expression, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+            sqlite3_bind_double(statement, 2, center.latitude)
+            sqlite3_bind_double(statement, 3, center.longitude)
+            sqlite3_bind_double(statement, 4, cos(center.latitude * .pi / 180))
+            sqlite3_bind_int(statement, 5, Int32(limit))
         }
     }
 
@@ -177,7 +201,7 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         var places: [Place] = []
         while sqlite3_step(statement) == SQLITE_ROW {
             places.append(Place(
-                id: "offline-\(sqlite3_column_int64(statement, 0))",
+                id: "\(idPrefix)-\(sqlite3_column_int64(statement, 0))",
                 name: text(1) ?? "",
                 subtitle: text(2) ?? "",
                 point: GeoPoint(latitude: sqlite3_column_double(statement, 4), longitude: sqlite3_column_double(statement, 5)),
