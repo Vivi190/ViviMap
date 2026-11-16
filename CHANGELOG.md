@@ -2,6 +2,14 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
+## Build 31 — 2026-11-16
+
+- **Businesses in search:** shops, restaurants, offices and other businesses by name, nearest first, also without a connection. They come from an on-device index of 389 000 places for Istanbul, built from the open places data of Overture Maps; OpenStreetMap, which search relied on, has about a tenth of them.
+- The answers of both sources are one list: districts and streets first, then the matching names nearest first. A business both know is listed once.
+- More kinds of place can be asked for by their word: "kuaför", "veteriner", "oto servis", "çiçekçi", "kasap", "spor salonu", "sinema".
+- The place card names more kinds of place ("Kuaför", "Oto servis", "Diş kliniği").
+- Known limit: a business record is a page its owner made, so a position can be a building off and a closed shop can still be listed. Reviews, photos and opening hours are not in open data.
+
 ## Build 30 — 2026-11-16
 
 - A tap on a place badge of the map (a shop, a pharmacy, a station) opens that place's card: its name at once, its address a moment later.
