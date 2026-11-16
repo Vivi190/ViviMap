@@ -703,8 +703,9 @@ struct RouteDirectionsView: View {
             }
         }
         .presentationDetents([.medium, .large])
-        // Opaque, like the app's other reading panels: at half height the system's sheet lets the map show through.
-        .presentationBackground(.background)
+        // Opaque, like the app's other reading panels: at half height the system's sheet lets the map show
+        // through, and so does the hierarchical background style inside it. A colour does not.
+        .presentationBackground(Color(.systemBackground))
     }
 }
 

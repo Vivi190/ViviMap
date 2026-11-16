@@ -24,7 +24,7 @@
 
 **Navigation**
 - Turn-by-turn guidance on [Ferrostar](https://github.com/stadiamaps/ferrostar) with routes from [Valhalla](https://github.com/valhalla/valhalla): alternatives, automatic rerouting, and guidance that continues with the screen locked.
-- Choosing a route as in Apple Maps and Yandex: each option's time in a bubble on the map (tap one to choose it), the options side by side with how much slower each is, tolls and ferries flagged.
+- Choosing a route as in Apple Maps and Yandex: each option's time in a bubble on the map (tap one to choose it), the options side by side with how much slower each is, tolls and ferries flagged. Routes can keep off toll roads and off car ferries.
 - Turkish voice prompts written from the maneuver data: *"300 metre sonra ışıklarda sağa dönün, Ankara Caddesi."*
 - A turn arrow on the route, a route line that starts under the car, the position snapped to the road, the name of the street you are on, zoom that follows speed and the next turn, the follow-up maneuver, and lanes where they are mapped.
 - Routes to airports, hospitals and malls end on the road in front of them, not in the middle of the site.

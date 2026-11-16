@@ -32,7 +32,7 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
 4. Kutuların altında varış saati (24 saat biçiminde), ana yollar ve varsa ücretli geçiş ya da feribot uyarısı görünmeli. Tek rota varsa süre ve mesafe de burada yazar.
 5. Canlı trafikte kart önce "Canlı trafik alınıyor…" der, sonra trafikli süreyi ve "Trafik X dk ekliyor" satırını gösterir; altta "Canlı trafik · © HERE" yazar. Trafik gelince rota çizgisi maviden trafik renklerine döner: akan kısımlar yeşil, yavaşlar sarı, yoğunlar kırmızı, duranlar koyu kırmızı.
 6. Havalimanı, hastane ya da AVM'ye rota alanın ortasında değil, önündeki yolda bitmeli.
-7. Harita ayarları → Rota → "Ücretli yollardan kaçın" açıkken Kadıköy → Beşiktaş rotası araba vapuruyla gitmeli ve kartta "Feribotla geçiş · Ücretli yollardan kaçınıldı" yazmalı.
+7. Harita ayarları → Rota → "Ücretli yollardan kaçın" açıkken Kadıköy → Beşiktaş rotası araba vapuruyla gitmeli ve kartta "Feribotla geçiş · Ücretli yollardan kaçınıldı" yazmalı. "Feribotlardan kaçın" tek başına açıkken aynı rota köprüden gitmeli; ikisi birlikte açıkken rota bulunamamalı ve kart bunu açıkça söylemeli ("Ücretli yol ve feribot kullanmadan bu hedefe rota bulunamadı…").
 8. Rota kartında "Başlat"ın yanındaki liste düğmesi rotanın dönüşlerini sırayla göstermeli: her satırda ok, kaç metre sonra olduğu, talimat ("Sağa dönün") ve girilecek yolun adı. Seçili rota değişince liste de değişmeli.
 
 ## Navigasyon
