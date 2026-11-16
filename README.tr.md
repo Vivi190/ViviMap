@@ -96,7 +96,7 @@ Mac'te: `brew install xcodegen`, `xcodegen`, sonra `Atlas.xcodeproj`'u aç. HERE
 
 ## Gizlilik
 
-Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda kalır. Uygulama işini yapmak için arama metnini ve konumunu Photon'a (yakındaki sonuçları öne almak için), başlangıç ve hedefi Valhalla'ya, trafik için rota şeklini ve harita bölgesini HERE'ye gönderir; ekrandaki bölgenin harita karolarını OpenFreeMap'ten ister. Kimlik bilgisi gönderilmez. İşletmeler telefonda aranır. Otopark listesi, İSPARK'ın boş yer sayıları için İstanbul'un açık veri servisine sorar: tüm şehir için tek istek, içinde konum yok. Yer kartı, yorumları için yeri Google Haritalar'da ya da Yandex Haritalar'da açabilir; yerin adı ve konumu yalnızca o zaman ve istendiğinde o servise gider.
+Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda kalır. Uygulama işini yapmak için arama metnini ve konumunu Photon'a (yakındaki sonuçları öne almak için), başlangıç ve hedefi Valhalla'ya, trafik için rota şeklini ve harita bölgesini HERE'ye gönderir; ekrandaki bölgenin harita karolarını OpenFreeMap'ten ister. Kimlik bilgisi gönderilmez. İşletmeler telefonda aranır. Otopark listesi, İSPARK'ın boş yer sayıları için İstanbul'un açık veri servisine sorar: tüm şehir için tek istek, içinde konum yok. Yer kartı, yorumları için yeri Google Haritalar'da ya da Yandex Haritalar'da açabilir; yerin adı ve konumu yalnızca o zaman ve istendiğinde o servise gider. Yapıştırılan bir Google Haritalar kısa bağlantısı, nereyi gösterdiğini öğrenmek için bir kez Google'a sorulur: yalnızca bağlantı gider.
 
 ## Veri ve teşekkür
 

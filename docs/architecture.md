@@ -126,7 +126,7 @@ Full rationale and sources: [research/2026-11-13-faz0-arastirma.md](research/202
 - API keys (HERE, Stadia) are not in the code.
   - They are injected at build time: `HERE_API_KEY` GitHub Secret → build setting → Info.plist (`HEREAPIKey`).
   - The key is plain text in the app bundle, readable by anyone who unpacks it. Accepted for private TestFlight use; if usage grows, the key moves behind a small proxy. Keychain would not help.
-  - A monthly quota guard for paid APIs (`RequestBudget`) keeps each device under half the free quota, so two phones can share one key at no cost.
+  - A monthly quota guard for paid APIs (`RequestBudget`) keeps the one phone that uses the key at nine tenths of the free quota (until 2026-11-16 at half of it, for two phones). It counts on the device: a second phone, or a deleted and reinstalled app, is not seen.
 - Signing material lives only in GitHub Secrets and is wiped from the runner after each workflow. `.gitignore` keeps these files out of the repository.
 - Offline packages (Phase 4) are verified with SHA-256.
 

@@ -96,7 +96,7 @@ On a Mac: `brew install xcodegen`, run `xcodegen`, then open `Atlas.xcodeproj`. 
 
 ## Privacy
 
-No accounts, analytics or tracking. Saved places and trip history stay on the phone. To do its job the app sends search text and your location to Photon (to rank nearby results), start and destination to Valhalla, route shapes and map areas to HERE for traffic, and requests map tiles for the area on screen from OpenFreeMap. No identifiers are sent. Businesses are searched on the phone. A list of car parks asks Istanbul's open data service for İSPARK's free spaces: one request for the whole city, with no position in it. A place card can open the place in Google Maps or Yandex Maps for its reviews; only then, and only when asked, does the place's name and position go to that service.
+No accounts, analytics or tracking. Saved places and trip history stay on the phone. To do its job the app sends search text and your location to Photon (to rank nearby results), start and destination to Valhalla, route shapes and map areas to HERE for traffic, and requests map tiles for the area on screen from OpenFreeMap. No identifiers are sent. Businesses are searched on the phone. A list of car parks asks Istanbul's open data service for İSPARK's free spaces: one request for the whole city, with no position in it. A place card can open the place in Google Maps or Yandex Maps for its reviews; only then, and only when asked, does the place's name and position go to that service. A pasted short link of Google Maps is asked of Google once, to learn where it leads: the link goes, nothing else.
 
 ## Data and acknowledgements
 

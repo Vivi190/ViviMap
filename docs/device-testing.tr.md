@@ -22,7 +22,7 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
 10. Karttaki **Kaydet** ile bir yeri kaydedin: düğme "Kaydedildi" olmalı, yer arama ekranında "Kaydedilenler" altında görünmeli; düğmeye yeniden dokununca çıkmalı.
 11. "şarj" yazın ya da "Yakında → Şarj"a dokunun: en yakın halka açık şarj istasyonları işletmecisi, akım türü, gücü ve soket sayısıyla listelenmeli ("ZES Kartal Sahil Migros", "Şarj istasyonu · AC 22 kW · 2 soket · Kartal"). "zes", "trugo" gibi işletmeci adı o işletmecinin istasyonlarını getirmeli. Bildiğiniz bir istasyon eksikse ya da kapanmışsa not edin: kayıt Mayıs 2025 tarihli.
 12. Tür sözcükleri deneyin: "kargo", "terzi", "çilingir", "kuru temizleme", "noter", "emlakçı", "avukat", "düğün salonu". En yakınlar listelenmeli; kartlarında türleri yazmalı ("Kargo", "Noter", "Hukuk bürosu").
-13. Birinin gönderdiği konumu yapıştırın: WhatsApp konumu (maps.google.com/?q=…), Google, Apple ya da Yandex Haritalar'dan kopyalanmış uzun bağlantı. Tek sonuç "Paylaşılan konum" olarak gelmeli ve doğru noktayı göstermeli. Google Haritalar uygulamasının "Paylaş" ile verdiği kısa bağlantı (maps.app.goo.gl/…) koordinat içermez ve tanınmaz: beklenen davranış.
+13. Birinin gönderdiği konumu yapıştırın: WhatsApp konumu (maps.google.com/?q=…), Google, Apple ya da Yandex Haritalar'dan kopyalanmış uzun bağlantı. Tek sonuç "Paylaşılan konum" olarak gelmeli ve doğru noktayı göstermeli. Google Haritalar uygulamasının "Paylaş" ile verdiği kısa bağlantı (maps.app.goo.gl/…) da açılmalı: Atlas bağlantının nereyi gösterdiğini bir kez Google'a sorar; yer adıyla birlikte "Paylaşılan konum" olarak gelir.
 
 ## Rota seçimi
 

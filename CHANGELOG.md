@@ -2,6 +2,13 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
+## Build 33 — 2026-11-16
+
+- **Route settings:** "Feribotlardan kaçın" beside "Ücretli yollardan kaçın". With both on there is no way across the Bosphorus, and the card says so instead of offering the router's way round the Black Sea.
+- **Shared locations:** a short link from the Google Maps app ("maps.app.goo.gl/…") opens as a place. It carries no coordinates, so Google is asked once where it leads; only the link is sent.
+- **Traffic budget:** the monthly caps are nine tenths of HERE's free tier instead of half, now that one phone uses the key: about twice the hours of live traffic before "Bu ayın trafik sorgu sınırı doldu."
+- The list of a route's turns opens on an opaque sheet.
+
 ## Build 32 — 2026-11-16
 
 **Guidance**
