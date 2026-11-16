@@ -2,6 +2,35 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
+## Build 32 — 2026-11-16
+
+**Places on the map and their cards**
+- At street zoom the businesses of the search index show as badges on the map, in the look of the base map's own place badges; a tap opens the business's card. The base map alone showed about a tenth of a street's shops.
+- Hairdressers, offices, car services, vets, bakeries, butchers, dry cleaners and chargers have badges of their own; the base map's places of these kinds, which were not drawn at all, show too. A business whose kind is unknown is a plain dot, drawn where the others leave room.
+- The place card has a row of actions: call (285 000 businesses carry a phone number), website, star, share. Its route button shows the driving time once the routes asked for in advance are in ("Rota · 12 dk").
+- Starred places are listed in the search sheet under "Kaydedilenler". A star stays with its place when the index is rebuilt.
+- Reviews, photos and opening hours are not in open data and Google's may not be shown beside another map: the card's menu opens the place in Google Maps or Yandex Maps instead.
+- A tapped badge of the base map shows its kind ("İstasyon").
+- One-way streets carry an arrow at street zoom.
+
+**Search**
+- Forgiving spelling: "mediamarket" finds MediaMarkt, "kebabçı uzunlar" Kebapcı Uzunlar, "mcdonalds" McDonald's.
+- "Yakında" offers eight kinds (market, ATM, restaurant and cafe are new) from both indexes; a kind next to a district ("kartal kuaför") lists that district's.
+- A result row says what a place is before where it is ("Kafe · Ankara Caddesi 54, Kartal").
+- 34 000 businesses that open data lists without a kind get it from their name ("Beşiktaş 5. Noterliği", "Aras Kargo", "Kuaför Ümit", "Manolya Sitesi"). Forty more kinds have a word on the card, and many can be asked for by it: "kargo", "terzi", "çilingir", "kuru temizleme", "emlakçı", "avukat", "nakliyat", "düğün salonu", "sürücü kursu", "noter", "postane".
+- A location pasted as a link is opened as a place: what Google Maps, Apple Maps, Yandex Maps and WhatsApp share when the link carries its coordinates, and "geo:" addresses. Short links (maps.app.goo.gl) carry none and are not understood.
+
+**Istanbul's open data**
+- Charging stations: the 1 807 public stations of the energy regulator's register, with their fastest current and their sockets ("ZES Kartal Sahil Migros · AC 22 kW · 2 soket"), found under "Şarj", by operator ("zes", "trugo") and on the map. There were 87. The register is a snapshot of May 2025: stations opened since are missing.
+- Car park lists add İSPARK's car parks with the spaces free at that moment ("83 boş yer · 100 araçlık · 08:00-19:00"). A car park reporting no free space is listed without a count, not as full: the service reports zero for car parks it does not count. Car parks for coaches are left out.
+- Traffic lights: the municipality's list of signalised junctions fills in the half OpenStreetMap lacks, 1 274 junctions (320 of the 479 around Kartal, Pendik and Tuzla had no light on the map). They show on the map and in "Işıklarda sağa dönün".
+
+**Route card**
+- A list of the route's turns, in the words and arrows guidance uses, behind a button beside "Başlat".
+
+**Wording**
+- One form of address ("siz") in messages and settings, as in the spoken prompts. The faster-route offer is answered with "Değiştir" or "Hayır". One wording for a time without traffic ("Trafiksiz tahmini süre").
+
 ## Build 31 — 2026-11-16
 
 - **Businesses in search:** shops, restaurants, offices and other businesses by name, nearest first, also without a connection. They come from an on-device index of 389 000 places for Istanbul, built from the open places data of Overture Maps; OpenStreetMap, which search relied on, has about a tenth of them.

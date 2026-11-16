@@ -60,7 +60,7 @@ Only two steps were manual, in Apple's web interface; [Tools/appstore/provision.
 
 ## Live traffic key (optional)
 
-Without a HERE key the build has no traffic; the route card says "Trafik dahil değil" (traffic not included). To add the key:
+Without a HERE key the build has no traffic; the route card says "Trafiksiz tahmini süre" (estimated time without traffic). To add the key:
 
 1. https://platform.here.com → **Access Manager → Apps → Register new app** → **Credentials → API Keys → Create API key**.
 2. Store the key as a GitHub Secret: `gh secret set HERE_API_KEY -R Vivi190/ViviMap` (the command prompts for the value, so it never lands in code or the repository).

@@ -25,7 +25,7 @@
 **Navigasyon**
 - [Ferrostar](https://github.com/stadiamaps/ferrostar) üzerinde, [Valhalla](https://github.com/valhalla/valhalla) rotalarıyla adım adım yönlendirme: alternatifler, otomatik yeniden rota, ekran kilitliyken de süren yönlendirme.
 - Apple Haritalar ve Yandex'teki gibi rota seçimi: her seçeneğin süresi haritada bir baloncukta (dokununca seçilir), seçenekler yan yana ve her birinin ne kadar yavaş olduğu, ücretli geçiş ve feribot uyarısı.
-- Manevra verisinden yazılan Türkçe sesli yönlendirme: *"300 metre sonra ışıklarda sağa dön, Ankara Caddesi."*
+- Manevra verisinden yazılan Türkçe sesli yönlendirme: *"300 metre sonra ışıklarda sağa dönün, Ankara Caddesi."*
 - Rota üzerinde dönüş oku, aracın altından başlayan rota çizgisi, yola oturtulmuş konum oku, üzerinde olunan yolun adı, hıza ve dönüşe göre yakınlaşma, ardışık manevra ve verisi olan yollarda şeritler.
 - Havalimanı, hastane ve AVM rotaları alanın ortasında değil, önündeki yolda biter.
 - Kilit ekranında ve Dynamic Island'da Live Activity.
@@ -36,10 +36,11 @@
 - Cihaz başına aylık istek bütçesi, kullanımı sağlayıcının ücretsiz kotasında tutar.
 
 **Arama**, İstanbul'a göre ayarlı (Photon, OpenStreetMap, Overture Maps)
-- İşletmeler adıyla, en yakından başlayarak ve bağlantı olmadan da bulunur: Overture Maps'in açık yer verisinden üretilmiş, cihazdaki 389 000 dükkân, restoran ve iş yerinden oluşan dizin. Sokak yakınlığında haritada rozet olarak görünürler; kartlarında, veride varsa, telefon numarası ve web sitesi yer alır.
+- İşletmeler adıyla, en yakından başlayarak ve bağlantı olmadan da bulunur: Overture Maps'in açık yer verisinden üretilmiş, cihazdaki 390 000 dükkân, restoran, iş yeri ve hizmet noktasından oluşan dizin. Sokak yakınlığında haritada rozet olarak (türü bilinmeyenler sade bir nokta olarak) görünürler; kartlarında, veride varsa, telefon numarası ve web sitesi yer alır.
 - Adresler insanların yazdığı gibi: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
-- Yakındaki yer türleri (*"benzinlik"*, *"en yakın eczane"*), bir semtte (*"esentepe eczane"*) ve hedefin çevresindeki otoparklar.
-- OpenStreetMap'e karşı ölçüldü: ölçüm sorgularının 64'ünde 64'ünde ilk sonuç kastedilen yer ([rapor](docs/research/2026-11-14-arama-olcumu.md)).
+- Yakındaki yer türleri (*"benzinlik"*, *"en yakın eczane"*), bir semtte (*"esentepe eczane"*) ve hedefin çevresindeki otoparklar; İSPARK otoparkları o andaki boş yer sayısıyla.
+- Şarj istasyonları EPDK kayıtlarından: İstanbul'daki 1 800 halka açık istasyon, en hızlı akım türü ve soket sayısıyla (*"şarj"*, *"zes"*).
+- OpenStreetMap'e karşı ölçüldü: 64 ölçüm sorgusunun 64'ünde ilk sonuç kastedilen yer ([rapor](docs/research/2026-11-14-arama-olcumu.md)).
 
 **Çevrimdışı**
 - İstanbul'un tamamı uygulamayla gelir: vektör karolar (PMTiles), cihazda Valhalla rotası ve arama dizini. Bağlantı kesilince harita, arama, rota ve yeniden rota devam eder.
@@ -102,7 +103,7 @@ Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda
 - Harita verisi © [OpenStreetMap](https://www.openstreetmap.org/copyright) katkıcıları, ODbL. Karolar [OpenFreeMap](https://openfreemap.org) (OpenMapTiles şeması); çevrimdışı karolar [Planetiler](https://github.com/onthegomap/planetiler) ile üretilir.
 - Arama [Photon](https://github.com/komoot/photon) (komoot). Rota [Valhalla](https://github.com/valhalla/valhalla); FOSSGIS'in ortak sunucusunda ve cihazda [valhalla-mobile](https://github.com/Rallista/valhalla-mobile) ile.
 - Trafik © HERE.
-- İSPARK otoparklarındaki boş yer sayıları ve sinyalize kavşak listesi [İBB Açık Veri Portalı](https://data.ibb.gov.tr/license)'ndan (İBB Açık Veri Lisansı). Bu depodaki kavşak listesi (`junctions-istanbul.json`) İstanbul Büyükşehir Belediyesi'nin bu lisans altındaki verisidir.
+- İSPARK otoparklarındaki boş yer sayıları, sinyalize kavşak listesi ve halka açık şarj istasyonları (EPDK kayıtları) [İBB Açık Veri Portalı](https://data.ibb.gov.tr/license)'ndan (İBB Açık Veri Lisansı). Bu depodaki kavşak ve şarj istasyonu listeleri (`junctions-istanbul.json`, `chargers-istanbul.json`) İstanbul Büyükşehir Belediyesi'nin bu lisans altındaki verisidir.
 - İşletmeler [Overture Maps Foundation](https://docs.overturemaps.org/attribution/) yer verisinden: Meta, Microsoft ve diğerleri (CDLA-Permissive-2.0), Foursquare (Apache-2.0) ve AllThePlaces (CC0-1.0) kayıtları.
 - Bu depodaki OpenStreetMap kesitleri (hız kameraları, kasisler, trafik ışıkları, test verileri) © OpenStreetMap katkıcıları, ODbL.
 - Kullanılan kütüphaneler: MapLibre Native (BSD-2-Clause), MapLibre SwiftUI DSL (BSD-3-Clause), Ferrostar (BSD-3-Clause), valhalla-mobile (MIT).

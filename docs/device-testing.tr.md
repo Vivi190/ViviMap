@@ -6,7 +6,7 @@ Sürüş testleri yolcuyken yapılmalı; sürücüyken uygulamayla yalnızca ara
 
 ## Hazırlık: sürüş simülasyonu
 
-Harita ayarları → Test → **Sürüş simülasyonu** açılınca rota kartında **Simüle et** düğmesi çıkar. Konum GPS yerine rota boyunca, Valhalla'nın o rota için varsaydığı ortalama hızla ilerler. Talimat kartı, sesli uyarılar ve kamera araç kullanmadan denenebilir. Simülasyon sürerken ekranda **Simülasyon** etiketi durur.
+Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota kartında, "Başlat"ın yanında bir oynatma düğmesi çıkar. Konum GPS yerine rota boyunca, Valhalla'nın o rota için varsaydığı ortalama hızla ilerler. Talimat kartı, sesli uyarılar ve kamera araç kullanmadan denenebilir. Simülasyon sürerken ekranda **Simülasyon** etiketi durur.
 
 ## Arama ve yer seçme
 
@@ -17,9 +17,12 @@ Harita ayarları → Test → **Sürüş simülasyonu** açılınca rota kartın
 5. İşletme adı yazın ("mediamarkt", "kıyı pastanesi", bildiğiniz bir restoran, kuaför ya da dükkân): en yakın şubeler adresleri ve mesafeleriyle listelenmeli; uçak modunda da. "kuaför", "veteriner", "oto servis", "çiçekçi" gibi tür sözcükleri en yakınları, "kartal kuaför" gibi semtle birlikte yazılınca o semttekileri listelemeli. Yanlış yazılan adlar da bulunmalı ("mediamarket", "kebabçı uzunlar", "mcdonalds"). Bulunamayan ya da yeri yanlış çıkan işletmeleri not edin.
 6. Yazmadan önce "Yakında" altındaki sekiz düğme (Benzinlik, Otopark, Eczane, Şarj, Market, ATM, Restoran, Kafe) en yakınları listelemeli; uçak modunda da.
 7. Bir sonuç seçin. Haritada kırmızı iğne, kartta adı, türü ve mesafesi ("Adliye · 3,0 km") ve adresi görünmeli.
-8. Haritayı sokak düzeyine yaklaştırın: çevredeki işletmeler (restoran, market, banka, kuaför…) rozet olarak görünmeli. Bir rozete dokunun: o yerin kartı açılmalı; işletmelerde adres hemen, haritanın kendi rozetlerinde (istasyon, park…) bir an sonra gelir. Kartta bir eylem satırı görünmeli: veride varsa **Ara** (dokununca arama başlar) ve **Web sitesi**, her yerde **Kaydet** ve **Paylaş** (bir harita bağlantısı gönderir). **Rota** düğmesi birkaç saniye içinde yaklaşık sürüş süresini göstermeli ("Rota · 12 dk"). "…" menüsündeki "Google Haritalar'da aç" ve "Yandex Haritalar'da aç" yorumlar için o uygulamayı açmalı. Rozet olmayan bir noktaya uzun basın: kartta adres çıkmalı. Kartın "…" menüsünden **Ev olarak kaydet** seçilince arama çubuğunun altında "Ev" kapsülü çıkmalı; dokununca doğrudan rota kartı açılmalı.
-9. Kartın "…" menüsündeki "Yakındaki otoparklar" o yerin çevresindeki otoparkları, o yere uzaklıklarıyla listelemeli. İSPARK otoparkları bir iki saniye içinde o anki boş yer sayısıyla görünmeli ("Otopark · 83 boş yer · 100 araçlık · 08:00-19:00 · İSPARK"; yer kalmadıysa "Dolu").
+8. Haritayı sokak düzeyine yaklaştırın: çevredeki işletmeler (restoran, market, banka, kuaför, ofis, oto servis, veteriner…) rozet olarak görünmeli; türü bilinmeyen işletmeler küçük gri bir nokta ve adlarıyla, diğerlerinden yer kaldıkça görünür. Bir rozete dokunun: o yerin kartı açılmalı; işletmelerde adres hemen, haritanın kendi rozetlerinde (istasyon, park…) bir an sonra gelir. Kartta bir eylem satırı görünmeli: veride varsa **Ara** (dokununca arama başlar) ve **Web sitesi**, her yerde **Kaydet** ve **Paylaş** (bir harita bağlantısı gönderir). **Rota** düğmesi birkaç saniye içinde yaklaşık sürüş süresini göstermeli ("Rota · 12 dk"). "…" menüsündeki "Google Haritalar'da aç" ve "Yandex Haritalar'da aç" yorumlar için o uygulamayı açmalı. Rozet olmayan bir noktaya uzun basın: kartta adres çıkmalı. Kartın "…" menüsünden **Ev olarak kaydet** seçilince arama çubuğunun altında "Ev" kapsülü çıkmalı; dokununca doğrudan rota kartı açılmalı.
+9. Kartın "…" menüsündeki "Yakındaki otoparklar" o yerin çevresindeki otoparkları, o yere uzaklıklarıyla listelemeli. İSPARK otoparkları bir iki saniye içinde o anki boş yer sayısıyla görünmeli ("Otopark · 83 boş yer · 100 araçlık · 08:00-19:00 · İSPARK"). Boş yer bildirmeyen otoparkta sayı yazmaz; "dolu" denmez, çünkü servis saymadığı otoparklar için de sıfır bildiriyor.
 10. Karttaki **Kaydet** ile bir yeri kaydedin: düğme "Kaydedildi" olmalı, yer arama ekranında "Kaydedilenler" altında görünmeli; düğmeye yeniden dokununca çıkmalı.
+11. "şarj" yazın ya da "Yakında → Şarj"a dokunun: en yakın halka açık şarj istasyonları işletmecisi, akım türü, gücü ve soket sayısıyla listelenmeli ("ZES Kartal Sahil Migros", "Şarj istasyonu · AC 22 kW · 2 soket · Kartal"). "zes", "trugo" gibi işletmeci adı o işletmecinin istasyonlarını getirmeli. Bildiğiniz bir istasyon eksikse ya da kapanmışsa not edin: kayıt Mayıs 2025 tarihli.
+12. Tür sözcükleri deneyin: "kargo", "terzi", "çilingir", "kuru temizleme", "noter", "emlakçı", "avukat", "düğün salonu". En yakınlar listelenmeli; kartlarında türleri yazmalı ("Kargo", "Noter", "Hukuk bürosu").
+13. Birinin gönderdiği konumu yapıştırın: WhatsApp konumu (maps.google.com/?q=…), Google, Apple ya da Yandex Haritalar'dan kopyalanmış uzun bağlantı. Tek sonuç "Paylaşılan konum" olarak gelmeli ve doğru noktayı göstermeli. Google Haritalar uygulamasının "Paylaş" ile verdiği kısa bağlantı (maps.app.goo.gl/…) koordinat içermez ve tanınmaz: beklenen davranış.
 
 ## Rota seçimi
 
@@ -27,9 +30,10 @@ Harita ayarları → Test → **Sürüş simülasyonu** açılınca rota kartın
 2. Seçili rotanın süresi ve mesafesi haritada, yalnız o rotanın geçtiği yerde mavi bir baloncukta görünmeli. Diğer rotaların baloncuğunda seçili rotaya göre fark yazar: "+2 dk" kırmızı, "−3 dk" yeşil.
 3. Kartta rotalar yan yana kutular olarak durur: "En hızlı", "+N dk" ya da "Benzer süre" etiketi, süre ve mesafe; seçili kutu mavi dolguludur. Trafikli süreler gelince kutuların sırası değişmemeli. Bir kutuya ya da haritadaki baloncuğa dokununca seçim değişmeli.
 4. Kutuların altında varış saati (24 saat biçiminde), ana yollar ve varsa ücretli geçiş ya da feribot uyarısı görünmeli. Tek rota varsa süre ve mesafe de burada yazar.
-5. Canlı trafikte kart önce "Canlı trafik alınıyor…" der, sonra trafikli süreyi ve "Trafik X dk ekliyor" satırını gösterir; altta "Canlı trafikle · © HERE" yazar. Trafik gelince rota çizgisi maviden trafik renklerine döner: akan kısımlar yeşil, yavaşlar sarı, yoğunlar kırmızı, duranlar koyu kırmızı.
+5. Canlı trafikte kart önce "Canlı trafik alınıyor…" der, sonra trafikli süreyi ve "Trafik X dk ekliyor" satırını gösterir; altta "Canlı trafik · © HERE" yazar. Trafik gelince rota çizgisi maviden trafik renklerine döner: akan kısımlar yeşil, yavaşlar sarı, yoğunlar kırmızı, duranlar koyu kırmızı.
 6. Havalimanı, hastane ya da AVM'ye rota alanın ortasında değil, önündeki yolda bitmeli.
 7. Harita ayarları → Rota → "Ücretli yollardan kaçın" açıkken Kadıköy → Beşiktaş rotası araba vapuruyla gitmeli ve kartta "Feribotla geçiş · Ücretli yollardan kaçınıldı" yazmalı.
+8. Rota kartında "Başlat"ın yanındaki liste düğmesi rotanın dönüşlerini sırayla göstermeli: her satırda ok, kaç metre sonra olduğu, talimat ("Sağa dönün") ve girilecek yolun adı. Seçili rota değişince liste de değişmeli.
 
 ## Navigasyon
 
@@ -50,14 +54,15 @@ Harita ayarları → Test → **Sürüş simülasyonu** açılınca rota kartın
    Aynı anda Yandex Haritalar açılıp aynı yollar karşılaştırılmalı: renkler büyük ölçüde örtüşmeli.
 2. Kapalı yollar kırmızı kesikli çizgi ve girilmez işaretiyle, kazalar ve yol çalışmaları kendi işaretleriyle görünmeli. Navigasyonda rotanın üstündekiler görünmeye devam eder.
 3. Navigasyonda trafik katmanı açık kalır: rotanın çevresindeki yollar da renkli görünür. Canlı trafikle rota çizgisi trafik renklerindedir ve alt satırdaki ince şerit kalan yolu gösterir. Varış saati 3 dakikada bir trafiğe göre yenilenir; altında "Canlı trafik · © HERE" yazar.
-4. Belirgin bir kazanç (en az 3 dk ve %15) olursa "Daha hızlı rota" bandı çıkar; 20 saniye içinde dokunulmazsa mevcut rota kalır.
+4. Belirgin bir kazanç (en az 3 dk ve %15) olursa "Daha hızlı rota" bandı çıkar ("Değiştir" yeni rotaya geçer, "Hayır" bandı kapatır); 20 saniye içinde dokunulmazsa mevcut rota kalır.
 
 ## Sürüş uyarıları ve harita
 
 1. Sokak düzeyinde trafik ışıkları, kasis levhaları ve kamera rozetleri haritada görünmeli. Bildiğiniz ışıklı kavşaklarda ışık simgesi olmalı (belediyenin sinyalize kavşak listesi eklendi; eksik kalan kavşakları not edin); yer rozetleri (restoran, eczane, okul…) renkli simgelerle görünür ve navigasyonda gizlenir.
+   Tek yönlü sokaklarda yol boyunca küçük gri oklar görünmeli; bildiğiniz tek yönlü sokaklarda yönün doğru olduğunu kontrol edin.
 2. Navigasyonda "Kasis · 80 m" ya da "Hız kamerası · 300 m" etiketi çıkmalı ve uyarı bir kez seslendirilmeli. Ayarlar → Uyarılar'dan açılıp kapanır.
 3. Bölgede OSM'de neredeyse kamera yok; bilinen kameralar ve kasisler uzun basıp "…" menüsünden işaretlenebilir. İşaretler Ayarlar → Uyarılar → İşaretlerim'den silinir.
-4. Hız sınırı işli bir yolda sınırın belirgin üstünde (50'lik yolda 57 ve üstü) 3 saniye kalınca "Hız sınırı 50." denmeli.
+4. Hız sınırı bilinen bir yolda sınırın belirgin üstünde (50'lik yolda 57 ve üstü) 3 saniye kalınca "Hız sınırı 50." denmeli.
 5. Sağ üstteki hız göstergesi araçla tutarlı olmalı; tünelde "–" ve sol üstte "GPS sinyali yok" görünmeli.
 6. Gün batımından sonra harita kendiliğinden gece moduna geçmeli.
 

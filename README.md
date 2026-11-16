@@ -25,7 +25,7 @@
 **Navigation**
 - Turn-by-turn guidance on [Ferrostar](https://github.com/stadiamaps/ferrostar) with routes from [Valhalla](https://github.com/valhalla/valhalla): alternatives, automatic rerouting, and guidance that continues with the screen locked.
 - Choosing a route as in Apple Maps and Yandex: each option's time in a bubble on the map (tap one to choose it), the options side by side with how much slower each is, tolls and ferries flagged.
-- Turkish voice prompts written from the maneuver data: *"300 metre sonra ışıklarda sağa dön, Ankara Caddesi."*
+- Turkish voice prompts written from the maneuver data: *"300 metre sonra ışıklarda sağa dönün, Ankara Caddesi."*
 - A turn arrow on the route, a route line that starts under the car, the position snapped to the road, the name of the street you are on, zoom that follows speed and the next turn, the follow-up maneuver, and lanes where they are mapped.
 - Routes to airports, hospitals and malls end on the road in front of them, not in the middle of the site.
 - A Live Activity on the lock screen and in the Dynamic Island.
@@ -36,9 +36,10 @@
 - A monthly request budget per device keeps usage inside the provider's free tier.
 
 **Search**, tuned for Istanbul (Photon, OpenStreetMap, Overture Maps)
-- Businesses by name, nearest first, also without a connection: an on-device index of 389 000 shops, restaurants and offices from the open places data of Overture Maps. They show as badges on the map at street zoom, and their cards carry phone number and website where the data has them.
+- Businesses by name, nearest first, also without a connection: an on-device index of 390 000 shops, restaurants, offices and services from the open places data of Overture Maps. They show as badges on the map at street zoom (a plain dot where the kind is unknown), and their cards carry phone number and website where the data has them.
 - Addresses as people write them: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
 - Kinds of places near you (*"benzinlik"*, *"en yakın eczane"*), in a district (*"esentepe eczane"*), and car parks around a destination, İSPARK's with their free spaces right now.
+- Charging stations from the energy regulator's register: Istanbul's 1 800 public stations with their fastest current and their sockets (*"şarj"*, *"zes"*).
 - Measured against OpenStreetMap: the first result is the intended place for 64 of 64 benchmark queries ([report](docs/research/2026-11-14-arama-olcumu.md), in Turkish).
 
 **Offline**
@@ -102,7 +103,7 @@ No accounts, analytics or tracking. Saved places and trip history stay on the ph
 - Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Tiles by [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema); offline tiles built with [Planetiler](https://github.com/onthegomap/planetiler).
 - Search by [Photon](https://github.com/komoot/photon) (komoot). Routing by [Valhalla](https://github.com/valhalla/valhalla), on the FOSSGIS public server and on the device through [valhalla-mobile](https://github.com/Rallista/valhalla-mobile).
 - Traffic © HERE.
-- Free spaces in İSPARK car parks and the list of signalised junctions from the [İBB Open Data Portal](https://data.ibb.gov.tr/license) (İBB Açık Veri Lisansı). The junction list in this repository (`junctions-istanbul.json`) is İstanbul Büyükşehir Belediyesi's data under that licence.
+- Free spaces in İSPARK car parks, the list of signalised junctions and the public charging stations (the energy regulator's register) from the [İBB Open Data Portal](https://data.ibb.gov.tr/license) (İBB Açık Veri Lisansı). The junction list and the charging-station list in this repository (`junctions-istanbul.json`, `chargers-istanbul.json`) are İstanbul Büyükşehir Belediyesi's data under that licence.
 - Businesses from the places theme of the [Overture Maps Foundation](https://docs.overturemaps.org/attribution/): records from Meta, Microsoft and others (CDLA-Permissive-2.0), Foursquare (Apache-2.0) and AllThePlaces (CC0-1.0).
 - The OpenStreetMap extracts in this repository (speed cameras, speed bumps, traffic lights, test fixtures) are © OpenStreetMap contributors, ODbL.
 - Built with MapLibre Native (BSD-2-Clause), MapLibre SwiftUI DSL (BSD-3-Clause), Ferrostar (BSD-3-Clause) and valhalla-mobile (MIT).
