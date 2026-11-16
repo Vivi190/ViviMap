@@ -1,20 +1,30 @@
 import CoreLocation
 import UIKit
 
-/// A candidate route's time on the map, as Apple Maps and Yandex label them: a bubble on a stretch only that
-/// route takes; the chosen route's bubble is blue, and tapping another one chooses that route.
+/// A candidate route on the map, labelled as Yandex and Apple Maps label them: a callout on a stretch only that
+/// route takes. The chosen route's says its time and distance on blue; the others say how much slower (red) or
+/// faster (green) they are, and tapping one chooses that route.
 public struct RouteLabel: Sendable {
-    /// The route's index (RouteOption.index), handed back when its bubble is tapped.
+    public enum Tone: Sendable {
+        case selected, slower, faster
+    }
+
+    /// The route's index (RouteOption.index), handed back when its callout is tapped.
     public let route: Int
     public let coordinate: CLLocationCoordinate2D
     public let text: String
-    public let isSelected: Bool
+    /// A second line (the chosen route's distance); nil for a one-line callout.
+    public let detail: String?
+    public let tone: Tone
 
-    public init(route: Int, coordinate: CLLocationCoordinate2D, text: String, isSelected: Bool) {
+    public var isSelected: Bool { tone == .selected }
+
+    public init(route: Int, coordinate: CLLocationCoordinate2D, text: String, detail: String? = nil, tone: Tone) {
         self.route = route
         self.coordinate = coordinate
         self.text = text
-        self.isSelected = isSelected
+        self.detail = detail
+        self.tone = tone
     }
 
     /// Where to put a route's time: its point farthest from the other candidates, so bubbles do not pile up on
@@ -47,30 +57,54 @@ public struct RouteLabel: Sendable {
         return hypot(ax + t * dx, ay + t * dy)
     }
 
-    /// The bubble: the chosen route's in route blue with a white rim; the others white by day, graphite at
-    /// night, so they read as "also possible" without competing.
-    static func bubble(_ text: String, selected: Bool, night: Bool) -> UIImage {
-        let font = UIFont.systemFont(ofSize: 15, weight: .bold)
-        let textSize = (text as NSString).size(withAttributes: [.font: font])
+    /// The callout: a rounded box with a small tail under its middle (the image is anchored at its bottom, so the
+    /// tail points at the route). Blue with white text for the chosen route; white by day and graphite at night
+    /// for the others, their difference in red or green.
+    static func bubble(_ label: RouteLabel, night: Bool) -> UIImage {
+        let titleFont = UIFont.systemFont(ofSize: 16, weight: .bold)
+        let detailFont = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        let fill: UIColor
+        let ink: UIColor
+        switch label.tone {
+        case .selected:
+            fill = POIIcons.rgb(0x1F6FEB)
+            ink = .white
+        case .slower:
+            fill = night ? POIIcons.rgb(0x2C2C2E) : .white
+            ink = POIIcons.rgb(night ? 0xFF6B6B : 0xD7263D)
+        case .faster:
+            fill = night ? POIIcons.rgb(0x2C2C2E) : .white
+            ink = POIIcons.rgb(night ? 0x4CD964 : 0x1E9E4A)
+        }
+        let title = label.text as NSString
+        let titleSize = title.size(withAttributes: [.font: titleFont])
+        let detailSize = label.detail.map { ($0 as NSString).size(withAttributes: [.font: detailFont]) } ?? .zero
         let margin: CGFloat = 4 // room for the shadow
-        let body = CGRect(x: margin, y: margin, width: ceil(textSize.width) + 20, height: 28)
-        let fill = selected ? POIIcons.rgb(0x1F6FEB) : night ? POIIcons.rgb(0x2C2C2E) : .white
-        let rim = selected ? UIColor.white : night ? POIIcons.rgb(0x48484A) : POIIcons.rgb(0xD1D1D6)
-        let ink = selected ? UIColor.white : night ? POIIcons.rgb(0xF2F2F7) : POIIcons.rgb(0x1C1C1E)
-        let size = CGSize(width: body.width + margin * 2, height: body.height + margin * 2)
+        let tail: CGFloat = 7
+        let body = CGRect(
+            x: margin, y: margin,
+            width: ceil(max(titleSize.width, detailSize.width)) + 22,
+            height: ceil(titleSize.height + detailSize.height) + 10
+        )
+        let size = CGSize(width: body.width + margin * 2, height: body.height + tail + margin * 2)
         return UIGraphicsImageRenderer(size: size).image { context in
-            let path = UIBezierPath(roundedRect: body, cornerRadius: 9)
+            let pointer = UIBezierPath()
+            pointer.move(to: CGPoint(x: body.midX - 7, y: body.maxY - 2))
+            pointer.addLine(to: CGPoint(x: body.midX, y: body.maxY + tail))
+            pointer.addLine(to: CGPoint(x: body.midX + 7, y: body.maxY - 2))
+            pointer.close()
             context.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 3, color: UIColor.black.withAlphaComponent(0.3).cgColor)
             fill.setFill()
-            path.fill()
+            pointer.fill()
+            UIBezierPath(roundedRect: body, cornerRadius: 10).fill()
             context.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
-            rim.setStroke()
-            path.lineWidth = selected ? 2 : 1
-            path.stroke()
-            (text as NSString).draw(
-                at: CGPoint(x: body.midX - textSize.width / 2, y: body.midY - textSize.height / 2),
-                withAttributes: [.font: font, .foregroundColor: ink]
-            )
+            title.draw(at: CGPoint(x: body.minX + 11, y: body.minY + 5), withAttributes: [.font: titleFont, .foregroundColor: ink])
+            if let detail = label.detail {
+                (detail as NSString).draw(
+                    at: CGPoint(x: body.minX + 11, y: body.minY + 5 + titleSize.height),
+                    withAttributes: [.font: detailFont, .foregroundColor: ink.withAlphaComponent(0.85)]
+                )
+            }
         }
     }
 }

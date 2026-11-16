@@ -37,10 +37,49 @@ struct RouteLabelTests {
         #expect(same(points.first, line[0]) && same(points.last, line[999]))
     }
 
-    @Test func longerTimesGetWiderBubbles() {
-        let short = RouteLabel.bubble("9 dk", selected: true, night: false)
-        let long = RouteLabel.bubble("1 sa 25 dk", selected: false, night: true)
-        #expect(long.size.width > short.size.width)
-        #expect(long.size.height == short.size.height)
+    @Test func calloutsGrowWithTheirText() {
+        let here = CLLocationCoordinate2D(latitude: 40.9, longitude: 29.2)
+        let delta = RouteLabel.bubble(RouteLabel(route: 1, coordinate: here, text: "+2 dk", tone: .slower), night: false)
+        let longer = RouteLabel.bubble(RouteLabel(route: 2, coordinate: here, text: "+1 sa 25 dk", tone: .slower), night: true)
+        let chosen = RouteLabel.bubble(RouteLabel(route: 0, coordinate: here, text: "16 dk", detail: "6,2 km", tone: .selected), night: false)
+        #expect(longer.size.width > delta.size.width)
+        #expect(longer.size.height == delta.size.height)
+        // The chosen route's callout carries a second line.
+        #expect(chosen.size.height > delta.size.height)
+    }
+}
+
+struct GuidanceAnchorTests {
+    /// MapLibre pins the tracked position to the centre of the area inside the content inset; the arrow drawn
+    /// for the car has to sit on the same point.
+    @Test func theCarSitsLowInPortraitAndRightOfThePanelsInLandscape() {
+        let portrait = AtlasMapView.guidanceAnchor(in: CGSize(width: 393, height: 852))
+        #expect(abs(portrait.x - 196.5) < 0.01)
+        #expect(abs(portrait.y - 852 * 0.7) < 0.01)
+        let landscape = AtlasMapView.guidanceAnchor(in: CGSize(width: 852, height: 393))
+        #expect(abs(landscape.x - 617.7) < 0.01)
+        #expect(abs(landscape.y - 393 * 0.65) < 0.01)
+    }
+}
+
+struct TrafficOverlayTests {
+    private let a = CLLocationCoordinate2D(latitude: 40.9, longitude: 29.2)
+    private let b = CLLocationCoordinate2D(latitude: 40.91, longitude: 29.21)
+
+    /// The overlay is asked on every map update; it must touch the map only when the picture changed, and a
+    /// refresh that moved one colour along the same roads is such a change.
+    @Test func theMapIsRedrawnOnlyWhenTheTrafficChanged() {
+        let flowing = [TrafficLine(level: .free, coordinates: [a, b]), TrafficLine(level: .free, coordinates: [b, a])]
+        let jammed = [TrafficLine(level: .free, coordinates: [a, b]), TrafficLine(level: .heavy, coordinates: [b, a])]
+        #expect(TrafficOverlay.signature(of: flowing) == TrafficOverlay.signature(of: flowing))
+        #expect(TrafficOverlay.signature(of: flowing) != TrafficOverlay.signature(of: jammed))
+        #expect(TrafficOverlay.signature(of: []) != TrafficOverlay.signature(of: flowing))
+    }
+
+    @Test func everyLevelHasItsOwnColourDayAndNight() {
+        for night in [false, true] {
+            let colours = Set(TrafficLine.Level.allCases.map { TrafficOverlay.color($0, night: night).description })
+            #expect(colours.count == TrafficLine.Level.allCases.count)
+        }
     }
 }

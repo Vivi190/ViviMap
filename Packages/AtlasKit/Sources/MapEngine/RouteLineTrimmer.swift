@@ -10,12 +10,16 @@ import MapLibreSwiftDSL
 @MainActor
 public final class RouteLineTrimmer {
     weak var mapView: MLNMapView?
+    /// Our own arrow marks the car (AtlasMapView): MapLibre's puck stays invisible. Re-applied on every fix,
+    /// because MapLibre makes a new puck view when its location source changes.
+    var hidesPuck = false
 
     public init() {}
 
     /// `traffic`: the route's slow stretches still ahead, already cut at the car.
     public func show(_ route: [CLLocationCoordinate2D], traffic: [TrafficLine]) {
-        guard let style = mapView?.style else { return }
+        guard let mapView, let style = mapView.style else { return }
+        Self.setPuck(hidden: hidesPuck, in: mapView)
         if route.count > 1, let source = style.source(withIdentifier: AtlasMapView.routeSourceID) as? MLNShapeSource {
             source.shape = MLNPolylineFeature(coordinates: route)
         }
@@ -25,5 +29,12 @@ public final class RouteLineTrimmer {
             let lines = traffic.filter { $0.level == level && $0.coordinates.count > 1 }
             source.shape = MLNShapeCollection(shapes: lines.map { MLNPolylineFeature(coordinates: $0.coordinates) as MLNShape })
         }
+    }
+
+    /// MapLibre's puck is a view it owns and positions; only its alpha is ours to set (it never touches it).
+    static func setPuck(hidden: Bool, in mapView: MLNMapView) {
+        guard let user = mapView.userLocation, let puck = mapView.view(for: user) else { return }
+        let alpha: CGFloat = hidden ? 0 : 1
+        if puck.alpha != alpha { puck.alpha = alpha }
     }
 }

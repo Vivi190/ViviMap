@@ -5,19 +5,22 @@ import MapLibreSwiftDSL
 import MapLibreSwiftUI
 import SwiftUI
 
-/// A stretch of the route drawn in a traffic colour (MapEngine stays independent of the traffic provider).
+/// A stretch of road drawn in a traffic colour (MapEngine stays independent of the traffic provider).
 public struct TrafficLine: Sendable {
-    /// `free` (green) only on the city layer.
-    public enum Level: Hashable, Sendable {
-        case free, slow, heavy, stopped
+    /// From flowing to standstill; `free` (green) only on the city layer.
+    public enum Level: Int, Hashable, Sendable, CaseIterable {
+        case free = 0, slow, heavy, stopped
     }
 
     public let level: Level
     public let coordinates: [CLLocationCoordinate2D]
+    /// A motorway or trunk road: drawn a little wider on the city layer.
+    public let isMajor: Bool
 
-    public init(level: Level, coordinates: [CLLocationCoordinate2D]) {
+    public init(level: Level, coordinates: [CLLocationCoordinate2D], isMajor: Bool = false) {
         self.level = level
         self.coordinates = coordinates
+        self.isMajor = isMajor
     }
 }
 
@@ -52,11 +55,14 @@ public struct MapIncident: Sendable {
 /// and MapLibre's built-in ornaments are hidden because the app draws its own controls.
 public struct AtlasMapView: View {
     @Binding private var camera: MapViewCamera
+    /// MapLibre is following the car with the course up (its own report, not the camera binding).
+    @State private var followsCourse = false
     private let appearance: MapAppearance
     private let showsBuildings3D: Bool
     private let destination: CLLocationCoordinate2D?
     private let route: [CLLocationCoordinate2D]
     private let alternatives: [[CLLocationCoordinate2D]]
+    private let routeIsMeasured: Bool
     private let routeLabels: [RouteLabel]
     private let traffic: [TrafficLine]
     private let areaTraffic: [TrafficLine]
@@ -65,6 +71,10 @@ public struct AtlasMapView: View {
     private let roadMarks: RoadMarks
     private let incidents: [MapIncident]
     private let routeTrimmer: RouteLineTrimmer?
+    private let trafficOverlay: TrafficOverlay?
+    private let showsGuidanceCursor: Bool
+    private let onFollowingChanged: ((Bool) -> Void)?
+    private let onTap: (() -> Void)?
     private let onRouteTap: ((Int) -> Void)?
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
@@ -82,6 +92,7 @@ public struct AtlasMapView: View {
         destination: CLLocationCoordinate2D? = nil,
         route: [CLLocationCoordinate2D] = [],
         alternatives: [[CLLocationCoordinate2D]] = [],
+        routeIsMeasured: Bool = false,
         routeLabels: [RouteLabel] = [],
         traffic: [TrafficLine] = [],
         areaTraffic: [TrafficLine] = [],
@@ -90,10 +101,14 @@ public struct AtlasMapView: View {
         roadMarks: RoadMarks = .none,
         incidents: [MapIncident] = [],
         routeTrimmer: RouteLineTrimmer? = nil,
+        trafficOverlay: TrafficOverlay? = nil,
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         guidanceZoom: Double? = nil,
         isOffline: Bool = false,
+        showsGuidanceCursor: Bool = false,
+        onFollowingChanged: ((Bool) -> Void)? = nil,
+        onTap: (() -> Void)? = nil,
         onRouteTap: ((Int) -> Void)? = nil,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
@@ -104,6 +119,7 @@ public struct AtlasMapView: View {
         self.destination = destination
         self.route = route
         self.alternatives = alternatives
+        self.routeIsMeasured = routeIsMeasured
         self.routeLabels = routeLabels
         self.traffic = traffic
         self.areaTraffic = areaTraffic
@@ -112,10 +128,14 @@ public struct AtlasMapView: View {
         self.roadMarks = roadMarks
         self.incidents = incidents
         self.routeTrimmer = routeTrimmer
+        self.trafficOverlay = trafficOverlay
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.guidanceZoom = guidanceZoom
         self.isOffline = isOffline
+        self.showsGuidanceCursor = showsGuidanceCursor
+        self.onFollowingChanged = onFollowingChanged
+        self.onTap = onTap
         self.onRouteTap = onRouteTap
         self.onLongPress = onLongPress
         self.onViewport = onViewport
@@ -135,14 +155,17 @@ public struct AtlasMapView: View {
         let roadSigns = roadMarks
         let guiding = isGuiding
         let zoom = guidanceZoom
+        // Our own arrow marks the car while the map follows it in guidance; MapLibre's puck is then kept only
+        // for its tracking.
+        let ownCursor = showsGuidanceCursor && followsCourse
         let byLevel = Dictionary(grouping: traffic, by: \.level).mapValues { $0.map(\.coordinates) }
         let slow = byLevel[.slow] ?? [], heavy = byLevel[.heavy] ?? [], stopped = byLevel[.stopped] ?? []
-        let area = Dictionary(grouping: areaTraffic, by: \.level).mapValues { $0.map(\.coordinates) }
         let closed = incidents.filter { $0.kind == .closure && $0.coordinates.count > 1 }.map(\.coordinates)
         let starts = Dictionary(grouping: incidents.compactMap { incident in incident.coordinates.first.map { (incident.kind, $0) } }, by: { $0.0 })
             .mapValues { pairs in pairs.map { $0.1 } }
         let closureStarts = starts[.closure] ?? [], accidentStarts = starts[.accident] ?? [], roadworkStarts = starts[.roadworks] ?? []
-        let areaFree = area[.free] ?? [], areaSlow = area[.slow] ?? [], areaHeavy = area[.heavy] ?? [], areaStopped = area[.stopped] ?? []
+        let cityLines = areaTraffic
+        let cityTraffic = trafficOverlay
         let cameraMarks = marks.filter(\.isCamera).map(\.coordinate), bumpMarks = marks.filter { !$0.isCamera }.map(\.coordinate)
         // The chosen route's time last, so it sits on top where bubbles meet (Valhalla gives at most three).
         let labels = routeLabels.filter { !$0.isSelected } + routeLabels.filter(\.isSelected)
@@ -150,19 +173,7 @@ public struct AtlasMapView: View {
         // Without a connection the shipped Istanbul tiles take over (when this build has them).
         let style = isOffline ? OfflineMap.styleURL(appearance) ?? appearance.styleURL : appearance.styleURL
         MapView(styleURL: style, camera: $camera, locationManager: puckSource) {
-            // City traffic layer ("Trafik"): lowest of ours, so routes and their colours stay on top; worst on top.
-            if !areaFree.isEmpty {
-                Self.trafficLayer("area-free", areaFree, Self.trafficFree, widths: Self.areaWidths)
-            }
-            if !areaSlow.isEmpty {
-                Self.trafficLayer("area-slow", areaSlow, Self.trafficSlow, widths: Self.areaWidths)
-            }
-            if !areaHeavy.isEmpty {
-                Self.trafficLayer("area-heavy", areaHeavy, Self.trafficHeavy, widths: Self.areaWidths)
-            }
-            if !areaStopped.isEmpty {
-                Self.trafficLayer("area-stopped", areaStopped, Self.trafficStopped, widths: Self.areaWidths)
-            }
+            // The city traffic layer is not here: TrafficOverlay keeps it on the style itself.
             // Road events (HERE): closed stretches dashed red over the traffic colours; signs on top of everything.
             if !closed.isEmpty {
                 let source = ShapeSource(identifier: "atlas-closures") {
@@ -196,7 +207,7 @@ public struct AtlasMapView: View {
                     .lineColor(appearance == .night ? Self.routeCasingNight : .white)
                     .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
                                parameters: NSExpression(forConstantValue: 1.5),
-                               stops: NSExpression(forConstantValue: [10: 5, 14: 8.5, 18: 24]))
+                               stops: NSExpression(forConstantValue: [10: 4.5, 14: 7.5, 18: 15]))
                     .renderBelow(.symbols)
                 LineStyleLayer(identifier: "atlas-alternatives", source: others)
                     .lineCap(.round)
@@ -204,7 +215,7 @@ public struct AtlasMapView: View {
                     .lineColor(appearance == .night ? Self.alternativeNight : Self.alternativeDay)
                     .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
                                parameters: NSExpression(forConstantValue: 1.5),
-                               stops: NSExpression(forConstantValue: [10: 3, 14: 5.5, 18: 17]))
+                               stops: NSExpression(forConstantValue: [10: 3, 14: 5, 18: 11]))
                     .renderBelow(.symbols)
             }
             if route.count > 1 {
@@ -218,26 +229,28 @@ public struct AtlasMapView: View {
                     .lineColor(appearance == .night ? Self.routeCasingNight : .white)
                     .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
                                parameters: NSExpression(forConstantValue: 1.5),
-                               stops: NSExpression(forConstantValue: [10: 6, 14: 10, 18: 28]))
+                               stops: NSExpression(forConstantValue: [10: 5.5, 14: 9, 18: 18]))
                     .renderBelow(.symbols)
                 LineStyleLayer(identifier: "atlas-route", source: line)
                     .lineCap(.round)
                     .lineJoin(.round)
-                    .lineColor(Self.routeColor)
+                    // With live traffic the route reads like the traffic layer: green where it flows, its slow
+                    // stretches drawn over it. Without, the brand blue says nothing about traffic.
+                    .lineColor(routeIsMeasured ? TrafficOverlay.color(.free, night: night) : Self.routeColor)
                     .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
                                parameters: NSExpression(forConstantValue: 1.5),
-                               stops: NSExpression(forConstantValue: [10: 3.5, 14: 6.5, 18: 20]))
+                               stops: NSExpression(forConstantValue: [10: 3.5, 14: 6, 18: 13]))
                     .renderBelow(.symbols)
             }
             // Traffic colours over the route line, worst on top.
             if !slow.isEmpty {
-                Self.trafficLayer("route-slow", slow, Self.trafficSlow)
+                Self.trafficLayer("route-slow", slow, TrafficOverlay.color(.slow, night: night))
             }
             if !heavy.isEmpty {
-                Self.trafficLayer("route-heavy", heavy, Self.trafficHeavy)
+                Self.trafficLayer("route-heavy", heavy, TrafficOverlay.color(.heavy, night: night))
             }
             if !stopped.isEmpty {
-                Self.trafficLayer("route-stopped", stopped, Self.trafficStopped)
+                Self.trafficLayer("route-stopped", stopped, TrafficOverlay.color(.stopped, night: night))
             }
             // The next turn as a white arrow over the route and its traffic colours, under the street names.
             if !maneuverArrow.isEmpty {
@@ -250,7 +263,7 @@ public struct AtlasMapView: View {
                     .lineColor(Self.maneuverCasing)
                     .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
                                parameters: NSExpression(forConstantValue: 1.5),
-                               stops: NSExpression(forConstantValue: [14: 7, 17: 13, 18: 19]))
+                               stops: NSExpression(forConstantValue: [14: 6, 17: 11, 18: 15]))
                     .renderBelow(.symbols)
                 LineStyleLayer(identifier: "atlas-maneuver", source: arrow)
                     .lineCap(.round)
@@ -258,14 +271,14 @@ public struct AtlasMapView: View {
                     .lineColor(.white)
                     .lineWidth(interpolatedBy: .zoomLevel, curveType: .exponential,
                                parameters: NSExpression(forConstantValue: 1.5),
-                               stops: NSExpression(forConstantValue: [14: 4, 17: 8, 18: 12]))
+                               stops: NSExpression(forConstantValue: [14: 3.5, 17: 7, 18: 10]))
                     .renderBelow(.symbols)
             }
             if !cameraMarks.isEmpty {
                 Self.markLayer("camera", cameraMarks, Self.destinationColor)
             }
             if !bumpMarks.isEmpty {
-                Self.markLayer("bump", bumpMarks, Self.trafficSlow)
+                Self.markLayer("bump", bumpMarks, Self.bumpMark)
             }
             if let destination {
                 let pin = ShapeSource(identifier: "atlas-destination") {
@@ -297,10 +310,21 @@ public struct AtlasMapView: View {
                 if context.state == .began { onLongPress?(context.coordinate) }
             }
             .onTapMapGesture(on: Self.routeLabelLayers) { _, features in
-                // A tapped time bubble chooses its route, as in Apple Maps.
+                // A tapped callout chooses its route; a tap anywhere else is passed on (guidance shows its side
+                // buttons for it).
                 if let route = features.lazy.compactMap({ ($0.attributes["route"] as? NSNumber)?.intValue }).first {
                     onRouteTap?(route)
+                } else {
+                    onTap?()
                 }
+            }
+            .onMapUserTrackingModeChanged { mode, _ in
+                // A gesture that stops the following is reported here even while the map is still moving, which
+                // the camera binding misses.
+                let follows = mode != MLNUserTrackingMode.none
+                let course = mode == MLNUserTrackingMode.followWithCourse
+                if followsCourse != course { followsCourse = course }
+                onFollowingChanged?(follows)
             }
             .onMapStyleLoaded { style in
                 // A day/night switch reloads the style, which resets layer visibility to the JSON default
@@ -309,10 +333,16 @@ public struct AtlasMapView: View {
                 POIIcons.register(in: style)
                 RoadShields.register(in: style)
                 roadSigns.add(to: style)
+                cityTraffic?.add(to: style, night: night)
             }
             .unsafeMapViewControllerModifier { controller in
                 let mapView = controller.mapView
-                if let routeTrimmer, routeTrimmer.mapView !== mapView { routeTrimmer.mapView = mapView }
+                if let routeTrimmer {
+                    if routeTrimmer.mapView !== mapView { routeTrimmer.mapView = mapView }
+                    routeTrimmer.hidesPuck = ownCursor
+                }
+                RouteLineTrimmer.setPuck(hidden: ownCursor, in: mapView)
+                cityTraffic?.show(cityLines, in: mapView.style)
                 if !mapView.showsUserLocation { mapView.showsUserLocation = true }
                 if !mapView.showsUserHeadingIndicator { mapView.showsUserHeadingIndicator = true }
                 if let layer = mapView.style?.layer(withIdentifier: MapLayerID.buildings3D), layer.isVisible != show3D {
@@ -328,10 +358,7 @@ public struct AtlasMapView: View {
                 // the panels take a left column, so the puck centres in the map area to their right.
                 // Otherwise the safe area, which is what MapLibre's automatic inset uses. Set directly
                 // because swiftui-dsl's mapContentInset never resets once its value goes back to nil.
-                let inset = !guiding ? mapView.safeAreaInsets
-                    : size.width > size.height
-                    ? UIEdgeInsets(top: size.height * 0.3, left: min(size.width * 0.45, 420), bottom: 0, right: 0)
-                    : UIEdgeInsets(top: size.height * 0.4, left: 0, bottom: 0, right: 0)
+                let inset = guiding ? Self.guidanceInset(for: size) : mapView.safeAreaInsets
                 if mapView.contentInset != inset {
                     mapView.automaticallyAdjustsContentInset = false
                     mapView.setContentInset(inset, animated: true, completionHandler: nil)
@@ -343,6 +370,34 @@ public struct AtlasMapView: View {
                     mapView.setZoomLevel(zoom, animated: true)
                 }
             }
+            .overlay {
+                if ownCursor {
+                    // While it follows, MapLibre pins the tracked position to the centre of the area inside the
+                    // content inset, so the arrow can be a plain view there.
+                    GuidanceCursor()
+                        .position(Self.guidanceAnchor(in: size))
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: 0.2), value: ownCursor)
+    }
+
+    /// Guidance keeps the car low on screen so the road ahead gets the room: the top 40 % is left to the turn
+    /// card in portrait; on its side the panels take a left column and the top 30 %.
+    nonisolated static func guidanceInset(for size: CGSize) -> UIEdgeInsets {
+        size.width > size.height
+            ? UIEdgeInsets(top: size.height * 0.3, left: min(size.width * 0.45, 420), bottom: 0, right: 0)
+            : UIEdgeInsets(top: size.height * 0.4, left: 0, bottom: 0, right: 0)
+    }
+
+    /// Where the car is drawn while the map follows it: the centre of what the guidance inset leaves.
+    nonisolated static func guidanceAnchor(in size: CGSize) -> CGPoint {
+        let inset = guidanceInset(for: size)
+        return CGPoint(
+            x: inset.left + (size.width - inset.left - inset.right) / 2,
+            y: inset.top + (size.height - inset.top - inset.bottom) / 2
+        )
     }
 
     /// The route line's source and its traffic colours' (trafficLayer names them "atlas-traffic-" + name);
@@ -357,7 +412,7 @@ public struct AtlasMapView: View {
         _ name: String,
         _ lines: [[CLLocationCoordinate2D]],
         _ color: UIColor,
-        widths: [Int: Double] = [10: 3.5, 14: 6.5, 18: 20]
+        widths: [Int: Double] = [10: 3.5, 14: 6, 18: 13]
     ) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-traffic-\(name)") {
             lines.map { MLNPolylineFeature(coordinates: $0) as MLNShape }
@@ -389,7 +444,8 @@ public struct AtlasMapView: View {
             MLNPointFeature(coordinate: label.coordinate) { $0.attributes = ["route": label.route] }
         }
         return SymbolStyleLayer(identifier: "atlas-route-label-\(slot)", source: source)
-            .iconImage(RouteLabel.bubble(label.text, selected: label.isSelected, night: night))
+            .iconImage(RouteLabel.bubble(label, night: night))
+            .iconAnchor("bottom")
             .iconAllowsOverlap(true)
     }
 
@@ -432,7 +488,6 @@ public struct AtlasMapView: View {
     private static let accidentSign = POIIcons.badge("car.side.rear.and.collision.and.car.side.front", color: POIIcons.rgb(0xFF6B00), diameter: 20)
     private static let roadworksSign = POIIcons.badge("cone.fill", color: POIIcons.rgb(0xFF9500), diameter: 20)
 
-    private static let areaWidths: [Int: Double] = [10: 2, 13: 3, 15: 4.5, 18: 11]
 
     private static func markLayer(_ name: String, _ points: [CLLocationCoordinate2D], _ color: UIColor) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-mark-\(name)") {
@@ -445,17 +500,15 @@ public struct AtlasMapView: View {
             .strokeColor(.white)
     }
 
-    private static let trafficFree = UIColor(red: 0.20, green: 0.70, blue: 0.33, alpha: 1)
-    private static let trafficSlow = UIColor(red: 0.96, green: 0.62, blue: 0.04, alpha: 1)
-    private static let trafficHeavy = UIColor(red: 0.86, green: 0.15, blue: 0.15, alpha: 1)
-    private static let trafficStopped = UIColor(red: 0.50, green: 0.11, blue: 0.11, alpha: 1)
+    /// The driver's own bump marks.
+    private static let bumpMark = UIColor(red: 0.96, green: 0.62, blue: 0.04, alpha: 1)
     private static let destinationColor = UIColor(Color.atlasCritical)
     private static let routeColor = UIColor(Color.atlasAccent)
     private static let routeCasingNight = UIColor(red: 0.04, green: 0.10, blue: 0.20, alpha: 1)
     /// Darker than the route blue, so the white arrow stands out on it and beside it.
     private static let maneuverCasing = UIColor(red: 0.03, green: 0.22, blue: 0.55, alpha: 1)
-    private static let alternativeDay = UIColor(red: 0.53, green: 0.69, blue: 0.96, alpha: 1)
-    private static let alternativeNight = UIColor(red: 0.27, green: 0.40, blue: 0.62, alpha: 1)
+    private static let alternativeDay = UIColor(red: 0.33, green: 0.47, blue: 0.72, alpha: 1)
+    private static let alternativeNight = UIColor(red: 0.36, green: 0.47, blue: 0.69, alpha: 1)
 
     private static let puckStyle = MapUserAnnotationStyle(
         approximateHaloBorderColor: .atlasAccent,
@@ -464,4 +517,55 @@ public struct AtlasMapView: View {
         puckArrowFillColor: .atlasAccent,
         puckFillColor: .atlasAccent
     )
+}
+
+/// The car while the map follows it in guidance: a large two-tone arrowhead with a white rim, laid back like
+/// the tilted map so it reads as lying on the road. MapLibre's own puck for this mode is a 22 pt arrow in a
+/// white disc with no size or shape setting; it is hidden while this shows.
+private struct GuidanceCursor: View {
+    private static let light = Color(red: 0.30, green: 0.62, blue: 1)
+    private static let dark = Color(red: 0.05, green: 0.33, blue: 0.82)
+
+    var body: some View {
+        ZStack {
+            // Two facets, the right one in shade: the arrow reads as a solid shape, not a flat icon.
+            ArrowHead(half: .left).fill(Self.light)
+            ArrowHead(half: .right).fill(Self.dark)
+            ArrowHead(half: nil).stroke(Color.white, style: StrokeStyle(lineWidth: 3.5, lineJoin: .round))
+        }
+        .frame(width: 50, height: 58)
+        .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 4)
+        .rotation3DEffect(.degrees(38), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+        .accessibilityHidden(true)
+    }
+}
+
+/// A navigation arrowhead: tip up, notched base; one half of it for the two-tone fill.
+private struct ArrowHead: Shape {
+    enum Half { case left, right }
+
+    let half: Half?
+
+    func path(in rect: CGRect) -> Path {
+        let tip = CGPoint(x: rect.midX, y: rect.minY)
+        let notch = CGPoint(x: rect.midX, y: rect.minY + rect.height * 0.76)
+        let left = CGPoint(x: rect.minX, y: rect.maxY)
+        let right = CGPoint(x: rect.maxX, y: rect.maxY)
+        var path = Path()
+        path.move(to: tip)
+        switch half {
+        case .left?:
+            path.addLine(to: notch)
+            path.addLine(to: left)
+        case .right?:
+            path.addLine(to: right)
+            path.addLine(to: notch)
+        case nil:
+            path.addLine(to: right)
+            path.addLine(to: notch)
+            path.addLine(to: left)
+        }
+        path.closeSubpath()
+        return path
+    }
 }
