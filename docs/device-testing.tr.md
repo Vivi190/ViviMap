@@ -38,6 +38,7 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
 7. Harita ayarları → Rota → "Ücretli yollardan kaçın" açıkken Kadıköy → Beşiktaş rotası araba vapuruyla gitmeli ve kartta "Feribotla geçiş · Ücretli yollardan kaçınıldı" yazmalı. "Feribotlardan kaçın" tek başına açıkken aynı rota köprüden gitmeli; ikisi birlikte açıkken rota bulunamamalı ve kart bunu açıkça söylemeli ("Ücretli yol ve feribot kullanmadan bu hedefe rota bulunamadı…").
 8. Rota kartında "Başlat"ın yanındaki liste düğmesi rotanın dönüşlerini sırayla göstermeli: her satırda ok, kaç metre sonra olduğu, talimat ("Sağa dönün") ve girilecek yolun adı. Seçili rota değişince liste de değişmeli.
 9. Rota kartındaki "Çıkış" saatine dokunup yarın sabahı seçin: süreler birkaç saniye içinde yeniden hesaplanmalı, varış saati o çıkışa göre yazmalı ve altta "Beklenen trafik · © HERE" görünmeli. Ertesi sabah aynı saatte gerçek süreyle karşılaştırın. "Şimdi" canlı trafiğe dönmeli.
+10. Sinyalin zayıf olduğu bir yerde (kapalı otopark, bodrum) İstanbul içinde bir yere rota isteyin: kart en geç 4–5 saniyede açılmalı. Rota sunucusu 3 saniyede yanıt vermezse rota telefonda hesaplanır; bağlantı yetiyorsa süreler yine canlı trafikle gelir ve altta "Canlı trafik · © HERE" yazar.
 
 ## Navigasyon
 

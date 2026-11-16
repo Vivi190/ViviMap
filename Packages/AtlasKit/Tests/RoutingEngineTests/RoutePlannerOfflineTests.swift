@@ -15,7 +15,7 @@ private final class NoConnection: URLProtocol {
 }
 
 /// Stands in for the server answering with the recorded bridge route (11.2 km).
-private final class ServerWithTheBridgeRoute: URLProtocol {
+private class ServerWithTheBridgeRoute: URLProtocol {
     override class func canInit(with _: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
@@ -30,6 +30,22 @@ private final class ServerWithTheBridgeRoute: URLProtocol {
         client?.urlProtocol(self, didLoad: answer)
         client?.urlProtocolDidFinishLoading(self)
     }
+    override func stopLoading() {}
+}
+
+/// The same, past a plan's patience (RoutePlanner.serverPatience).
+private final class SlowServerWithTheBridgeRoute: ServerWithTheBridgeRoute {
+    override func startLoading() {
+        Thread.sleep(forTimeInterval: 4)
+        super.startLoading()
+    }
+}
+
+/// Stands in for a server that does not answer: busy, or a network that drops the request.
+private final class Silent: URLProtocol {
+    override class func canInit(with _: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {}
     override func stopLoading() {}
 }
 
@@ -117,9 +133,31 @@ struct RoutePlannerOfflineTests {
     @Test func aRefusingServerFallsBackToTheDevice() async throws {
         let answer = try recordedAnswer()
         let planner = try RoutePlanner(session: session(Forbidden.self)) { _ in answer }
+        let started = ContinuousClock.now
         let routes = try await planner.routes(from: kartal, to: destination)
         #expect(routes.first?.isOffline == true)
         #expect(abs((routes.first?.distance ?? 0) - 5163) < 1)
+        // At once: a server that has failed is not waited for until the patience is over.
+        #expect(ContinuousClock.now - started < .milliseconds(2500))
+    }
+
+    /// A server that keeps a plan waiting: past its patience the device answers, not after the request's 20 s.
+    @Test func aSilentServerIsNotWaitedFor() async throws {
+        let answer = try recordedAnswer()
+        let planner = try RoutePlanner(session: session(Silent.self)) { _ in answer }
+        let started = ContinuousClock.now
+        let routes = try await planner.routes(from: kartal, to: destination)
+        #expect(routes.first?.isOffline == true)
+        #expect(abs((routes.first?.distance ?? 0) - 5163) < 1)
+        #expect(ContinuousClock.now - started < .seconds(10))
+    }
+
+    /// Outside the device's tiles the device cannot answer: the server's late answer is the plan.
+    @Test func aSlowServerStillAnswersWhatTheDeviceCannot() async throws {
+        let planner = try RoutePlanner(session: session(SlowServerWithTheBridgeRoute.self)) { _ in throw URLError(.cannotDecodeContentData) }
+        let routes = try await planner.routes(from: kartal, to: destination)
+        #expect(routes.first?.isOffline == false)
+        #expect(abs((routes.first?.distance ?? 0) - 11176) < 1)
     }
 
     /// A reroute while driving: the device answers first (milliseconds, no connection needed); planning still

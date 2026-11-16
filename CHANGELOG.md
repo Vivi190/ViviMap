@@ -5,6 +5,8 @@ TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 ## Build 35 (not yet uploaded)
 
 - **Leave later:** the route card has a start time ("Çıkış"): a later one measures the routes with the traffic HERE expects then, and the arrival follows from it ("Beklenen trafik · © HERE"). "Şimdi" goes back to the live traffic. Guidance itself always starts now.
+- **No wait on a slow route server:** a plan waits up to 3 seconds for the route server, which usually answers within half a second; past that, or as soon as the server fails, the route is computed on the phone from the bundled Istanbul data. Before, a busy server or a weak signal could hold the card for up to 20 seconds. Outside the bundled area the server's answer is still awaited.
+- Routes computed on the phone are measured with live traffic like any other while there is a connection; before, they were always shown without traffic.
 
 ## Build 34 — 2026-11-17
 

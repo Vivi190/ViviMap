@@ -34,7 +34,7 @@ Each phase starts once the previous one is verified. A phase counts as done when
 ## Known limitations
 
 - Live traffic stays within HERE's free tier through a monthly request budget, set for the one phone that uses the key (nine tenths of the free tier). When it runs out, route times fall back to free-flow estimates and the traffic layer says so. The count is kept on the device: a second phone on the key, or the app deleted and installed again within a month, is not seen.
-- Routing uses the shared FOSSGIS Valhalla server, which can be slow at busy times.
+- Routing uses the shared FOSSGIS Valhalla server. A plan it has not answered within 3 seconds is computed on the phone from the bundled Istanbul tiles, with live traffic while online; outside the bundled area the server's answer is awaited, up to 20 seconds.
 - With tolls avoided, the Bosphorus is crossed by car ferry; sailing times and waiting at the pier are not in the estimate.
 - Lanes and house numbers appear only where OpenStreetMap has them; nothing is invented. Speed limits come from HERE where OpenStreetMap has none (it has them on 9–16 % of roads around Pendik, Kartal and Tuzla), and only while online: offline they are OpenStreetMap's alone.
 - Offline mode covers the Istanbul area only, without traffic. Offline search finds places and streets, not house numbers.

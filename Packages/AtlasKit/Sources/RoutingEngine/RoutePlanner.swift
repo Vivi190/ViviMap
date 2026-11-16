@@ -150,8 +150,8 @@ public final class RoutePlanner {
         let found = try await fetch(userLocation: start, waypoints: waypoints, deviceFirst: deviceFirst)
         var routes: [Route] = found.routes
         var notes: [RouteNotes] = routes.indices.map { found.notes.indices.contains($0) ? found.notes[$0] : RouteNotes() }
-        // Only from the same source as the router's own routes: a card must not mix the server's with ones
-        // from the device's tiles, which get no traffic times. A failed extra request costs nothing.
+        // Only from the same source as the router's own routes, so that the card's `isOffline` holds for all
+        // of them. A failed extra request costs nothing.
         if let local = try? await extra, local.offline == found.offline, let route = local.routes.first {
             routes.append(route)
             notes.append(local.notes.first ?? RouteNotes())
@@ -231,7 +231,8 @@ public final class RoutePlanner {
         distance > 100_000 && distance > 10 * direct
     }
 
-    /// Online first; with no connection or a failing server, the same request answered on the device.
+    /// The server's answer, or the device's: when the server fails, keeps a plan waiting (`serverOrDevice`), or
+    /// first for a reroute. Without the tiles, the server's alone.
     /// - Parameter deviceFirst: for reroutes while driving. The device answers in milliseconds and needs no
     ///   connection, and the server knows no more about traffic than the bundled tiles do; a slow answer
     ///   describes where the car was when it was asked. The server is the fallback then.
@@ -240,15 +241,76 @@ public final class RoutePlanner {
     ) async throws -> (routes: [Route], notes: [RouteNotes], offline: Bool) {
         let chosen = try requestAdapter(localStreets: localStreets)
         let request = try Self.urlRequest(for: chosen.generateRequest(userLocation: userLocation, waypoints: waypoints))
-        if deviceFirst, offline != nil, let body = request.httpBody {
-            if let found = try? await onDevice(body, adapter: chosen) { return found }
-        }
-        do {
+        guard offline != nil, let body = request.httpBody else {
             let (routes, data) = try await online(request, adapter: chosen)
             return (routes, RouteNotes.of(data), false)
-        } catch where !deviceFirst && Self.worthTryingOffline(error) {
-            guard offline != nil, let body = request.httpBody else { throw error }
-            return try await onDevice(body, adapter: chosen)
+        }
+        guard deviceFirst else { return try await serverOrDevice(request, body: body, adapter: chosen) }
+        if let found = try? await onDevice(body, adapter: chosen) { return found }
+        let (routes, data) = try await online(request, adapter: chosen)
+        return (routes, RouteNotes.of(data), false)
+    }
+
+    /// How long a plan waits for the server before the device answers it. FOSSGIS answered plans across
+    /// Istanbul, Pendik → Esenyurt the longest, in 0.2–0.5 s on 2026-11-17 (with alternatives and without);
+    /// one that has not answered in 3 s is busy, or the network is, and the request itself waits 20 s.
+    static let serverPatience: Duration = .seconds(3)
+
+    /// A plan: the server's routes if they come within `serverPatience`, otherwise the device's, and the
+    /// device's at once when the server fails. "No path" from the server is final: the tiles would say the
+    /// same. When the device cannot route it either (a place outside the bundled tiles), the server's after
+    /// all, however long they take.
+    private func serverOrDevice(
+        _ request: URLRequest, body: Data, adapter: RouteAdapter
+    ) async throws -> (routes: [Route], notes: [RouteNotes], offline: Bool) {
+        let patience = Self.serverPatience
+        return try await withThrowingTaskGroup(of: PlanArrival.self, returning: (routes: [Route], notes: [RouteNotes], offline: Bool).self) { group in
+            group.addTask {
+                do {
+                    let (routes, data) = try await self.online(request, adapter: adapter)
+                    return .server((routes: routes, notes: RouteNotes.of(data), offline: false))
+                } catch {
+                    return .serverFailed(error)
+                }
+            }
+            group.addTask {
+                try await Task.sleep(for: patience)
+                return .patienceOver
+            }
+            var serverFailed = false
+            var deviceFailed = false
+            var deviceAsked = false
+            while let arrival = try await group.next() {
+                switch arrival {
+                case let .server(found):
+                    group.cancelAll()
+                    return found
+                case let .serverFailed(error):
+                    // "No path", or a plan no longer wanted (cancelled): the device has nothing to add.
+                    guard Self.worthTryingOffline(error) else {
+                        group.cancelAll()
+                        throw error
+                    }
+                    if deviceFailed { throw PlanningError.offlineUnavailable }
+                    serverFailed = true
+                case .patienceOver:
+                    break
+                case let .device(found):
+                    if let found {
+                        group.cancelAll()
+                        return found
+                    }
+                    if serverFailed { throw PlanningError.offlineUnavailable }
+                    deviceFailed = true
+                    continue
+                }
+                // The server failed or kept the plan waiting: the device's turn, once.
+                if !deviceAsked {
+                    deviceAsked = true
+                    group.addTask { .device(try? await self.onDevice(body, adapter: adapter)) }
+                }
+            }
+            throw PlanningError.offlineUnavailable
         }
     }
 
@@ -314,6 +376,16 @@ public final class RoutePlanner {
     }
 }
 
+/// What comes back first while a plan waits for the server (`RoutePlanner.serverOrDevice`).
+private enum PlanArrival: Sendable {
+    case server((routes: [Route], notes: [RouteNotes], offline: Bool))
+    case serverFailed(any Error)
+    /// `RoutePlanner.serverPatience` has passed.
+    case patienceOver
+    /// nil: the device could not route it.
+    case device((routes: [Route], notes: [RouteNotes], offline: Bool)?)
+}
+
 /// Network loader for Ferrostar's own requests (reroutes during navigation) with the identification
 /// headers FOSSGIS asks apps to send.
 public struct IdentifiedLoader: URLRequestLoading {
@@ -372,7 +444,8 @@ public struct RouteNotes: Sendable, Equatable {
 public struct RouteOption: Identifiable {
     public let index: Int
     public let route: Route
-    /// Computed on the device from the bundled Istanbul tiles (no connection): no live traffic for it.
+    /// Computed on the device from the bundled Istanbul tiles: without a connection, or with the server failing
+    /// or slow (`RoutePlanner.serverPatience`). While the phone is online it is measured with traffic like any.
     public var isOffline = false
     public var notes = RouteNotes()
 

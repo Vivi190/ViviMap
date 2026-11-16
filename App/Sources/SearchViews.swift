@@ -478,7 +478,7 @@ struct PlaceCard: View {
 /// Route preview: time first (what a driver decides on), then distance, arrival, main roads, alternatives.
 struct RouteCard: View {
     enum TrafficStatus {
-        /// No HERE key in this build.
+        /// No HERE key in this build, or no connection.
         case unavailable
         case loading
         /// Every alternative measured with live traffic.
@@ -561,7 +561,7 @@ struct RouteCard: View {
             }
             summary(route, showsTime: routes.count == 1)
             // Only with traffic: without it a route takes as long at any hour.
-            if trafficStatus != .unavailable, !route.isOffline {
+            if trafficStatus != .unavailable {
                 departureRow
             }
             if let error {
@@ -569,7 +569,7 @@ struct RouteCard: View {
                     .font(.footnote)
                     .foregroundStyle(Color.atlasWarning)
             }
-            if route.isOffline {
+            if route.isOffline, trafficStatus == .unavailable {
                 // No connection: computed on the phone from the shipped Istanbul tiles, so no traffic either.
                 Label("Çevrimdışı rota · cihazdaki İstanbul verisiyle, trafiksiz", systemImage: "wifi.slash")
                     .font(.footnote)

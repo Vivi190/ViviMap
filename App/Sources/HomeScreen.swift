@@ -1244,9 +1244,9 @@ struct HomeScreen: View {
         previewTraffic = [:]
         previewAround = [:]
         previewClosed = [:]
-        // A route computed on the device (no connection, or the server failing) is labelled "trafiksiz":
-        // scoring it would put a live-traffic time next to that label and spend the budget for nothing.
-        guard let traffic, options.first?.isOffline != true else {
+        // Without a connection the requests would fail and still count against the month's budget. Online, a
+        // route from the device's tiles (the server slow or failing) is measured like the server's.
+        guard let traffic, connectivity.isOnline else {
             trafficStatus = .unavailable
             return
         }
@@ -1318,8 +1318,7 @@ struct HomeScreen: View {
             planner.markClosed(points)
             let fresh = try? await planner.routes(from: origin, to: place.point, areaSpan: place.areaSpan)
             guard generation == planGeneration, routes.count == options.count, !isNavigating else { return options }
-            // Server routes only, like the card's own: one from the device's tiles would get no traffic time.
-            if let fresh, fresh.first?.isOffline == false {
+            if let fresh {
                 let lines: [[CLLocationCoordinate2D]] = fresh.map(\.coordinates)
                 var current = shapes
                 for index in closed.indices where !closed[index].isEmpty {
@@ -1523,10 +1522,9 @@ private struct ShortcutTimesLoader: View {
             else { continue }
             planner.avoidsTolls = settings.avoidsTolls
             planner.avoidsFerries = settings.avoidsFerries
-            // A route from the device's tiles gets no traffic time, and a time without traffic is not what the
-            // chip says: no time then.
+            // A route from the device's tiles (the server slow) is measured like the server's.
             guard let route = try? await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan).first,
-                  !route.isOffline, !Task.isCancelled,
+                  !Task.isCancelled,
                   let estimate = try? await traffic.estimate(route.coordinates), !Task.isCancelled
             else { continue }
             times[slot] = estimate.duration

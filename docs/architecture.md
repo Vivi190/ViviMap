@@ -159,7 +159,7 @@ Each module is a target in `Packages/AtlasKit`. Provider-specific code sits behi
 | LocationEngine | CoreLocation, speed estimation, GPS quality | 1 | ✅ (map matching in Phase 2) |
 | Diagnostics | Live GPS diagnostics screen | 1 | ✅ |
 | SearchEngine | Photon search and reverse search, filtered second request for type words, address spelling, nearest places for a bare type; offline Istanbul index (FTS4) | 2 / 4 | ✅ measured: first result correct for 64/64, including 7 addresses as written in messages (2026-11-14) |
-| RoutingEngine | Valhalla: FOSSGIS online, on-device Valhalla 3.9.0 (offline fallback), candidate generation | 2 / 3 / 4 | ✅ |
+| RoutingEngine | Valhalla: FOSSGIS online, on-device Valhalla 3.9.0 (offline, for reroutes, and when the server is slow), candidate generation | 2 / 3 / 4 | ✅ |
 | NavigationEngine | Ferrostar wrapper, route tracking, rerouting, Turkish instructions and voice, bump/camera warnings, speed limit, speed-based zoom, road-snapped position arrow, turn arrow, current road | 2 / 3 / 5 / 6 | ✅ |
 | VoiceGuidance | Turkish instruction generation, AVSpeech, audio session | 2 | ✅ inside NavigationEngine (TurkishInstructions, VoiceGuide) |
 | TrafficEngine | `TrafficProvider` (HERE): route durations, flow along the route (route colours), area flow (city traffic layer), hysteresis-based suggestions, separate monthly quotas | 3 | ✅ |
