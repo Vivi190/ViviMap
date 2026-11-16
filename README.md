@@ -23,16 +23,19 @@
 ## Features
 
 **Navigation**
-- Turn-by-turn guidance on [Ferrostar](https://github.com/stadiamaps/ferrostar) with routes from [Valhalla](https://github.com/valhalla/valhalla): alternatives, automatic rerouting, and guidance that continues with the screen locked.
+- Turn-by-turn guidance on [Ferrostar](https://github.com/stadiamaps/ferrostar) with routes from [Valhalla](https://github.com/valhalla/valhalla): alternatives (one of them by local streets, for when the main roads are jammed), automatic rerouting, and guidance that continues with the screen locked.
 - Choosing a route as in Apple Maps and Yandex: each option's time in a bubble on the map (tap one to choose it), the options side by side with how much slower each is, tolls and ferries flagged. Routes can keep off toll roads and off car ferries.
 - Turkish voice prompts written from the maneuver data: *"300 metre sonra ışıklarda sağa dönün, Ankara Caddesi."*
 - A turn arrow on the route, a route line that starts under the car, the position snapped to the road, the name of the street you are on, zoom that follows speed and the next turn, the follow-up maneuver, and lanes where they are mapped.
+- The speed limit on nearly every road, with a spoken warning when you stay clearly over it: OpenStreetMap's where it has one, HERE's elsewhere.
+- The list of a route's turns before you start.
 - Routes to airports, hospitals and malls end on the road in front of them, not in the middle of the site.
 - A Live Activity on the lock screen and in the Dynamic Island.
 
 **Traffic** (HERE Traffic API v7)
 - Green-to-red roads across the map, a traffic score for the area on screen, and road closures, accidents and road works.
 - Route times with live traffic, slow stretches coloured on the route, and a "faster route" offer while driving that does not flip back and forth.
+- Roads reported closed are kept off: on the route card, and while driving with a spoken change of route. Accidents and road works ahead are said once, about a kilometre before.
 - A monthly request budget per device keeps usage inside the provider's free tier.
 
 **Search**, tuned for Istanbul (Photon, OpenStreetMap, Overture Maps)

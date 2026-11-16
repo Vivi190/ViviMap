@@ -23,16 +23,19 @@
 ## Özellikler
 
 **Navigasyon**
-- [Ferrostar](https://github.com/stadiamaps/ferrostar) üzerinde, [Valhalla](https://github.com/valhalla/valhalla) rotalarıyla adım adım yönlendirme: alternatifler, otomatik yeniden rota, ekran kilitliyken de süren yönlendirme.
+- [Ferrostar](https://github.com/stadiamaps/ferrostar) üzerinde, [Valhalla](https://github.com/valhalla/valhalla) rotalarıyla adım adım yönlendirme: alternatifler (biri, ana yollar tıkalıyken ara yollardan), otomatik yeniden rota, ekran kilitliyken de süren yönlendirme.
 - Apple Haritalar ve Yandex'teki gibi rota seçimi: her seçeneğin süresi haritada bir baloncukta (dokununca seçilir), seçenekler yan yana ve her birinin ne kadar yavaş olduğu, ücretli geçiş ve feribot uyarısı. Rotalar ücretli yollardan ve araba vapurlarından kaçınabilir.
 - Manevra verisinden yazılan Türkçe sesli yönlendirme: *"300 metre sonra ışıklarda sağa dönün, Ankara Caddesi."*
 - Rota üzerinde dönüş oku, aracın altından başlayan rota çizgisi, yola oturtulmuş konum oku, üzerinde olunan yolun adı, hıza ve dönüşe göre yakınlaşma, ardışık manevra ve verisi olan yollarda şeritler.
+- Neredeyse her yolda hız sınırı ve sınır belirgin aşılınca sesli uyarı: OpenStreetMap'te varsa onunki, yoksa HERE'ninki.
+- Yola çıkmadan önce rotanın dönüş listesi.
 - Havalimanı, hastane ve AVM rotaları alanın ortasında değil, önündeki yolda biter.
 - Kilit ekranında ve Dynamic Island'da Live Activity.
 
 **Trafik** (HERE Traffic API v7)
 - Haritada yeşilden kırmızıya yollar, görünen bölgenin trafik puanı, kapalı yollar, kazalar ve yol çalışmaları.
 - Canlı trafikle rota süreleri, rota üzerinde renklenen yavaş kesimler ve sürüşte gidip gelmeyen "daha hızlı rota" önerisi.
+- Kapalı bildirilen yollardan geçilmez: rota kartında ve sürüş sırasında, sesli rota değişikliğiyle. Öndeki kaza ve yol çalışmaları yaklaşık bir kilometre kala bir kez söylenir.
 - Cihaz başına aylık istek bütçesi, kullanımı sağlayıcının ücretsiz kotasında tutar.
 
 **Arama**, İstanbul'a göre ayarlı (Photon, OpenStreetMap, Overture Maps)
