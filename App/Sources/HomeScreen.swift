@@ -717,14 +717,29 @@ struct HomeScreen: View {
         HStack(alignment: .top, spacing: Spacing.m) {
             navigationColumn(navigation)
                 .frame(maxWidth: isLandscape ? 380 : .infinity)
+                // Its full width before the spacer gets any: the corner beside it would otherwise halve it.
+                .layoutPriority(1)
             if isLandscape {
+                // On its side the phone has the far right for these; upright they sit in the column's top row.
                 Spacer(minLength: 0)
-                if showsGuidanceControls || mapDetached { navigationControls(navigation) }
+                guidanceCorner(navigation)
             }
         }
         .padding(.horizontal, Spacing.m)
         .padding(.vertical, Spacing.s)
         .animation(.snappy(duration: 0.3), value: trafficWatch.suggestion?.option.id)
+        .animation(.easeOut(duration: 0.2), value: showsGuidanceControls || mapDetached)
+    }
+
+    /// Top right while guiding: speed and limit, and under them sound and sharing while they are called for.
+    private func guidanceCorner(_ navigation: NavigationSession) -> some View {
+        VStack(alignment: .trailing, spacing: Spacing.m) {
+            GuidanceSpeed(navigation: navigation)
+            if showsGuidanceControls || mapDetached {
+                navigationControls(navigation)
+                    .transition(.opacity)
+            }
+        }
     }
 
     /// Guidance, laid out as drivers know it from Yandex Navigator: the turn panel top left, speed and limit top
@@ -754,13 +769,7 @@ struct HomeScreen: View {
                     }
                 }
                 Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: Spacing.m) {
-                    GuidanceSpeed(navigation: navigation)
-                    if !isLandscape, showsGuidanceControls || mapDetached {
-                        navigationControls(navigation)
-                            .transition(.opacity)
-                    }
-                }
+                if !isLandscape { guidanceCorner(navigation) }
             }
             if let suggestion = trafficWatch.suggestion {
                 RouteSuggestionBanner(suggestion: suggestion, onAccept: acceptSuggestion) { trafficWatch.dismiss() }
@@ -780,7 +789,6 @@ struct HomeScreen: View {
                 onEnd: { endNavigation() }
             )
         }
-        .animation(.easeOut(duration: 0.2), value: showsGuidanceControls || mapDetached)
     }
 
     /// A tap on the map while guiding: the side buttons for six seconds.
