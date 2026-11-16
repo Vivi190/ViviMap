@@ -50,6 +50,7 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
 8. Varışta "Hedefinize ulaştınız" denmeli; alt satırda "Vardınız" ve "Otopark" düğmesi çıkmalı, dokununca hedefin çevresindeki otoparklar listelenmeli.
 9. Navigasyonda haritaya dokununca çıkan paylaş düğmesi tahmini varış saati, hedef ve harita bağlantısı içeren bir mesaj hazırlamalı.
 10. Önce bir yer Ev olarak kaydedilip "Hey Siri, Atlas ile eve git" denince uygulama açılmalı ve eve rota kartı gelmeli.
+11. Navigasyonda haritaya dokunup **Yol üstünde ara** düğmesine basın ve **Benzinlik**'i seçin. Rotanın önündeki istasyonlar birkaç saniye içinde listelenmeli; her satırda ad, "Benzinlik · 3,2 km ileride · sağda" ve adres yazmalı. Sağdakiler ve yakındakiler önce gelmeli, 200 m'den yakın istasyon listede olmamalı. Birine dokunun: "Ara durak eklendi" denmeli, rota oradan geçmeli ve haritada turuncu bir iğne görünmeli. Yaklaşırken "Ara durağa 400 metre kaldı" denmeli, panelde "Ara durak sağda" yazmalı. Durakta "Hedefinize ulaştınız" denmemeli; navigasyon hedefe kendiliğinden devam etmeli. Duraktan önce rotadan çıkın: yeni rota durağa uğramalı. **Ara durağı kaldır** ile "Ara durak kaldırıldı" denmeli ve rota doğrudan hedefe gitmeli. İğnenin durağa yaklaşık 100 m kala kalkması beklenen davranıştır.
 
 ## Trafik
 

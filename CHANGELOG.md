@@ -4,6 +4,7 @@ TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
 ## Build 34 (not yet uploaded)
 
+- **Stops on the way:** while guiding, a tap on the map shows "Yol üstünde ara". It lists fuel stations, chargers, markets, pharmacies, ATMs, cafés and restaurants ahead on the route, from the indexes on the device, the cheapest to turn into first, with how far ahead each is and on which side. A tap makes one a stop without ending guidance ("Ara durak eklendi."): an orange pin, its own prompts ("Ara durağa 400 metre kaldı.", "Ara durak sağda"), then guidance goes on to the destination. Reroutes and traffic rounds keep the stop; "Ara durağı kaldır" drops it. One stop at a time.
 - **Search results on the map:** "12 sonucu haritada göster" above a list of results puts them on the map as blue pins with their names, all in view, as Yandex and Apple Maps show a search. A tap on a pin opens its card; a chip under the search bar opens the list again or takes the pins off.
 - **Home and Work with their times:** the "Ev" and "İş" chips under the search bar show the drive there now with live traffic ("Ev · 24 dk"), as Yandex's start screen does; measured again every ten minutes while the map is open, and after about a kilometre of driving. One route request and one traffic request per place, only while the app is in front.
 - **İSPARK fees:** an İSPARK car park's card shows what it costs and its free minutes ("1 sa 110 TL · 2 sa 140 TL · Tam gün 370 TL · İlk 15 dk ücretsiz"), from the municipality's open data.

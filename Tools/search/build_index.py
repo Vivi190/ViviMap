@@ -91,6 +91,8 @@ def main(source, target):
                 db.execute("INSERT INTO hours (id, opening_hours) VALUES (?, ?)", (cursor.lastrowid, hours))
                 with_hours += 1
             rows += 1
+    # "Nearest of a kind" (and stops along a route, which ask it every 1.5 km) filters on the category first.
+    db.execute("CREATE INDEX place_category ON place (category)")
     db.execute("INSERT INTO place_fts (place_fts) VALUES ('optimize')")
     db.commit()
     db.execute("VACUUM")
