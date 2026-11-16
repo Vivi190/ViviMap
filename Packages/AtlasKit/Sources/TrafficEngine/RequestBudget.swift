@@ -3,15 +3,17 @@ import Foundation
 /// Monthly cap on paid-API requests, kept below HERE's free tier so a bug or a busy month cannot run up
 /// a bill. Free tier (research §6, Nov 2026): Route Import 2 500/month, Traffic flow 5 000/month.
 ///
-/// shortcut: counted per device; the default caps are under half the free tier so two phones on one key
-/// still fit. Move the count to a small proxy (ADR-7) if more people test.
+/// shortcut: counted on the device, for the one phone that uses the key (the owner's decision, 2026-11-16):
+/// the caps are nine tenths of the free tier. A second phone on the key would double the use, and deleting
+/// the app starts the count anew within the month. Move the count to a small proxy (ADR-7) before anyone
+/// else tests.
 public final class RequestBudget: @unchecked Sendable {
     public enum Kind: String, Sendable {
         case routeImport
         /// Traffic along a route (route card, guidance).
         case flow
-        /// The city traffic layer. Both flow kinds and incidents are HERE Traffic requests: 1 000 + 1 000 + 400
-        /// per device stay under half of the 5 000 free ones, and the layer cannot eat into guidance.
+        /// The city traffic layer. Both flow kinds and incidents are HERE Traffic requests: 1 900 + 1 900 + 700
+        /// stay under the 5 000 free ones, and the layer cannot eat into guidance.
         case areaFlow
         /// Road events on the city layer.
         case incidents
@@ -26,9 +28,10 @@ public final class RequestBudget: @unchecked Sendable {
 
     public init(
         defaults: UserDefaults = .standard,
-        // Traffic calls split 1 000 / 1 000 / 400 (route, city layer, road events) once the city layer was on by
-        // default: the same 2 400 per phone as before, so two phones still stay under the 5 000 free calls.
-        limits: [Kind: Int] = [.routeImport: 1_200, .flow: 1_000, .areaFlow: 1_000, .incidents: 400],
+        // Nine tenths of the free tier: 2 250 of 2 500 imports, and 4 500 of 5 000 traffic calls split between
+        // the route, the city layer and its road events. At half of it the layer ran out after 33 hours of an
+        // open map, and guidance after about 50 hours of driving.
+        limits: [Kind: Int] = [.routeImport: 2_250, .flow: 1_900, .areaFlow: 1_900, .incidents: 700],
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.defaults = defaults

@@ -2,8 +2,9 @@ import Foundation
 
 /// A point typed or pasted into the search field: "40.8890, 29.1905", a location shared as a link from Google
 /// Maps, Apple Maps, Yandex Maps or WhatsApp ("https://maps.google.com/?q=40.889,29.1905"), or a "geo:"
-/// address. Read on the device, nothing is asked of anyone. A short link ("maps.app.goo.gl/…") has no
-/// coordinates in it and is not understood: resolving it means a request to the service that issued it.
+/// address. Read on the device, nothing is asked of anyone. The one exception is a short link of Google Maps
+/// ("maps.app.goo.gl/…", what its app's "Share" gives): it has no coordinates in it, so the service that issued
+/// it is asked where it leads (`place(following:)`).
 enum CoordinateQuery {
     static func place(from text: String) -> Place? {
         let pattern = #"^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$"#
@@ -20,6 +21,35 @@ enum CoordinateQuery {
             id: "coord:\(coordinates)", name: label ?? coordinates, subtitle: shared ? "Paylaşılan konum" : "Koordinat",
             point: point, category: nil
         )
+    }
+
+    /// A short link of Google Maps in a pasted text: "https://maps.app.goo.gl/…", "https://goo.gl/maps/…".
+    static func shortLink(in text: String) -> URL? {
+        for word in text.split(whereSeparator: \.isWhitespace) {
+            guard let url = URL(string: String(word)), url.scheme?.lowercased() == "https", let host = url.host?.lowercased()
+            else { continue }
+            if host == "maps.app.goo.gl" || (host == "goo.gl" && url.path.hasPrefix("/maps/")) { return url }
+        }
+        return nil
+    }
+
+    /// The place a short link leads to. One request to the service that issued the link, carrying the link and
+    /// nothing else: it answers with the long link, which has the point in it. nil when it does not answer, or
+    /// leads somewhere without a point.
+    static func place(following short: URL, session: URLSession = .shared) async -> Place? {
+        var request = URLRequest(url: short)
+        // The answer is in where the request ends up, not in a page.
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 8
+        request.setValue("Atlas-iOS/1.0 (personal navigation app)", forHTTPHeaderField: "User-Agent")
+        guard let (_, response) = try? await session.data(for: request), var target = response.url else { return nil }
+        // A consent page in between carries the link it was asked for.
+        if target.host?.contains("consent.") == true,
+           let onward = URLComponents(url: target, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "continue" })?.value,
+           let url = URL(string: onward) {
+            target = url
+        }
+        return link(target.absoluteString).map { place(at: $0.point, label: $0.label, shared: true) }
     }
 
     /// The point a pasted link shows, and the name the link gives it, if it gives one.
@@ -61,6 +91,10 @@ enum CoordinateQuery {
         if let at = components.path.range(of: "@"), let pair = numbers(in: String(components.path[at.upperBound...])),
            let spot = valid(latitude: pair.0, longitude: pair.1) {
             return (spot, name(inPath: components.path))
+        }
+        // "/maps/search/40.889,29.1905": a dropped pin has its point as a part of the path.
+        for part in components.path.split(separator: "/") {
+            if let pair = numbers(in: String(part)), let spot = valid(latitude: pair.0, longitude: pair.1) { return (spot, nil) }
         }
         return nil
     }

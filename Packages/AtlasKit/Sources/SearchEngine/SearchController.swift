@@ -197,6 +197,18 @@ public final class SearchController {
             isSearching = false
             return
         }
+        if let short = CoordinateQuery.shortLink(in: text) {
+            isSearching = true
+            task = Task {
+                let place = await CoordinateQuery.place(following: short)
+                guard !Task.isCancelled else { return }
+                results = place.map { [$0] } ?? []
+                // Said plainly: a link is not a name to go on searching for.
+                if place == nil { errorMessage = "Bu bağlantının gösterdiği konum okunamadı." }
+                isSearching = false
+            }
+            return
+        }
         isSearching = true
         let origin = origin()
         let provider = provider

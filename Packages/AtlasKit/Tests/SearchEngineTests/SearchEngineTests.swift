@@ -230,6 +230,7 @@ struct CoordinateQueryTests {
             "https://maps.google.com/?q=40.889,29.1905",
             "https://www.google.com/maps/search/?api=1&query=40.889%2C29.1905",
             "https://www.google.com/maps/@40.889,29.1905,17z",
+            "https://www.google.com/maps/search/40.889,29.1905?entry=ml",
             "https://maps.google.com/maps?q=loc:40.889,29.1905",
             "https://maps.apple.com/?ll=40.889,29.1905&q=K%C4%B1y%C4%B1%20Pastanesi",
             "https://maps.apple.com/place?coordinate=40.889,29.1905&name=Kartal",
@@ -255,6 +256,19 @@ struct CoordinateQueryTests {
         #expect(CoordinateQuery.place(from: "geo:0,0?q=40.889,29.1905(Kartal)")?.name == "Kartal")
         // Without a name the coordinates are the name.
         #expect(CoordinateQuery.place(from: "https://maps.google.com/?q=40.889,29.1905")?.name == "40.88900, 29.19050")
+    }
+
+    /// A short link of Google Maps has no point in it: it is recognised, to be asked about.
+    @Test func recognisesGoogleShortLinks() {
+        #expect(CoordinateQuery.shortLink(in: "Buradayım: https://maps.app.goo.gl/AbCdEf123456")?.host == "maps.app.goo.gl")
+        #expect(CoordinateQuery.shortLink(in: "https://goo.gl/maps/AbCdEf12345") != nil)
+        #expect(CoordinateQuery.shortLink(in: "https://goo.gl/AbCdEf") == nil)
+        #expect(CoordinateQuery.shortLink(in: "https://maps.google.com/?q=40.889,29.1905") == nil)
+        #expect(CoordinateQuery.shortLink(in: "kartal adliyesi") == nil)
+        // What such a link redirects to (the form Google answered with on 2026-11-16, with made-up values).
+        let long = "https://www.google.com/maps/place/K%C4%B1y%C4%B1+Pastanesi/@40.8901,29.1899,17.5z/data=!4m5!3m4!1s0x0:0x0!8m2!3d40.889!4d29.1905?shorturl=1"
+        #expect(CoordinateQuery.place(from: long)?.point == GeoPoint(latitude: 40.889, longitude: 29.1905))
+        #expect(CoordinateQuery.place(from: long)?.name == "Kıyı Pastanesi")
     }
 
     /// Links without a point in them are left to the text search: a short link, any other page.
