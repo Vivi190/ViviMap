@@ -63,8 +63,9 @@ public final class NavigationSession {
     @ObservationIgnored private var lightSteps: Int?
     /// The next camera or bump within warning range, for the banner chip.
     public private(set) var hazardAlert: HazardAlert?
-    /// Speed limit of the road being driven, km/h, only when the map data has one (OSM `maxspeed` via
-    /// Valhalla); nil means unknown, and no sign is shown rather than a guessed one.
+    /// Speed limit of the road being driven, km/h: OpenStreetMap's `maxspeed` for the segment (via Valhalla)
+    /// when it has one, otherwise the traffic provider's for this stretch of the route (`setSpeedLimits`).
+    /// nil means unknown, and no sign is shown rather than a guessed one.
     public private(set) var speedLimit: Int?
     /// Camera zoom for the speed and the next turn (GuidanceZoom); changes only in steps.
     public private(set) var guidanceZoom = GuidanceZoom.levels[2]
@@ -84,11 +85,19 @@ public final class NavigationSession {
     /// Spoken warning when clearly over the posted limit (map settings → Uyarılar); set before a route starts.
     @ObservationIgnored public var warnsSpeeding = true
     @ObservationIgnored private var speedingWatch = SpeedingWatch()
+    /// The traffic provider's limits as handed over, kept so they can be placed again when the route changes.
+    @ObservationIgnored private var limitStretches: [RouteSpeedLimit] = []
+    /// The same, placed on the current route.
+    @ObservationIgnored private var routeLimits = RouteLimits()
     /// Shipped OSM cameras and bumps (works offline).
     @ObservationIgnored private let hazards = HazardCatalog.bundled()?.hazards ?? []
     /// The driver's own marks; set before a route starts, used from the next route change.
     @ObservationIgnored public var userHazards: [Hazard] = []
     @ObservationIgnored private var hazardWatch = HazardWatch()
+    /// Closures, accidents and road works ahead as the traffic provider last reported them (`setRoadEvents`),
+    /// kept so they can be placed again when the route changes.
+    @ObservationIgnored private var roadEvents: [RoadEvent] = []
+    @ObservationIgnored private var eventWatch = RoadEventWatch()
     /// Measured geometry of the current route; rebuilt when the route changes.
     @ObservationIgnored private var routePath: RoutePath?
     /// Road names of the current route by folded name, in their Turkish spelling (TurkishFold.preferredSpellings).
@@ -154,6 +163,11 @@ public final class NavigationSession {
         planner = AnnouncementPlanner()
         speedingWatch = SpeedingWatch()
         speedingWatch.isEnabled = warnsSpeeding
+        // Those of the drive before belong to another route.
+        limitStretches = []
+        routeLimits = RouteLimits()
+        roadEvents = []
+        eventWatch = RoadEventWatch()
         statusThrottle = StatusThrottle()
         isOffRoute = false
         rerouteFailed = false
@@ -173,13 +187,35 @@ public final class NavigationSession {
         voice.speak("Rota oluşturuldu. \(Formatted.duration(expectedDuration ?? option.duration)) sürecek.")
     }
 
-    /// Moves guidance to another route (an accepted traffic suggestion) without ending the session.
-    public func switchRoute(to option: RouteOption, from location: CLLocation) throws {
+    /// Moves guidance to another route without ending the session: an accepted traffic suggestion, or a way
+    /// round a road found closed ahead.
+    /// - Parameter sentence: what is said of the change ("Yol kapalı. Rota değiştirildi." for a closed road).
+    public func switchRoute(
+        to option: RouteOption, from location: CLLocation, announcing sentence: String = "Daha hızlı rotaya geçildi."
+    ) throws {
         planner = AnnouncementPlanner()
         try core.startNavigation(route: option.route, userLocation: UserLocation(clLocation: location))
         // Ferrostar drops a reroute still in flight; the route about to arrive is this one, with its own sentence.
         if isRerouting { isRerouting = false }
-        voice.speak("Daha hızlı rotaya geçildi.")
+        voice.speak(sentence)
+    }
+
+    /// Speed limits the traffic provider gave for the road ahead, in driving order: with the route's times on
+    /// the route card, then with each traffic round. A new set replaces the last. They are placed along the
+    /// route by where each begins and fill in wherever OpenStreetMap has no limit for the segment being driven.
+    public func setSpeedLimits(_ stretches: [RouteSpeedLimit]) {
+        limitStretches = stretches
+        // The provider measured from where the car was when it was asked, up to 15 s ago (its timeout): within
+        // a kilometre behind even on a motorway. Nothing belongs further back than that.
+        if let path = routePath { routeLimits = RouteLimits(stretches, on: path, from: max(0, (aheadOffset ?? 0) - 1000)) }
+    }
+
+    /// Closures, accidents and road works the traffic provider reported on the road ahead: with the route's
+    /// times on the route card, then with each traffic round. A new set replaces the last. Each is said once,
+    /// from a kilometre ahead or a minute's drive, whichever is more ("800 metre sonra kaza.").
+    public func setRoadEvents(_ events: [RoadEvent]) {
+        roadEvents = events
+        if let path = routePath { eventWatch.place(events, on: path) }
     }
 
     /// Where stretches of the route lie on what is left of it, from here (0) to the destination (1); nil for a
@@ -217,13 +253,6 @@ public final class NavigationSession {
     public func stretchesAhead(_ stretches: [[CLLocationCoordinate2D]]) -> [[CLLocationCoordinate2D]?] {
         guard let path = routePath else { return stretches.map { _ in nil } }
         return Self.clip(stretches, on: path, from: aheadOffset ?? 0)
-    }
-
-    /// Which of `points` lie on the route (within 30 m), for road events to show while guiding. Reads no observed
-    /// state, so a view asking once per update is not redrawn on every fix.
-    public func onRoute(_ points: [CLLocationCoordinate2D]) -> [Bool] {
-        guard let path = routePath else { return points.map { _ in false } }
-        return points.map { path.project($0, tolerance: 30) != nil }
     }
 
     nonisolated static func clip(
@@ -272,7 +301,11 @@ public final class NavigationSession {
         maneuverAtLight = false
         hazardAlert = nil
         speedLimit = nil
+        limitStretches = []
+        routeLimits = RouteLimits()
         hazardWatch = HazardWatch()
+        roadEvents = []
+        eventWatch = RoadEventWatch()
         isOffRoute = false
         rerouteFailed = false
     }
@@ -332,6 +365,12 @@ public final class NavigationSession {
         return Int(kmh.rounded())
     }
 
+    /// The limit to show: OpenStreetMap's for the segment being driven when it has one (it is the map the
+    /// route was computed on, and it is there offline), otherwise `other`, the traffic provider's at the car.
+    static func speedLimit(fromAnnotation json: String?, or other: Int?) -> Int? {
+        speedLimit(fromAnnotation: json) ?? other
+    }
+
     private func apply(_ state: NavigationState?) {
         guard isActive, let state else { return }
         defer { onUpdate?(self) }
@@ -353,6 +392,11 @@ public final class NavigationSession {
             // The same watch with what it has announced: a camera in range is not warned of a second time.
             hazardWatch.hazards = RouteHazards.along(path, hazards: hazards + userHazards)
             hazardWatch.kinds = hazardKinds
+            // The provider's limits on the roads the new route shares with the one they were measured on; the
+            // others no longer meet the path and go.
+            routeLimits = RouteLimits(limitStretches, on: path)
+            // Likewise the road events; one already said is not said again from the start of the new route.
+            eventWatch.place(roadEvents, on: path)
             spellings = TurkishFold.preferredSpellings((state.remainingSteps ?? []).flatMap { step in
                 [step.roadName].compactMap { $0 } + step.visualInstructions.map(\.primaryContent.text)
             })
@@ -414,7 +458,10 @@ public final class NavigationSession {
                 travelled = at
             }
         }
-        let limit = Self.speedLimit(fromAnnotation: state.currentAnnotationJSON)
+        // Off the route `travelled` belongs to a point the car is not at, and so would the provider's limit.
+        let limit = Self.speedLimit(
+            fromAnnotation: state.currentAnnotationJSON, or: offRoute ? nil : routeLimits.limit(at: travelled)
+        )
         if limit != speedLimit { speedLimit = limit }
         if let warning = speedingWatch.update(speedKmh: lastSpeed * 3.6, limit: limit, at: lastFixTime) { voice.speak(warning) }
         let zoom = GuidanceZoom.level(speed: lastSpeed, distanceToManeuver: progress.distanceToNextManeuver, current: guidanceZoom)
@@ -423,7 +470,13 @@ public final class NavigationSession {
         if routePath != nil {
             let (alert, sentence) = hazardWatch.update(travelled: travelled, speed: lastSpeed)
             if alert != hazardAlert { hazardAlert = alert }
-            if let sentence { voice.speak(sentence) }
+            if let sentence {
+                voice.speak(sentence)
+            } else if !offRoute, let event = eventWatch.update(travelled: travelled, speed: lastSpeed) {
+                // One sentence per fix: behind a camera or a bump a road event waits for the next one. Off the
+                // route `travelled` belongs to a point the car is not at.
+                voice.speak(event)
+            }
         }
 
         // remaining[0] is the current step. The step after it begins with the maneuver the banner shows, and

@@ -1,0 +1,106 @@
+{
+ "notices": [
+  {
+   "title": "Import: Provided trace could not be matched into a continuous route.",
+   "code": "importSplitRoute",
+   "severity": "info"
+  }
+ ],
+ "routes": [
+  {
+   "id": "sample-route",
+   "sections": [
+    {
+     "id": "sample-section-1",
+     "type": "vehicle",
+     "summary": {
+      "duration": 60,
+      "length": 557,
+      "baseDuration": 50,
+      "typicalDuration": 55
+     },
+     "polyline": "BGg6qguCgon23BAw-BAw-BAw-BAw-Bw-BAw-BA",
+     "spans": [
+      {
+       "offset": 0,
+       "length": 168,
+       "maxSpeed": 13.8888893
+      },
+      {
+       "offset": 2,
+       "length": 168,
+       "maxSpeed": 8.333334,
+       "incidents": [
+        0
+       ]
+      },
+      {
+       "offset": 4,
+       "length": 221,
+       "maxSpeed": "unlimited"
+      }
+     ],
+     "incidents": [
+      {
+       "description": "Örnek Cadde üzerinde yol çalışması",
+       "type": "construction",
+       "criticality": "minor",
+       "validFrom": "2026-11-10T08:00:00+03:00",
+       "validUntil": "2026-11-20T18:00:00+03:00",
+       "id": "here:traffic:incident:1"
+      }
+     ],
+     "language": "tr",
+     "transport": {
+      "mode": "car"
+     }
+    },
+    {
+     "id": "sample-section-2",
+     "type": "vehicle",
+     "summary": {
+      "duration": 40,
+      "length": 305,
+      "baseDuration": 35,
+      "typicalDuration": 38
+     },
+     "polyline": "BGw1wguCgiv23Bw-BAw-BAAw-B",
+     "spans": [
+      {
+       "offset": 0,
+       "length": 221,
+       "maxSpeed": 19.4444447
+      },
+      {
+       "offset": 2,
+       "length": 84,
+       "maxSpeed": 13.8888893,
+       "incidents": [
+        0,
+        1
+       ]
+      }
+     ],
+     "incidents": [
+      {
+       "description": "Örnek Sokak kapalı",
+       "type": "roadClosure",
+       "criticality": "critical",
+       "id": "here:traffic:incident:2"
+      },
+      {
+       "description": "Yoğun trafik",
+       "type": "congestion",
+       "criticality": "major",
+       "id": "here:traffic:incident:3"
+      }
+     ],
+     "language": "tr",
+     "transport": {
+      "mode": "car"
+     }
+    }
+   ]
+  }
+ ]
+}

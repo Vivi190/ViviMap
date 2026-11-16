@@ -1,8 +1,9 @@
 import CoreLocation
 import Foundation
 
-/// A road event from HERE Traffic incidents, shown on the city layer as Yandex shows them: a closure, an
-/// accident or road works. 2026-11-14, Kartal–Tuzla: 18 closures in a 3 KB answer.
+/// A road event from HERE, shown on the city layer as Yandex shows them: a closure, an accident or road
+/// works. 2026-11-14, Kartal–Tuzla: 18 closures in a 3 KB answer. The events on a measured route come in the
+/// same shape with its times (TrafficEstimate.events).
 public struct TrafficIncident: Sendable {
     public enum Kind: String, Sendable {
         case closure, accident, roadworks

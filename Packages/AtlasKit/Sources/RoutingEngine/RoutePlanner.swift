@@ -21,7 +21,8 @@ public final class RoutePlanner {
         public var errorDescription: String? {
             switch self {
             case .noRoute: "Bu hedefe rota bulunamadı. Hedef kapalı bir alanda olabilir."
-            case let .service(status): "Rota servisi yanıt vermedi (\(status)). Biraz sonra tekrar dene."
+            // The status code is for the log, not for the driver.
+            case .service: "Rota servisi yanıt vermedi. Biraz sonra yeniden deneyin."
             // Not "İnternet yok": the device is also asked when the server answers with an error.
             case .offlineUnavailable: "Rota servisi yanıt vermedi; cihazdaki İstanbul verisiyle de rota bulunamadı. Hedef İstanbul dışında olabilir."
             }
@@ -56,25 +57,109 @@ public final class RoutePlanner {
     /// Set from the "Ücretli yollardan kaçın" setting before planning; reroutes during guidance keep it.
     public var avoidsTolls = false
 
+    /// Points on roads that live traffic reports as closed (`markClosed`). Every request keeps off the road
+    /// nearest each of them, the reroutes during guidance too: a route once led round a closed stretch does
+    /// not go back through it when the driver leaves the route. Emptied for a new destination; emptied by the
+    /// planner itself when a request cannot be answered with them (`fetch`).
+    public var closedRoads: [CLLocationCoordinate2D] = []
+
+    /// Adds points on roads found closed (the middle of each closed edge of a route). False when every one of
+    /// them was known already, within 25 m: there is nothing new to ask the router for.
+    @discardableResult
+    public func markClosed(_ points: [CLLocationCoordinate2D]) -> Bool {
+        let fresh = points.filter { point in
+            !closedRoads.contains { known in
+                CLLocation(latitude: known.latitude, longitude: known.longitude)
+                    .distance(from: CLLocation(latitude: point.latitude, longitude: point.longitude)) < 25
+            }
+        }
+        // The latest: the router takes no more (`excludedLimit`).
+        closedRoads = Array((closedRoads + fresh).suffix(Self.excludedLimit))
+        return !fresh.isEmpty
+    }
+
+    /// `use_highways` of the extra candidate. Measured on FOSSGIS, 2026-11-16, Pendik → Kadıköy: at 0.1 (and
+    /// at 0) a route sharing 35 % of its points with the default one; at 0.25 still 89 % the same.
+    static let localStreetsUseHighways = 0.1
+
+    /// Valhalla refuses a request with more than 50 excluded locations (its default `max_exclude_locations`,
+    /// on FOSSGIS and in the tiles' engine on the device): HTTP 400 at 60 on 2026-11-16, fine at 45.
+    static let excludedLimit = 40
+
     /// Shared with the navigation session so reroutes use the same engine and options.
-    public static func valhallaProvider(avoidingTolls: Bool = false) throws -> WellKnownRouteProvider {
+    /// - Parameters:
+    ///   - localStreets: one route that keeps off motorways and trunk roads where it can, as a candidate for
+    ///     when the main roads are jammed.
+    ///   - closed: points on roads to keep off (`exclude_locations`: Valhalla takes the road nearest each).
+    public static func valhallaProvider(
+        avoidingTolls: Bool = false, localStreets: Bool = false, closed: [CLLocationCoordinate2D] = []
+    ) throws -> WellKnownRouteProvider {
         var options: [String: Any] = [
             "directions_options": ["language": "tr-TR", "units": "kilometers"],
-            "alternates": 2,
+            "alternates": localStreets ? 0 : 2,
         ]
+        var auto: [String: Any] = [:]
         // exclude_tolls, not use_tolls: 0, which still took the Bosphorus bridge (FOSSGIS, 2026-11-14);
         // excluded, Kadıköy → Beşiktaş goes by the Harem–Sirkeci car ferry.
-        if avoidingTolls { options["costing_options"] = ["auto": ["exclude_tolls": true]] }
+        if avoidingTolls { auto["exclude_tolls"] = true }
+        if localStreets { auto["use_highways"] = localStreetsUseHighways }
+        if !auto.isEmpty { options["costing_options"] = ["auto": auto] }
+        if !closed.isEmpty {
+            // Not snapped to a junction: a point within Valhalla's 5 m of one would take every road that
+            // meets there, the cross street included.
+            let excluded: [[String: Double]] = closed.suffix(excludedLimit).map {
+                ["lat": $0.latitude, "lon": $0.longitude, "node_snap_tolerance": 0]
+            }
+            options["exclude_locations"] = excluded
+        }
         return try WellKnownRouteProvider.valhalla(endpointUrl: endpoint, profile: "auto", optionsJson: nil)
             .withJsonOptions(options: options)
     }
 
-    /// - Parameter areaSpan: size of the destination when it is an area (Place.areaSpan); see `waypoint`.
-    public func routes(from location: CLLocation, to destination: GeoPoint, areaSpan: Double? = nil) async throws -> [RouteOption] {
+    /// The most routes offered at once: the route card has three tiles.
+    static let offered = 3
+
+    /// - Parameters:
+    ///   - areaSpan: size of the destination when it is an area (Place.areaSpan); see `waypoint`.
+    ///   - deviceFirst: for a new route while driving; see `fetch`.
+    ///   - choose: nil asks the router once and offers what it answers. Otherwise a second request, sent at
+    ///     the same moment, asks for a route that prefers local streets, and `choose` says which candidates to
+    ///     offer: it is given their lines, the router's own first (`own` of them) and the extra one last, and
+    ///     returns the places of those to keep. It runs off the main actor (lines are compared point by point).
+    public func routes(
+        from location: CLLocation, to destination: GeoPoint, areaSpan: Double? = nil, deviceFirst: Bool = false,
+        choosing choose: (@Sendable (_ shapes: [[CLLocationCoordinate2D]], _ own: Int) -> [Int])? = nil
+    ) async throws -> [RouteOption] {
         let waypoint = Self.waypoint(destination, areaSpan: areaSpan)
-        let found = try await fetch(userLocation: UserLocation(clLocation: location), waypoints: [waypoint])
-        return found.routes.enumerated().map { index, route in
-            RouteOption(index: index, route: route, isOffline: found.offline, notes: found.notes.indices.contains(index) ? found.notes[index] : RouteNotes())
+        let start = UserLocation(clLocation: location)
+        guard let choose else {
+            let found = try await fetch(userLocation: start, waypoints: [waypoint], deviceFirst: deviceFirst)
+            return Self.options(found.routes, notes: found.notes, isOffline: found.offline)
+        }
+        // Not after the first answer: the card waits for both, so they go out together.
+        async let extra = self.fetch(userLocation: start, waypoints: [waypoint], deviceFirst: deviceFirst, localStreets: true)
+        let found = try await fetch(userLocation: start, waypoints: [waypoint], deviceFirst: deviceFirst)
+        var routes: [Route] = found.routes
+        var notes: [RouteNotes] = routes.indices.map { found.notes.indices.contains($0) ? found.notes[$0] : RouteNotes() }
+        // Only from the same source as the router's own routes: a card must not mix the server's with ones
+        // from the device's tiles, which get no traffic times. A failed extra request costs nothing.
+        if let local = try? await extra, local.offline == found.offline, let route = local.routes.first {
+            routes.append(route)
+            notes.append(local.notes.first ?? RouteNotes())
+        }
+        let own = found.routes.count
+        let shapes: [[CLLocationCoordinate2D]] = routes.map { $0.geometry.map(\.clLocationCoordinate2D) }
+        let kept: [Int] = await Task.detached { choose(shapes, own) }.value
+        let chosen: [Int] = kept.filter { routes.indices.contains($0) }.prefix(Self.offered).map { $0 }
+        // A choice of none must not cost the driver the routes the router found.
+        guard !chosen.isEmpty else { return Self.options(found.routes, notes: found.notes, isOffline: found.offline) }
+        return Self.options(chosen.map { routes[$0] }, notes: chosen.map { notes[$0] }, isOffline: found.offline)
+    }
+
+    /// Routes as the card lists them, numbered by their place.
+    private static func options(_ routes: [Route], notes: [RouteNotes], isOffline: Bool) -> [RouteOption] {
+        routes.enumerated().map { index, route in
+            RouteOption(index: index, route: route, isOffline: isOffline, notes: notes.indices.contains(index) ? notes[index] : RouteNotes())
         }
     }
 
@@ -94,14 +179,34 @@ public final class RoutePlanner {
         )
     }
 
+    /// The routes for a request. Closed roads are kept off when another way exists: if the request fails with
+    /// them in force (no route when the destination lies on one, or when the car stands on one that was
+    /// reported closed), they are let go and it is asked once more, so a closure never leaves the driver
+    /// without a route.
+    /// - Parameter deviceFirst: for reroutes while driving; see `answer`.
+    /// - Parameter localStreets: the extra candidate of a plan; see `valhallaProvider`.
+    func fetch(
+        userLocation: UserLocation, waypoints: [Waypoint], deviceFirst: Bool = false, localStreets: Bool = false
+    ) async throws -> (routes: [Route], notes: [RouteNotes], offline: Bool) {
+        // Read before the request: of two requests sent together, the one that fails second finds the list
+        // already emptied by the first.
+        let excluding = !closedRoads.isEmpty
+        do {
+            return try await answer(userLocation: userLocation, waypoints: waypoints, deviceFirst: deviceFirst, localStreets: localStreets)
+        } catch where excluding && !Task.isCancelled {
+            closedRoads = []
+            return try await answer(userLocation: userLocation, waypoints: waypoints, deviceFirst: deviceFirst, localStreets: localStreets)
+        }
+    }
+
     /// Online first; with no connection or a failing server, the same request answered on the device.
     /// - Parameter deviceFirst: for reroutes while driving. The device answers in milliseconds and needs no
     ///   connection, and the server knows no more about traffic than the bundled tiles do; a slow answer
     ///   describes where the car was when it was asked. The server is the fallback then.
-    func fetch(
-        userLocation: UserLocation, waypoints: [Waypoint], deviceFirst: Bool = false
+    private func answer(
+        userLocation: UserLocation, waypoints: [Waypoint], deviceFirst: Bool, localStreets: Bool
     ) async throws -> (routes: [Route], notes: [RouteNotes], offline: Bool) {
-        let chosen = avoidsTolls ? tollFreeAdapter : adapter
+        let chosen = try requestAdapter(localStreets: localStreets)
         let request = try Self.urlRequest(for: chosen.generateRequest(userLocation: userLocation, waypoints: waypoints))
         if deviceFirst, offline != nil, let body = request.httpBody {
             if let found = try? await onDevice(body, adapter: chosen) { return found }
@@ -113,6 +218,16 @@ public final class RoutePlanner {
             guard offline != nil, let body = request.httpBody else { throw error }
             return try await onDevice(body, adapter: chosen)
         }
+    }
+
+    /// The adapter that writes a request with the options in force. Ferrostar's adapter takes its options
+    /// once, when it is built, so a request for local streets or round closed roads gets one of its own; any
+    /// of them reads the answers.
+    private func requestAdapter(localStreets: Bool) throws -> RouteAdapter {
+        if !localStreets, closedRoads.isEmpty { return avoidsTolls ? tollFreeAdapter : adapter }
+        return try RouteAdapter.fromWellKnownRouteProvider(wellKnownRouteProvider: Self.valhallaProvider(
+            avoidingTolls: avoidsTolls, localStreets: localStreets, closed: closedRoads
+        ))
     }
 
     /// The request answered from the tiles on the device; `offlineUnavailable` when they cannot route it.
@@ -237,6 +352,11 @@ public struct RouteOption: Identifiable {
     public var northEast: CLLocationCoordinate2D { route.bbox.ne.clLocationCoordinate2D }
     public var mainRoads: [String] {
         RouteSummary.mainRoads(route.steps.map { (name: $0.roadName, distance: $0.distance) })
+    }
+
+    /// The same route at another place in a list: the card's tiles and the map's labels go by `index`.
+    public func placed(at index: Int) -> RouteOption {
+        RouteOption(index: index, route: route, isOffline: isOffline, notes: notes)
     }
 }
 

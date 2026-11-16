@@ -138,6 +138,16 @@ struct SpeedLimitTests {
         #expect(NavigationSession.speedLimit(fromAnnotation: #"{"speed":8.0}"#) == nil)
         #expect(NavigationSession.speedLimit(fromAnnotation: nil) == nil)
     }
+
+    /// The traffic provider's limit for the stretch fills in only where OpenStreetMap has none for the segment.
+    @Test func openStreetMapsLimitComesBeforeTheProviders() {
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"maxspeed":{"speed":50,"unit":"km/h"},"speed":13.9}"#, or: 70) == 50)
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"maxspeed":{"unknown":true},"speed":8.0}"#, or: 70) == 70)
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"speed":8.0}"#, or: 70) == 70)
+        #expect(NavigationSession.speedLimit(fromAnnotation: nil, or: 70) == 70)
+        // Neither knows: no sign.
+        #expect(NavigationSession.speedLimit(fromAnnotation: #"{"maxspeed":{"unknown":true}}"#, or: nil) == nil)
+    }
 }
 
 @MainActor

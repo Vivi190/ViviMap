@@ -122,6 +122,10 @@ struct HomeScreen: View {
     @State private var previewTraffic: [Int: [TrafficSection]] = [:]
     /// Traffic around each measured alternative, from the same answer: guidance opens with it on the map.
     @State private var previewAround: [Int: [TrafficSection]] = [:]
+    /// Points on a closed stretch that an alternative's own flow showed on it once its time had been measured
+    /// (RouteTraffic.closedPoints). The plan's imports are spent by then, so the card keeps the alternative and
+    /// guidance takes the way round the stretch as soon as it starts on it.
+    @State private var previewClosed: [Int: [CLLocationCoordinate2D]] = [:]
     /// Bumped per route request so a late traffic answer never lands on newer routes.
     @State private var planGeneration = 0
     @State private var trafficWatch = TrafficWatch()
@@ -288,14 +292,13 @@ struct HomeScreen: View {
         return (activeRoute.flatMap { previewTraffic[$0.index] } ?? []).map { TrafficLine($0) }
     }
 
-    /// Closures, accidents and road works: all around with the "Trafik" layer; while guiding, the ones on the route
-    /// (from the last city-traffic round, no new request), as Yandex shows road events on the way.
+    /// Closures, accidents and road works: all around with the "Trafik" layer; while guiding, the ones on the rest
+    /// of the route as of the last traffic round (they come with its time, no request of their own), as Yandex
+    /// shows road events on the way.
     private var displayedIncidents: [MapIncident] {
         if showsCityTraffic { return cityTraffic.incidents.map { MapIncident($0) } }
-        guard isNavigating, settings.showsTrafficLayer, let navigation, !cityTraffic.incidents.isEmpty else { return [] }
-        let incidents = cityTraffic.incidents
-        let onRoute = navigation.onRoute(incidents.map { $0.points.first ?? CLLocationCoordinate2D() })
-        return zip(incidents, onRoute).compactMap { incident, isOn in isOn ? MapIncident(incident) : nil }
+        guard isNavigating, settings.showsTrafficLayer else { return [] }
+        return trafficWatch.events.map { MapIncident($0) }
     }
 
     /// While guiding, the slow stretches still ahead, cut at the car along the line it drives on, so none floats
@@ -443,7 +446,7 @@ struct HomeScreen: View {
                         ShortcutChips(hasHome: search.home != nil, hasWork: search.work != nil) { slot in
                             if !openShortcut(slot), let place = slot == .home ? search.home : search.work {
                                 select(place)
-                                routeError = "Konumun henüz bilinmiyor."
+                                routeError = "Konumunuz henüz bilinmiyor."
                             }
                         }
                     }
@@ -452,7 +455,7 @@ struct HomeScreen: View {
                     if settings.showsTrafficLayer, let notice = cityTraffic.notice {
                         StatusChip(systemImage: "car.2.fill", title: notice, tone: .warning)
                     } else if showsCityTraffic, let score = cityTraffic.score {
-                        // The roads around on Yandex's scale and in its words, 0 clear … 10 gridlock
+                        // The roads around on a scale drivers know from Yandex, 0 clear … 10 gridlock
                         // (AreaTraffic.score); its badge turns yellow from 4 and red from 7.
                         StatusChip(
                             systemImage: "car.2.fill",
@@ -647,6 +650,8 @@ struct HomeScreen: View {
         isPlanning = false
         selectedPlace = place
         sheet = nil
+        // The closed roads found on the way to the last place say nothing about the way to this one.
+        planner?.closedRoads = []
         prefetchRoutes(to: place)
     }
 
@@ -657,7 +662,7 @@ struct HomeScreen: View {
         planner.avoidsTolls = settings.avoidsTolls
         let id = UUID()
         let task = Task {
-            let found = try? await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan)
+            let found = try? await planner.plan(from: here, to: place)
             if prefetch?.id == id { prefetch?.routes = found }
         }
         prefetch = RoutePrefetch(id: id, point: place.point, origin: here, date: .now, avoidsTolls: settings.avoidsTolls, task: task)
@@ -717,7 +722,7 @@ struct HomeScreen: View {
     private var offlineChip: some View {
         StatusChip(
             systemImage: "wifi.slash",
-            title: OfflineMap.packages == nil ? "İnternet yok" : "İnternet yok · İstanbul çevrimdışı",
+            title: OfflineMap.packages == nil ? "İnternet yok" : "İnternet yok · çevrimdışı harita",
             tone: .warning
         )
         .accessibilityIdentifier("offline.chip")
@@ -841,11 +846,19 @@ struct HomeScreen: View {
         // A route the card or an accepted suggestion already measured: next look in a full interval. One
         // nothing is known about (a reroute, or traffic failed on the card): soon.
         var wait: Duration = trafficWatch.follows(navigation.routeCoordinates) ? TrafficWatch.interval : .seconds(10)
+        // A closed stretch the route card found on this route: the way round it is not left for a round's time.
+        let next = wait
+        if trafficWatch.hasKnownClosure { wait = .seconds(1) }
         while !Task.isCancelled {
             try? await Task.sleep(for: wait)
-            wait = TrafficWatch.interval
+            // After the look at a known closure, the round this route was due anyway.
+            wait = wait == .seconds(1) ? next : TrafficWatch.interval
             guard !Task.isCancelled, let position = location.lastLocation else { continue }
-            await trafficWatch.check(navigation: navigation, planner: planner, traffic: traffic, position: position, destination: destination)
+            let detour = await trafficWatch.check(
+                navigation: navigation, planner: planner, traffic: traffic, position: position, destination: destination
+            )
+            // Guidance moved round a closed road: a simulated drive continues along the new route from here.
+            if let detour, simulatedPuck != nil { simulate(detour, from: position) }
         }
     }
 
@@ -863,7 +876,7 @@ struct HomeScreen: View {
             ? route.coordinates.first.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }
             : location.lastLocation
         guard let start else {
-            routeError = "Konumun henüz bilinmiyor."
+            routeError = "Konumunuz henüz bilinmiyor."
             return
         }
         // What the route card showed for this route: the spoken start, the bar and the lock screen open with
@@ -875,9 +888,14 @@ struct HomeScreen: View {
             navigation.warnsSpeeding = settings.warnsSpeeding
             navigation.voice.isMuted = isMuted
             try navigation.start(route, from: start, expectedDuration: estimate?.duration)
+            // The speed limits that came with this route's times (shown where OpenStreetMap has none) and the
+            // road events on it (said once each on the way).
+            navigation.setSpeedLimits((estimate?.limits ?? []).map { RouteSpeedLimit($0) })
+            navigation.setRoadEvents((estimate?.events ?? []).compactMap { RoadEvent($0) })
             trafficWatch.begin(
                 on: route.coordinates, duration: estimate?.duration,
-                sections: previewTraffic[route.index] ?? [], around: previewAround[route.index] ?? []
+                sections: previewTraffic[route.index] ?? [], around: previewAround[route.index] ?? [],
+                events: estimate?.events ?? [], closed: previewClosed[route.index] ?? []
             )
             navigation.onRouteAhead = { [routeTrimmer, trafficWatch, weak navigation] ahead in
                 guard let navigation else { return }
@@ -1018,6 +1036,7 @@ struct HomeScreen: View {
         isPlanning = false
         prefetch?.task.cancel()
         prefetch = nil
+        planner?.closedRoads = []
         // Done with this place: the next search opens on recents, shortcuts and "Yakında", not the old results.
         search.query = ""
     }
@@ -1028,7 +1047,7 @@ struct HomeScreen: View {
             return
         }
         guard let here = location.lastLocation else {
-            routeError = "Konumun henüz bilinmiyor."
+            routeError = "Konumunuz henüz bilinmiyor."
             return
         }
         isPlanning = true
@@ -1050,17 +1069,14 @@ struct HomeScreen: View {
                 if let ready {
                     found = ready
                 } else {
-                    found = try await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan)
+                    found = try await planner.plan(from: here, to: place)
                 }
                 guard generation == planGeneration else { return }
                 routeSelection = 0
                 userPickedRoute = false
-                routeLabelPoints = Dictionary(uniqueKeysWithValues: found.compactMap { option in
-                    RouteLabel.place(on: option.coordinates, awayFrom: found.filter { $0.index != option.index }.map(\.coordinates))
-                        .map { (option.index, $0) }
-                })
+                routeLabelPoints = Self.labelPoints(found)
                 routes = found
-                scoreTraffic(found, generation: generation)
+                scoreTraffic(found, from: here, to: place, generation: generation)
                 // Every candidate in view: the alternatives are drawn too.
                 if !found.isEmpty {
                     camera = .fitting(
@@ -1080,7 +1096,7 @@ struct HomeScreen: View {
             } catch RoutePlanner.PlanningError.noRoute where planner.avoidsTolls {
                 // "No path" here usually means no toll-free path, not a closed-off destination.
                 if generation == planGeneration {
-                    routeError = "Ücretli yollardan kaçınan bir rota bulunamadı. Harita ayarları → Rota'dan kapatmayı dene."
+                    routeError = "Ücretli yollardan kaçınan bir rota bulunamadı. Harita ayarları → Rota'dan kapatmayı deneyin."
                 }
             } catch {
                 if generation == planGeneration { routeError = error.localizedDescription }
@@ -1089,12 +1105,23 @@ struct HomeScreen: View {
         }
     }
 
+    /// Where each candidate's time bubble sits on the map: on its own line, away from the others'.
+    private static func labelPoints(_ options: [RouteOption]) -> [Int: CLLocationCoordinate2D] {
+        Dictionary(uniqueKeysWithValues: options.compactMap { option in
+            RouteLabel.place(on: option.coordinates, awayFrom: options.filter { $0.index != option.index }.map(\.coordinates))
+                .map { (option.index, $0) }
+        })
+    }
+
     /// Measures every candidate with the one traffic provider (ADR-5) and preselects the fastest. Shown only
     /// when all of them were measured: mixing traffic and free-flow times would compare different scales.
-    private func scoreTraffic(_ options: [RouteOption], generation: Int) {
+    /// Before that, a candidate that runs through a closed stretch is replaced by a way round it
+    /// (`avoidingClosures`), so that each of the plan's imports, three at most, measures a route that can be driven.
+    private func scoreTraffic(_ options: [RouteOption], from origin: CLLocation, to place: Place, generation: Int) {
         trafficEstimates = [:]
         previewTraffic = [:]
         previewAround = [:]
+        previewClosed = [:]
         // A route computed on the device (no connection, or the server failing) is labelled "trafiksiz":
         // scoring it would put a live-traffic time next to that label and spend the budget for nothing.
         guard let traffic, options.first?.isOffline != true else {
@@ -1102,8 +1129,10 @@ struct HomeScreen: View {
             return
         }
         trafficStatus = .loading
-        let geometries = options.map { ($0.index, $0.coordinates) }
         Task {
+            let candidates = await avoidingClosures(in: options, from: origin, to: place, traffic: traffic, generation: generation)
+            guard generation == planGeneration else { return }
+            let geometries = candidates.map { ($0.index, $0.coordinates) }
             let measured = await withTaskGroup(of: (Int, TrafficEstimate?).self) { group in
                 for (index, coordinates) in geometries {
                     group.addTask { (index, try? await traffic.estimate(coordinates)) }
@@ -1128,10 +1157,77 @@ struct HomeScreen: View {
                let shown = measured[routeSelection],
                fastest.key != routeSelection, shown.duration - fastest.value.duration >= 60 {
                 routeSelection = fastest.key // onChange loads its colours
-            } else if let shown = options.first(where: { $0.index == routeSelection }) {
+            } else if let shown = candidates.first(where: { $0.index == routeSelection }) {
                 loadFlow(for: shown, generation: generation)
             }
         }
+    }
+
+    /// The candidates, those that run through a closed stretch replaced by a way round it. One flow request,
+    /// along the first candidate (the one on screen; its colours come from the same answer), shows the closed
+    /// stretches on and near it. Every candidate whose line runs along one is then replaced from a single new
+    /// answer of the router's, asked with those stretches excluded: in its place, so no tile appears or goes.
+    /// What the flow does not cover (another candidate's road further off) shows when that candidate's own
+    /// flow is loaded (`loadFlow`).
+    private func avoidingClosures(
+        in options: [RouteOption], from origin: CLLocation, to place: Place, traffic: any TrafficProvider, generation: Int
+    ) async -> [RouteOption] {
+        guard let planner, let first = options.first, let flow = try? await traffic.flow(along: first.coordinates),
+              generation == planGeneration
+        else { return options }
+        let shapes: [[CLLocationCoordinate2D]] = options.map(\.coordinates)
+        let line: [CLLocationCoordinate2D] = first.coordinates
+        // Off the main actor: route edges × flow points grows with the route's length.
+        let closed = await Task.detached { shapes.map { RouteTraffic.closedPoints(route: $0, flow: flow) } }.value
+        let sections = await Task.detached { RouteTraffic.sections(route: line, flow: flow) }.value
+        // The card may have been closed meanwhile (that does not end the plan): nothing is put back on it.
+        guard generation == planGeneration, routes.count == options.count else { return options }
+        var kept = options
+        var replaced: Set<Int> = []
+        let points: [CLLocationCoordinate2D] = closed.flatMap { $0 }
+        // Not once guidance has begun on one of them: there the traffic rounds deal with a closed road.
+        if !points.isEmpty, !isNavigating {
+            let known = planner.closedRoads
+            planner.markClosed(points)
+            let fresh = try? await planner.routes(from: origin, to: place.point, areaSpan: place.areaSpan)
+            guard generation == planGeneration, routes.count == options.count, !isNavigating else { return options }
+            // Server routes only, like the card's own: one from the device's tiles would get no traffic time.
+            if let fresh, fresh.first?.isOffline == false {
+                let lines: [[CLLocationCoordinate2D]] = fresh.map(\.coordinates)
+                var current = shapes
+                for index in closed.indices where !closed[index].isEmpty {
+                    let others: [[CLLocationCoordinate2D]] = current.indices.filter { $0 != index }.map { current[$0] }
+                    let stretch = closed[index]
+                    // Another road than the other tiles' when there is one; otherwise the same road as one of
+                    // them rather than a route through the closed stretch.
+                    let pick = await Task.detached {
+                        RouteOverlap.replacement(among: lines, besides: others, avoiding: stretch)
+                            ?? RouteOverlap.replacement(among: lines, besides: [], avoiding: stretch)
+                    }.value
+                    guard let pick else { continue }
+                    kept[index] = fresh[pick].placed(at: options[index].index)
+                    current[index] = lines[pick]
+                    replaced.insert(index)
+                }
+                guard generation == planGeneration, routes.count == options.count, !isNavigating else { return options }
+                routes = kept
+                routeLabelPoints = Self.labelPoints(kept)
+            } else if fresh == nil {
+                // No answer: the roads stay unmarked, so the next plan or traffic round asks again.
+                planner.closedRoads = known
+            }
+        }
+        // A candidate still on a closed stretch (no answer, or no way round it yet): guidance, once started on
+        // it, asks again from the car at once.
+        for index in closed.indices where !closed[index].isEmpty && !replaced.contains(index) {
+            previewClosed[options[index].index] = closed[index]
+        }
+        // The colours of the first candidate come from the same flow, unless another route took its place.
+        if !replaced.contains(0) {
+            previewTraffic[first.index] = sections
+            previewAround[first.index] = AreaTraffic.sections(flow)
+        }
+        return kept
     }
 
     /// Slow stretches of one alternative, once per route request (one paid flow request each).
@@ -1142,6 +1238,9 @@ struct HomeScreen: View {
             guard let flow = try? await traffic.flow(along: coordinates), generation == planGeneration else { return }
             previewTraffic[option.index] = RouteTraffic.sections(route: coordinates, flow: flow)
             previewAround[option.index] = AreaTraffic.sections(flow)
+            // A closed stretch on an alternative whose time is already measured: no import is left for a way
+            // round it on the card, so guidance takes that way when it starts on this one (startNavigation).
+            previewClosed[option.index] = RouteTraffic.closedPoints(route: coordinates, flow: flow)
         }
     }
 

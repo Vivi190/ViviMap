@@ -8,7 +8,7 @@ import Foundation
 /// Sentences avoid case suffixes on road names ("Ankara Caddesi'ne") so they are always grammatical:
 /// the road name follows after a comma.
 public enum TurkishInstructions {
-    /// Short imperative for the banner: "Sola dönün", "Göbekten ikinci çıkıştan çıkın".
+    /// Short imperative for the banner: "Sola dönün", "Döner kavşakta ikinci çıkıştan çıkın".
     /// - Parameters:
     ///   - roundaboutExitNumber: the exit to take, counted from the entry, when the route gives it.
     ///   - leavingFerry: a `notification` is a change of travel mode; true for the one that ends a ferry leg.
@@ -22,8 +22,8 @@ public enum TurkishInstructions {
             return "Rotaya başlayın"
         case .arrive:
             switch modifier {
-            case .left, .slightLeft, .sharpLeft: return "Hedef solunda"
-            case .right, .slightRight, .sharpRight: return "Hedef sağında"
+            case .left, .slightLeft, .sharpLeft: return "Hedefiniz solda"
+            case .right, .slightRight, .sharpRight: return "Hedefiniz sağda"
             default: return "Hedef"
             }
         case .turn, .endOfRoad:
@@ -47,7 +47,7 @@ public enum TurkishInstructions {
         case .roundabout, .rotary, .roundaboutTurn:
             return roundaboutPhrase(roundaboutExitDegrees, modifier: modifier, exitNumber: roundaboutExitNumber)
         case .exitRoundabout, .exitRotary:
-            return "Göbekten çıkın"
+            return "Döner kavşaktan çıkın"
         }
     }
 
@@ -61,17 +61,29 @@ public enum TurkishInstructions {
     }
 
     /// Approaching the destination: "Hedefe 400 metre kaldı.", with its side when the route knows it
-    /// ("Hedefe 120 metre kaldı, solunda."). Distance nil is the sentence at the destination itself
-    /// ("Hedef solunda."); "… sonra hedef" would not be a sentence, so arriving has its own form.
+    /// ("Hedefe 120 metre kaldı, solda."). Distance nil is the sentence at the destination itself
+    /// ("Hedefiniz solda."); "… sonra hedef" would not be a sentence, so arriving has its own form.
     public static func arrival(distance: Double?, modifier: ManeuverModifier?) -> String {
         guard let distance else { return (action(type: .arrive, modifier: modifier) ?? "Hedef") + "." }
-        let place = side(modifier).map { $0 == "Sol" ? ", solunda" : ", sağında" } ?? ""
+        let place = side(modifier).map { $0 == "Sol" ? ", solda" : ", sağda" } ?? ""
         return "Hedefe \(distancePhrase(distance)) kaldı\(place)."
+    }
+
+    /// A road event ahead, from its kind: "2 kilometre sonra yol çalışması.", "800 metre sonra kaza.",
+    /// "1 kilometre sonra yol kapalı." The traffic provider's own Turkish description is not read out: it is
+    /// no sentence ("Arasında Begonya Sokak ve Aydınlı Yolu Caddesi - Kapalı arasında").
+    static func roadEvent(_ kind: RoadEvent.Kind, distance: Double) -> String {
+        let words = switch kind {
+        case .closure: "yol kapalı"
+        case .accident: "kaza"
+        case .roadworks: "yol çalışması"
+        }
+        return "\(distancePhrase(distance)) sonra \(words)."
     }
 
     /// The maneuver after the next one, worth announcing together when it comes within `window` metres
     /// (dense Istanbul streets). Road-name changes and "keep straight" are noise, so they return nil, and so
-    /// is a roundabout exit: Valhalla follows every roundabout entry with one, and "Göbekten ikinci çıkıştan
+    /// is a roundabout exit: Valhalla follows every roundabout entry with one, and "Döner kavşakta ikinci çıkıştan
     /// çıkın" already says which exit to take.
     public static func followUp(
         type: ManeuverType?, modifier: ManeuverModifier?, roundaboutExitDegrees: UInt16?,
@@ -182,16 +194,16 @@ public enum TurkishInstructions {
     private static func roundaboutPhrase(_ degrees: UInt16?, modifier: ManeuverModifier?, exitNumber: UInt8?) -> String {
         // Counting exits needs no judgement of angles, so the number leads whenever the route has it.
         if let exitNumber, exitNumber >= 1, Int(exitNumber) <= ordinals.count {
-            return "Göbekten \(ordinals[Int(exitNumber) - 1]) çıkıştan çıkın"
+            return "Döner kavşakta \(ordinals[Int(exitNumber) - 1]) çıkıştan çıkın"
         }
         guard let degrees else {
-            return side(modifier).map { "Göbekten \($0 == "Sol" ? "sola" : "sağa") çıkın" } ?? "Göbekten çıkın"
+            return side(modifier).map { "Döner kavşaktan \($0 == "Sol" ? "sola" : "sağa") çıkın" } ?? "Döner kavşaktan çıkın"
         }
         switch RoundaboutExit(degrees: degrees) {
-        case .right: return "Göbekten sağa çıkın"
-        case .straight: return "Göbekten düz çıkın"
-        case .left: return "Göbekten sola çıkın"
-        case .back: return "Göbekten geri dönün"
+        case .right: return "Döner kavşaktan sağa çıkın"
+        case .straight: return "Döner kavşaktan düz devam edin"
+        case .left: return "Döner kavşaktan sola çıkın"
+        case .back: return "Döner kavşaktan geri dönün"
         }
     }
 }

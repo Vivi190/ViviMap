@@ -28,7 +28,7 @@ struct TurkishInstructionsTests {
         #expect(TurkishInstructions.action(type: .onRamp, modifier: .left) == "Soldaki bağlantı yoluna girin")
         #expect(TurkishInstructions.action(type: .fork, modifier: .slightLeft) == "Yol ayrımında soldan devam edin")
         #expect(TurkishInstructions.action(type: .merge, modifier: .right) == "Sağdan yola katılın")
-        #expect(TurkishInstructions.action(type: .arrive, modifier: .right) == "Hedef sağında")
+        #expect(TurkishInstructions.action(type: .arrive, modifier: .right) == "Hedefiniz sağda")
         #expect(TurkishInstructions.action(type: .depart, modifier: nil) == "Rotaya başlayın")
         #expect(TurkishInstructions.action(type: nil, modifier: nil) == nil)
     }
@@ -49,24 +49,24 @@ struct TurkishInstructionsTests {
 
     @Test func roundaboutExitsByNumberThenByBearing() {
         #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 180, roundaboutExitNumber: 2)
-            == "Göbekten ikinci çıkıştan çıkın")
+            == "Döner kavşakta ikinci çıkıştan çıkın")
         // The first maneuver of the recorded Kartal route: the fourth exit, back the way the car came (7°).
         #expect(TurkishInstructions.action(type: .roundabout, modifier: .slightRight, roundaboutExitDegrees: 7, roundaboutExitNumber: 4)
-            == "Göbekten dördüncü çıkıştan çıkın")
+            == "Döner kavşakta dördüncü çıkıştan çıkın")
         #expect(TurkishInstructions.action(type: .rotary, modifier: nil, roundaboutExitDegrees: 90, roundaboutExitNumber: 1)
-            == "Göbekten birinci çıkıştan çıkın")
+            == "Döner kavşakta birinci çıkıştan çıkın")
         // No number: by the angle driven round it.
-        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 90) == "Göbekten sağa çıkın")
-        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 180) == "Göbekten düz çıkın")
-        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 270) == "Göbekten sola çıkın")
+        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 90) == "Döner kavşaktan sağa çıkın")
+        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 180) == "Döner kavşaktan düz devam edin")
+        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 270) == "Döner kavşaktan sola çıkın")
         // A U-turn is 0°, given on either side of the 0/360 wrap.
-        #expect(TurkishInstructions.action(type: .roundabout, modifier: .slightRight, roundaboutExitDegrees: 7) == "Göbekten geri dönün")
-        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 350) == "Göbekten geri dönün")
+        #expect(TurkishInstructions.action(type: .roundabout, modifier: .slightRight, roundaboutExitDegrees: 7) == "Döner kavşaktan geri dönün")
+        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 350) == "Döner kavşaktan geri dönün")
         // A number there is no word for falls back to the angle.
-        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 90, roundaboutExitNumber: 0) == "Göbekten sağa çıkın")
-        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 90, roundaboutExitNumber: 11) == "Göbekten sağa çıkın")
-        #expect(TurkishInstructions.action(type: .roundabout, modifier: .left) == "Göbekten sola çıkın")
-        #expect(TurkishInstructions.action(type: .exitRoundabout, modifier: .right, roundaboutExitDegrees: 7) == "Göbekten çıkın")
+        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 90, roundaboutExitNumber: 0) == "Döner kavşaktan sağa çıkın")
+        #expect(TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitDegrees: 90, roundaboutExitNumber: 11) == "Döner kavşaktan sağa çıkın")
+        #expect(TurkishInstructions.action(type: .roundabout, modifier: .left) == "Döner kavşaktan sola çıkın")
+        #expect(TurkishInstructions.action(type: .exitRoundabout, modifier: .right, roundaboutExitDegrees: 7) == "Döner kavşaktan çıkın")
     }
 
     @Test func theRoundaboutSymbolFollowsTheExit() {
@@ -90,8 +90,8 @@ struct TurkishInstructionsTests {
         #expect(TurkishInstructions.spoken(action: "Sağa dönün", distance: nil, road: "") == "Sağa dönün.")
         #expect(TurkishInstructions.spoken(action: "Sağa dönün", distance: 120, road: "İhlas Sokağı", then: "Sola dönün")
             == "120 metre sonra sağa dönün, İhlas Sokağı, ardından sola dönün.")
-        #expect(TurkishInstructions.spoken(action: "Sağa dönün", distance: nil, road: nil, then: "Hedef solunda")
-            == "Sağa dönün, ardından hedef solunda.")
+        #expect(TurkishInstructions.spoken(action: "Sağa dönün", distance: nil, road: nil, then: "Hedefiniz solda")
+            == "Sağa dönün, ardından hedefiniz solda.")
     }
 
     @Test func wholeKilometresHaveNoDecimal() {
@@ -105,22 +105,22 @@ struct TurkishInstructionsTests {
 
     @Test func approachingTheDestination() {
         #expect(TurkishInstructions.action(type: .arrive, modifier: nil) == "Hedef")
-        #expect(TurkishInstructions.action(type: .arrive, modifier: .left) == "Hedef solunda")
+        #expect(TurkishInstructions.action(type: .arrive, modifier: .left) == "Hedefiniz solda")
         #expect(TurkishInstructions.arrival(distance: 395, modifier: nil) == "Hedefe 400 metre kaldı.")
-        #expect(TurkishInstructions.arrival(distance: 119, modifier: .left) == "Hedefe 120 metre kaldı, solunda.")
-        #expect(TurkishInstructions.arrival(distance: 77, modifier: .slightRight) == "Hedefe 80 metre kaldı, sağında.")
+        #expect(TurkishInstructions.arrival(distance: 119, modifier: .left) == "Hedefe 120 metre kaldı, solda.")
+        #expect(TurkishInstructions.arrival(distance: 77, modifier: .slightRight) == "Hedefe 80 metre kaldı, sağda.")
         #expect(TurkishInstructions.arrival(distance: 1_000, modifier: nil) == "Hedefe 1 kilometre kaldı.")
         // At the destination itself only its side is a sentence.
-        #expect(TurkishInstructions.arrival(distance: nil, modifier: .right) == "Hedef sağında.")
+        #expect(TurkishInstructions.arrival(distance: nil, modifier: .right) == "Hedefiniz sağda.")
     }
 
     @Test func followUpOnlyForCloseRealManeuvers() {
         #expect(TurkishInstructions.followUp(type: .turn, modifier: .left, roundaboutExitDegrees: nil, after: 80) == "Sola dönün")
-        #expect(TurkishInstructions.followUp(type: .arrive, modifier: .right, roundaboutExitDegrees: nil, after: 40) == "Hedef sağında")
+        #expect(TurkishInstructions.followUp(type: .arrive, modifier: .right, roundaboutExitDegrees: nil, after: 40) == "Hedefiniz sağda")
         // With no side, "ardından hedef" would not be a clause.
         #expect(TurkishInstructions.followUp(type: .arrive, modifier: nil, roundaboutExitDegrees: nil, after: 40) == "Hedefinize ulaşacaksınız")
         #expect(TurkishInstructions.followUp(type: .roundabout, modifier: nil, roundaboutExitDegrees: 180, roundaboutExitNumber: 3, after: 60)
-            == "Göbekten üçüncü çıkıştan çıkın")
+            == "Döner kavşakta üçüncü çıkıştan çıkın")
         // Too far to chain, or not worth a word.
         #expect(TurkishInstructions.followUp(type: .turn, modifier: .left, roundaboutExitDegrees: nil, after: 400) == nil)
         #expect(TurkishInstructions.followUp(type: .newName, modifier: .straight, roundaboutExitDegrees: nil, after: 50) == nil)

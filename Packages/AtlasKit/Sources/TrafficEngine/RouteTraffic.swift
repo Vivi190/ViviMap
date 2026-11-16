@@ -113,19 +113,20 @@ public enum AreaTraffic {
         return Int(min(10, max(0, value)))
     }
 
-    /// The words Yandex's Turkish traffic feed puts next to each score.
+    /// A score in words, for the chip beside it: what the main roads around are like, in a few words a
+    /// driver takes in at a glance.
     public static func label(score: Int) -> String {
         switch max(score, 0) {
-        case 0, 1: "Trafik açık"
+        case 0, 1: "Yollar açık"
         case 2: "Trafik akıcı"
-        case 3: "Yer yer yoğun, akıcı"
-        case 4: "Yoğun, yer yer akıcı"
-        case 5: "Yoğun trafik"
-        case 6: "Çok yoğun trafik"
-        case 7: "Trafik durma noktasında"
-        case 8: "Kilometrelerce yoğunluk"
-        case 9: "Trafik kilitlendi"
-        default: "Yürümek daha hızlı"
+        case 3: "Yer yer yavaş"
+        case 4: "Yer yer yoğun"
+        case 5: "Yoğun"
+        case 6: "Çok yoğun"
+        case 7: "Ağır ilerliyor"
+        case 8: "Yer yer duruyor"
+        case 9: "Neredeyse duruyor"
+        default: "Trafik kilit"
         }
     }
 }
@@ -177,6 +178,36 @@ public enum RouteTraffic {
         }
         if let done = current { sections.append(TrafficSection(level: done.level, coordinates: done.coordinates)) }
         return sections
+    }
+
+    /// Where `route` runs along a road reported closed: the middle of each such edge, for a router to keep off
+    /// that road (Valhalla's `exclude_locations` takes the road nearest each point; the middle of an edge is
+    /// clear of the junctions at its ends). An edge counts as it does for `sections`: a closed flow segment
+    /// within 15 m of its middle heading its way, so the opposite carriageway and cross streets do not.
+    /// - Parameters:
+    ///   - lead: edges that begin within this many metres of the route's start are left out. The car is on
+    ///     that road or all but on it: no request from there can avoid it, and a road being driven is not closed.
+    ///   - limit: at most this many points, evenly picked: routers cap how many they take.
+    public static func closedPoints(
+        route: [CLLocationCoordinate2D], flow: [FlowSegment], lead: Double = 200, limit: Int = 40
+    ) -> [CLLocationCoordinate2D] {
+        let closed: [(FlowSegment, TrafficSection.Level)] = flow.compactMap { segment in
+            segment.isClosed && segment.points.count > 1 ? (segment, TrafficSection.Level.stopped) : nil
+        }
+        guard route.count > 1, !closed.isEmpty else { return [] }
+        var points: [CLLocationCoordinate2D] = []
+        var travelled = 0.0
+        for index in route.indices.dropLast() {
+            let a = route[index], b = route[index + 1]
+            let start: Double = travelled
+            travelled += FlowSegment.metres(a, b)
+            // A repeated point has no direction of its own.
+            guard travelled > start, start >= lead, edgeLevel(a, b, closed) != nil else { continue }
+            points.append(CLLocationCoordinate2D(latitude: (a.latitude + b.latitude) / 2, longitude: (a.longitude + b.longitude) / 2))
+        }
+        guard limit > 1, points.count > limit else { return points }
+        let step = Double(points.count - 1) / Double(limit - 1)
+        return (0 ..< limit).map { points[Int((Double($0) * step).rounded())] }
     }
 
     /// Worst level among flow segments passing within 15 m of the edge's middle, heading its way (±45°).

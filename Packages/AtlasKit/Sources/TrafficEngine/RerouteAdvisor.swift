@@ -57,6 +57,45 @@ public enum RouteOverlap {
         return Double(near.count) / Double(candidate.count)
     }
 
+    /// Which candidate routes to offer, `limit` at most (the route card has three tiles), as their places in
+    /// `shapes`, in the order given. The first `own` are the router's own answer and are not judged against each
+    /// other; the rest are extra candidates (a route asked for with other preferences), offered only when they
+    /// run along another road than every route before them. When more than `limit` remain: the router's first,
+    /// then one at a time the candidate that shares least with those already kept.
+    public static func choice(of shapes: [[CLLocationCoordinate2D]], own: Int, limit: Int = 3) -> [Int] {
+        var candidates: [Int] = Array(shapes.indices.prefix(max(own, 0)))
+        for extra in shapes.indices.dropFirst(candidates.count) {
+            if candidates.allSatisfy({ share(of: shapes[extra], along: shapes[$0]) < sameRoute }) { candidates.append(extra) }
+        }
+        guard candidates.count > limit, let first = candidates.first else { return candidates }
+        var kept: [Int] = [first]
+        var rest: [Int] = Array(candidates.dropFirst())
+        while kept.count < limit, !rest.isEmpty {
+            // How much of each remaining candidate runs along the kept route it is most like.
+            let likeness: [Double] = rest.map { candidate in
+                kept.map { share(of: shapes[candidate], along: shapes[$0]) }.max() ?? 0
+            }
+            var pick = 0
+            for index in likeness.indices where likeness[index] < likeness[pick] { pick = index }
+            kept.append(rest.remove(at: pick))
+        }
+        return kept.sorted()
+    }
+
+    /// Which of `fresh` (the router's new answer) takes the place of a candidate found to run through a closed
+    /// stretch: the first that keeps off at least part of `closed` (points on that stretch) and runs along
+    /// another road than each of `others`, the candidates beside it on the card. nil when none does: the
+    /// router found no way round, or only ways the card already shows.
+    public static func replacement(
+        among fresh: [[CLLocationCoordinate2D]], besides others: [[CLLocationCoordinate2D]], avoiding closed: [CLLocationCoordinate2D]
+    ) -> Int? {
+        fresh.indices.first { index in
+            // 5 m: on the very road. The other carriageway of a dual road is further away than that.
+            share(of: closed, along: fresh[index], tolerance: 5) < 1
+                && others.allSatisfy { share(of: fresh[index], along: $0) < sameRoute }
+        }
+    }
+
     /// Point to segment distance in metres on a local flat projection (fine at city scale).
     static func distance(_ p: CLLocationCoordinate2D, _ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> CLLocationDistance {
         let metresPerDegreeLon = 111_320 * cos(p.latitude * .pi / 180)

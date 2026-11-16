@@ -3,22 +3,51 @@ import Foundation
 
 /// Travel times for one route geometry under current traffic. Every candidate route is measured by the
 /// same provider, so their times compare on one scale (docs/architecture.md, ADR-5).
-public struct TrafficEstimate: Sendable, Equatable {
+public struct TrafficEstimate: Sendable {
     /// With current traffic.
     public let duration: TimeInterval
     /// Free flow.
     public let baseDuration: TimeInterval
     /// Usual for this time of day; nil when the provider did not give it for the whole route.
     public let typicalDuration: TimeInterval?
+    /// Posted speed limits along the measured line, in driving order; empty when the provider gave none.
+    public let limits: [SpeedLimitStretch]
+    /// Closures, accidents and road works on the measured line, in driving order, each with the stretch of the
+    /// line it covers.
+    public let events: [TrafficIncident]
 
-    public init(duration: TimeInterval, baseDuration: TimeInterval, typicalDuration: TimeInterval?) {
+    public init(
+        duration: TimeInterval, baseDuration: TimeInterval, typicalDuration: TimeInterval?,
+        limits: [SpeedLimitStretch] = [], events: [TrafficIncident] = []
+    ) {
         self.duration = duration
         self.baseDuration = baseDuration
         self.typicalDuration = typicalDuration
+        self.limits = limits
+        self.events = events
     }
 
     /// Extra time traffic adds right now.
     public var delay: TimeInterval { max(0, duration - baseDuration) }
+}
+
+/// A stretch of a measured line with one posted speed limit.
+public struct SpeedLimitStretch: Sendable, Equatable {
+    /// Where it starts, in the provider's own geometry (the line it matched, a few metres off the route's).
+    public let latitude: Double
+    public let longitude: Double
+    /// Metres of road it covers.
+    public let length: Double
+    public let kmh: Int
+
+    public init(start: CLLocationCoordinate2D, length: Double, kmh: Int) {
+        latitude = start.latitude
+        longitude = start.longitude
+        self.length = length
+        self.kmh = kmh
+    }
+
+    public var start: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
 }
 
 public enum TrafficError: LocalizedError, Equatable {
@@ -32,7 +61,7 @@ public enum TrafficError: LocalizedError, Equatable {
         switch self {
         case .budgetExhausted: "Bu ayın trafik sorgu sınırı doldu."
         case .notMatched: "Rota trafik verisiyle eşleştirilemedi."
-        case let .service(status): "Trafik servisi yanıt vermedi (\(status))."
+        case .service: "Trafik servisi yanıt vermedi."
         }
     }
 }

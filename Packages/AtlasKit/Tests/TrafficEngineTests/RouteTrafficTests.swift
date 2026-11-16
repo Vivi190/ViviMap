@@ -17,6 +17,37 @@ struct FlexiblePolylineTests {
         // Same points at precision 5, from the reference algorithm cross-checked on the example above.
         #expect(FlexiblePolyline.encode(berlin) == "BF81zgKsl1xCoUs7DojBrU0RgxC1N--C")
     }
+
+    @Test func decodesHEREsDocumentedExample() {
+        let decoded = FlexiblePolyline.decode("BG-6kmkDw1zwZqqG6xmBsgL5rGmwFgqZ_oEw1d")
+        #expect(decoded.count == berlin.count)
+        for (point, expected) in zip(decoded, berlin) {
+            #expect(abs(point.latitude - expected.latitude) < 1e-9 && abs(point.longitude - expected.longitude) < 1e-9)
+        }
+        // The precision is read from the text: at five decimals the last point is 52.53909, 13.42405.
+        let rounded = FlexiblePolyline.decode(FlexiblePolyline.encode(berlin))
+        #expect(rounded.count == berlin.count)
+        #expect(abs((rounded.last?.latitude ?? 0) - 52.53909) < 1e-9)
+        #expect(abs((rounded.last?.longitude ?? 0) - 13.42405) < 1e-9)
+    }
+
+    @Test func aThirdDimensionIsReadPast() {
+        // The format's own example (github.com/heremaps/flexible-polyline): four points, each with an elevation.
+        let decoded = FlexiblePolyline.decode("BlBoz5xJ67i1BU1B7PUzIhaUxL7YU")
+        let expected: [(Double, Double)] = [(50.10228, 8.69821), (50.10201, 8.69567), (50.10063, 8.6915), (50.09878, 8.68752)]
+        #expect(decoded.count == expected.count)
+        for (point, place) in zip(decoded, expected) {
+            #expect(abs(point.latitude - place.0) < 1e-9 && abs(point.longitude - place.1) < 1e-9)
+        }
+    }
+
+    @Test func textThatIsNoPolylineGivesNoPoints() {
+        #expect(FlexiblePolyline.decode("").isEmpty)
+        #expect(FlexiblePolyline.decode("B").isEmpty)
+        #expect(FlexiblePolyline.decode("CG-6kmkDw1zwZ").isEmpty) // another version of the format
+        #expect(FlexiblePolyline.decode("BG-6kmkDw1zwZ!").isEmpty) // a character outside its alphabet
+        #expect(FlexiblePolyline.decode("BG-6kmkDw1zw").isEmpty) // ends inside a number
+    }
 }
 
 struct HEREFlowResponseTests {
@@ -207,6 +238,40 @@ struct RouteTrafficTests {
         #expect(RouteTraffic.sections(route: route, flow: [closed]).map(\.level) == [.stopped])
     }
 
+    @Test func aClosedStretchOnTheRouteGivesPointsToKeepOff() {
+        let flow = [
+            segment([(40.9, 29.204), (40.9, 29.206)], jam: 10, closed: true), // along, in the route's direction
+            segment([(40.9001, 29.209), (40.9001, 29.208)], jam: 10, closed: true), // the opposite carriageway
+            segment([(40.899, 29.2075), (40.901, 29.2075)], jam: 10, closed: true), // a cross street
+            segment([(40.9, 29.2065), (40.9, 29.2075)], jam: 10), // a standstill, but open
+        ]
+        // The middle of each closed edge of the route: clear of the junctions at its ends.
+        let points = RouteTraffic.closedPoints(route: route, flow: flow)
+        #expect(points.count == 2)
+        #expect(points.allSatisfy { $0.latitude == 40.9 })
+        #expect(abs((points.first?.longitude ?? 0) - 29.2045) < 1e-9)
+        #expect(abs((points.last?.longitude ?? 0) - 29.2055) < 1e-9)
+        #expect(RouteTraffic.closedPoints(route: route, flow: []).isEmpty)
+        #expect(RouteTraffic.closedPoints(route: [route[0]], flow: flow).isEmpty)
+    }
+
+    @Test func aClosedStretchAtTheCarIsLeftAlone() {
+        // The first 210 m of the route: its first three edges begin within 200 m of the start.
+        let flow = [segment([(40.9, 29.2), (40.9, 29.2025)], jam: 10, closed: true)]
+        #expect(RouteTraffic.closedPoints(route: route, flow: flow).isEmpty)
+        #expect(RouteTraffic.closedPoints(route: route, flow: flow, lead: 0).count == 3)
+    }
+
+    @Test func aLongClosedStretchGivesNoMorePointsThanARouterTakes() {
+        let flow = [segment([(40.9, 29.2), (40.9, 29.21)], jam: 10, closed: true)]
+        #expect(RouteTraffic.closedPoints(route: route, flow: flow, lead: 0).count == 10)
+        // Evenly picked, both ends kept.
+        let few = RouteTraffic.closedPoints(route: route, flow: flow, lead: 0, limit: 3)
+        #expect(few.count == 3)
+        #expect(abs((few.first?.longitude ?? 0) - 29.2005) < 1e-9)
+        #expect(abs((few.last?.longitude ?? 0) - 29.2095) < 1e-9)
+    }
+
     @Test func flowRequestIsACorridorPost() throws {
         let provider = HERETrafficProvider(apiKey: "k", session: .shared, budget: RequestBudget(defaults: UserDefaults(suiteName: "atlas.test.\(UUID())")!))
         let request = try provider.flowRequest(for: route)
@@ -296,14 +361,14 @@ struct AreaTrafficTests {
         #expect(abs(stretch.length - 841.4) < 0.1)
     }
 
-    @Test func scoreLabelsAreYandexsOwnWords() {
+    @Test func everyScoreHasItsWords() {
         let labels: [String] = (0 ... 10).map { AreaTraffic.label(score: $0) }
         #expect(labels == [
-            "Trafik açık", "Trafik açık", "Trafik akıcı", "Yer yer yoğun, akıcı", "Yoğun, yer yer akıcı", "Yoğun trafik",
-            "Çok yoğun trafik", "Trafik durma noktasında", "Kilometrelerce yoğunluk", "Trafik kilitlendi", "Yürümek daha hızlı",
+            "Yollar açık", "Yollar açık", "Trafik akıcı", "Yer yer yavaş", "Yer yer yoğun", "Yoğun",
+            "Çok yoğun", "Ağır ilerliyor", "Yer yer duruyor", "Neredeyse duruyor", "Trafik kilit",
         ])
-        #expect(AreaTraffic.label(score: 14) == "Yürümek daha hızlı")
-        #expect(AreaTraffic.label(score: -1) == "Trafik açık")
+        #expect(AreaTraffic.label(score: 14) == "Trafik kilit")
+        #expect(AreaTraffic.label(score: -1) == "Yollar açık")
     }
 
     @Test func mainRoadsAreMarkedForTheWiderLine() {
