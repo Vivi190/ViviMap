@@ -181,6 +181,7 @@ struct MapSettingsView: View {
                 Toggle("Hız kamerası uyarıları", isOn: $settings.warnsCameras)
                 Toggle("Kasis uyarıları", isOn: $settings.warnsBumps)
                 Toggle("Hız sınırı uyarısı", isOn: $settings.warnsSpeeding)
+                Toggle("Rota yokken de uyar", isOn: $settings.warnsWithoutRoute)
                 NavigationLink {
                     MarkedHazardsView()
                 } label: {
@@ -189,7 +190,7 @@ struct MapSettingsView: View {
             } header: {
                 Text("Uyarılar")
             } footer: {
-                Text("Veri: OpenStreetMap, \(HazardData.fetched). Her kamera ve kasis haritada yer almıyor; Pendik, Kartal ve Tuzla'da kamera verisi çok az.")
+                Text("Veri: OpenStreetMap, \(HazardData.fetched). Her kamera ve kasis haritada yer almıyor; Pendik, Kartal ve Tuzla'da kamera verisi çok az. Rota yokken uyarılar, uygulama açıkken gidiş yönündeki yola göre verilir.")
             }
 
             Section {

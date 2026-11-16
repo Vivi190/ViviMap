@@ -152,14 +152,18 @@ final class HomeScreenshotTests: XCTestCase {
         app.swipeUp()
         settle(1)
         capture("7-map-settings-more")
-        let trips = app.staticTexts["Sürüşlerim"]
-        guard trips.waitForExistence(timeout: 3) else { return }
-        trips.tap()
-        if app.navigationBars["Sürüşlerim"].waitForExistence(timeout: 5) { capture("8-trips") }
+        // The drive log's row reads as one element ("Sürüşlerim, 0"), so it is found by its prefix.
+        let trips = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Sürüşlerim")).firstMatch
+        if trips.waitForExistence(timeout: 3) {
+            trips.tap()
+            let tripsBar = app.navigationBars["Sürüşlerim"]
+            if tripsBar.waitForExistence(timeout: 5) {
+                capture("8-trips")
+                tripsBar.buttons.element(boundBy: 0).tap()
+            }
+        }
 
         // A search's results as pins on the map (night). Soft as well: Photon is a shared public server.
-        let tripsBar = app.navigationBars["Sürüşlerim"]
-        if tripsBar.exists { tripsBar.buttons.element(boundBy: 0).tap() }
         let done = app.buttons["Bitti"]
         guard done.waitForExistence(timeout: 3) else { return }
         done.tap()

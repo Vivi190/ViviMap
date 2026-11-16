@@ -54,6 +54,11 @@ public final class AppSettings {
         didSet { defaults.set(warnsSpeeding, forKey: Keys.speeding) }
     }
 
+    /// The camera and bump warnings on a drive without a destination too (on by default).
+    public var warnsWithoutRoute: Bool {
+        didSet { defaults.set(warnsWithoutRoute, forKey: Keys.withoutRoute) }
+    }
+
     /// Routes without toll bridges, tunnels and motorways (Valhalla exclude_tolls); may cross by car ferry.
     public var avoidsTolls: Bool {
         didSet { defaults.set(avoidsTolls, forKey: Keys.avoidsTolls) }
@@ -79,6 +84,7 @@ public final class AppSettings {
         warnsCameras = defaults.object(forKey: Keys.cameras) as? Bool ?? true
         warnsBumps = defaults.object(forKey: Keys.bumps) as? Bool ?? true
         warnsSpeeding = defaults.object(forKey: Keys.speeding) as? Bool ?? true
+        warnsWithoutRoute = defaults.object(forKey: Keys.withoutRoute) as? Bool ?? true
         // On unless the driver switched it off: green-to-red roads are what a traffic app is opened for.
         showsTrafficLayer = defaults.object(forKey: Keys.trafficLayer) as? Bool ?? true
         avoidsTolls = defaults.bool(forKey: Keys.avoidsTolls)
@@ -91,6 +97,7 @@ public final class AppSettings {
         static let cameras = "atlas.warn.cameras"
         static let bumps = "atlas.warn.bumps"
         static let speeding = "atlas.warn.speeding"
+        static let withoutRoute = "atlas.warn.withoutRoute"
         static let trafficLayer = "atlas.trafficLayer"
         static let avoidsTolls = "atlas.route.avoidsTolls"
         static let avoidsFerries = "atlas.route.avoidsFerries"

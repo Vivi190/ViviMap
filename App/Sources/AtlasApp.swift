@@ -11,7 +11,7 @@ import TripHistory
 struct AtlasApp: App {
     @State private var settings: AppSettings
     @State private var location: LocationProvider
-    @State private var userHazards = UserHazardStore()
+    @State private var userHazards: UserHazardStore
     @State private var trips = TripLog()
     @Environment(\.scenePhase) private var scenePhase
     private let startsTracking: Bool
@@ -21,6 +21,8 @@ struct AtlasApp: App {
     private let navigation: NavigationSession?
     /// nil without a HERE key in the build: routes then stay labelled "Trafiksiz tahmini süre".
     private let traffic = HERETrafficProvider()
+    /// Bumps and cameras ahead on a drive without a destination.
+    private let freeDrive = FreeDriveWatch()
 
     init() {
         let planner = try? RoutePlanner()
@@ -28,14 +30,27 @@ struct AtlasApp: App {
         navigation = planner.map { NavigationSession(routes: $0) }
         let settings = AppSettings()
         let location = LocationProvider()
+        let hazards = UserHazardStore()
         _settings = State(initialValue: settings)
         _location = State(initialValue: location)
+        _userHazards = State(initialValue: hazards)
         // Decided once at launch so the first frame already has the right camera and palette.
         startsTracking = location.lastLocation != nil
         let anchor = location.lastLocation?.coordinate ?? Defaults.istanbul
         initiallyNight = settings.appearanceMode.isNight(at: .now, latitude: anchor.latitude, longitude: anchor.longitude)
-        // One GPS stream: guidance receives the same fixes as the map and speedometer.
-        location.onFix = { [navigation] fix in navigation?.ingest(fix) }
+        // One GPS stream: guidance receives the same fixes as the map and speedometer; without guidance the
+        // camera and bump warnings watch the road ahead by themselves.
+        location.onFix = { [navigation, freeDrive] fix in
+            navigation?.ingest(fix)
+            guard navigation?.isActive != true else { return }
+            freeDrive.isEnabled = settings.warnsWithoutRoute
+            var kinds: Set<Hazard.Kind> = []
+            if settings.warnsCameras { kinds.insert(.camera) }
+            if settings.warnsBumps { kinds.insert(.bump) }
+            freeDrive.kinds = kinds
+            freeDrive.userHazards = hazards.hazards
+            freeDrive.ingest(fix)
+        }
     }
 
     var body: some Scene {
