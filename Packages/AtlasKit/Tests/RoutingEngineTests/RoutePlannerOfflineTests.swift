@@ -173,6 +173,33 @@ struct RoutePlannerOfflineTests {
         #expect(json["alternates"] as? Int == 2) // the other options stay
     }
 
+    @Test func avoidingFerriesAsksValhallaToExcludeThem() async throws {
+        let answer = try recordedAnswer()
+        let sent = SentBody()
+        let planner = try RoutePlanner(session: session(NoConnection.self)) { body in
+            await sent.store(body)
+            return answer
+        }
+        planner.avoidsFerries = true
+        _ = try await planner.routes(from: kartal, to: destination)
+        let body = try #require(await sent.body)
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let costing = try #require(json["costing_options"] as? [String: Any])
+        let auto = try #require(costing["auto"] as? [String: Any])
+        #expect(auto["exclude_ferries"] as? Bool == true)
+        #expect(auto["exclude_tolls"] == nil)
+        #expect(json["alternates"] as? Int == 2)
+    }
+
+    /// With tolls and ferries both excluded the router answers Kadıköy → Beşiktaş with a way round the Black
+    /// Sea; a long way round a gulf is still a route.
+    @Test func aWayRoundTheSeaIsNoRoute() {
+        #expect(RoutePlanner.isDetour(distance: 6_631_000, direct: 6_000))
+        #expect(!RoutePlanner.isDetour(distance: 117_000, direct: 21_000))
+        #expect(!RoutePlanner.isDetour(distance: 13_800, direct: 6_000))
+        #expect(!RoutePlanner.isDetour(distance: 450_000, direct: 350_000))
+    }
+
     @Test func cardKnowsAboutTollsAndFerries() async throws {
         let bridge = try bridgeAnswer()
         let viaBridge = try RoutePlanner(session: session(NoConnection.self)) { _ in bridge }

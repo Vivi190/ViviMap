@@ -59,6 +59,12 @@ public final class AppSettings {
         didSet { defaults.set(avoidsTolls, forKey: Keys.avoidsTolls) }
     }
 
+    /// Routes that board no car ferry (Valhalla exclude_ferries). With tolls avoided too, nothing crosses the
+    /// Bosphorus.
+    public var avoidsFerries: Bool {
+        didSet { defaults.set(avoidsFerries, forKey: Keys.avoidsFerries) }
+    }
+
     /// City traffic layer on the map (the "Trafik" button); remembered between launches.
     public var showsTrafficLayer: Bool {
         didSet { defaults.set(showsTrafficLayer, forKey: Keys.trafficLayer) }
@@ -76,6 +82,7 @@ public final class AppSettings {
         // On unless the driver switched it off: green-to-red roads are what a traffic app is opened for.
         showsTrafficLayer = defaults.object(forKey: Keys.trafficLayer) as? Bool ?? true
         avoidsTolls = defaults.bool(forKey: Keys.avoidsTolls)
+        avoidsFerries = defaults.bool(forKey: Keys.avoidsFerries)
     }
 
     private enum Keys {
@@ -86,5 +93,6 @@ public final class AppSettings {
         static let speeding = "atlas.warn.speeding"
         static let trafficLayer = "atlas.trafficLayer"
         static let avoidsTolls = "atlas.route.avoidsTolls"
+        static let avoidsFerries = "atlas.route.avoidsFerries"
     }
 }

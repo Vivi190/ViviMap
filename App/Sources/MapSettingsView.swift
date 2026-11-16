@@ -168,10 +168,11 @@ struct MapSettingsView: View {
 
             Section {
                 Toggle("Ücretli yollardan kaçın", isOn: $settings.avoidsTolls)
+                Toggle("Feribotlardan kaçın", isOn: $settings.avoidsFerries)
             } header: {
                 Text("Rota")
             } footer: {
-                Text("Köprü, tünel ve otoyol gişelerinden geçmeyen rota. Boğaz'ı geçerken araba vapuruna yönlendirebilir; daha uzun sürebilir.")
+                Text("Ücretli yollardan kaçınan rota köprü, tünel ve otoyol gişelerinden geçmez; Boğaz'ı araba vapuruyla geçebilir ve daha uzun sürebilir. İkisi birlikte açıkken Boğaz'ın karşısına rota bulunamaz.")
             }
 
             voiceSection

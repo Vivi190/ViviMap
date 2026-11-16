@@ -89,15 +89,16 @@ struct HomeScreen: View {
         let point: GeoPoint
         let origin: CLLocation
         let date: Date
-        let avoidsTolls: Bool
+        /// The route settings it was asked with: tolls avoided, ferries avoided.
+        let preferences: [Bool]
         /// Done once `routes` is in (still nil then: the request failed). RouteOption is not Sendable, so the
         /// task hands its result over through this state rather than as its value.
         let task: Task<Void, Never>
         var routes: [RouteOption]?
 
         /// Still the routes the driver would get now: same place and setting, asked for moments ago from here.
-        func fits(_ point: GeoPoint, from here: CLLocation, avoidsTolls: Bool) -> Bool {
-            point == self.point && avoidsTolls == self.avoidsTolls
+        func fits(_ point: GeoPoint, from here: CLLocation, preferences: [Bool]) -> Bool {
+            point == self.point && preferences == self.preferences
                 && here.distance(from: origin) < 150 && Date.now.timeIntervalSince(date) < 120
         }
     }
@@ -409,8 +410,8 @@ struct HomeScreen: View {
         .onChange(of: selectedPlace) { _, place in
             placeContact = place.flatMap { OfflinePlaceIndex.businesses?.contact(of: $0) }
         }
-        .onChange(of: settings.avoidsTolls) { _, _ in
-            // The routes (or the "no toll-free route" message) on screen were planned with the old setting.
+        .onChange(of: [settings.avoidsTolls, settings.avoidsFerries]) { _, _ in
+            // The routes (or the "no such route" message) on screen were planned with the old settings.
             if let place = selectedPlace, !isNavigating, !routes.isEmpty || routeError != nil { planRoute(to: place) }
         }
     }
@@ -660,12 +661,13 @@ struct HomeScreen: View {
         prefetch = nil
         guard let planner, let here = location.lastLocation else { return }
         planner.avoidsTolls = settings.avoidsTolls
+        planner.avoidsFerries = settings.avoidsFerries
         let id = UUID()
         let task = Task {
             let found = try? await planner.plan(from: here, to: place)
             if prefetch?.id == id { prefetch?.routes = found }
         }
-        prefetch = RoutePrefetch(id: id, point: place.point, origin: here, date: .now, avoidsTolls: settings.avoidsTolls, task: task)
+        prefetch = RoutePrefetch(id: id, point: place.point, origin: here, date: .now, preferences: [settings.avoidsTolls, settings.avoidsFerries], task: task)
     }
 
     private func placeCard(_ place: Place) -> some View {
@@ -1055,7 +1057,8 @@ struct HomeScreen: View {
         planGeneration += 1
         let generation = planGeneration
         planner.avoidsTolls = settings.avoidsTolls
-        let pending = prefetch.flatMap { $0.fits(place.point, from: here, avoidsTolls: planner.avoidsTolls) ? $0 : nil }
+        planner.avoidsFerries = settings.avoidsFerries
+        let pending = prefetch.flatMap { $0.fits(place.point, from: here, preferences: [planner.avoidsTolls, planner.avoidsFerries]) ? $0 : nil }
         Task {
             do {
                 // The routes asked for when the card opened; a fresh request only if that one failed.
@@ -1093,10 +1096,14 @@ struct HomeScreen: View {
                             : UIEdgeInsets(top: 150, left: 50, bottom: 380, right: 90)
                     )
                 }
-            } catch RoutePlanner.PlanningError.noRoute where planner.avoidsTolls {
-                // "No path" here usually means no toll-free path, not a closed-off destination.
+            } catch RoutePlanner.PlanningError.noRoute where planner.avoidsTolls || planner.avoidsFerries {
+                // "No path" here usually means none without tolls or ferries, not a closed-off destination.
                 if generation == planGeneration {
-                    routeError = "Ücretli yollardan kaçınan bir rota bulunamadı. Harita ayarları → Rota'dan kapatmayı deneyin."
+                    routeError = planner.avoidsTolls && planner.avoidsFerries
+                        ? "Ücretli yol ve feribot kullanmadan bu hedefe rota bulunamadı. Harita ayarları → Rota'dan birini kapatmayı deneyin."
+                        : planner.avoidsTolls
+                        ? "Ücretli yollardan kaçınan bir rota bulunamadı. Harita ayarları → Rota'dan kapatmayı deneyin."
+                        : "Feribot kullanmayan bir rota bulunamadı. Harita ayarları → Rota'dan kapatmayı deneyin."
                 }
             } catch {
                 if generation == planGeneration { routeError = error.localizedDescription }

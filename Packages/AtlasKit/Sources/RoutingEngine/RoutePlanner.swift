@@ -56,6 +56,8 @@ public final class RoutePlanner {
 
     /// Set from the "Ücretli yollardan kaçın" setting before planning; reroutes during guidance keep it.
     public var avoidsTolls = false
+    /// Set from the "Feribotlardan kaçın" setting, likewise.
+    public var avoidsFerries = false
 
     /// Points on roads that live traffic reports as closed (`markClosed`). Every request keeps off the road
     /// nearest each of them, the reroutes during guidance too: a route once led round a closed stretch does
@@ -92,7 +94,8 @@ public final class RoutePlanner {
     ///     when the main roads are jammed.
     ///   - closed: points on roads to keep off (`exclude_locations`: Valhalla takes the road nearest each).
     public static func valhallaProvider(
-        avoidingTolls: Bool = false, localStreets: Bool = false, closed: [CLLocationCoordinate2D] = []
+        avoidingTolls: Bool = false, avoidingFerries: Bool = false, localStreets: Bool = false,
+        closed: [CLLocationCoordinate2D] = []
     ) throws -> WellKnownRouteProvider {
         var options: [String: Any] = [
             "directions_options": ["language": "tr-TR", "units": "kilometers"],
@@ -102,6 +105,7 @@ public final class RoutePlanner {
         // exclude_tolls, not use_tolls: 0, which still took the Bosphorus bridge (FOSSGIS, 2026-11-14);
         // excluded, Kadıköy → Beşiktaş goes by the Harem–Sirkeci car ferry.
         if avoidingTolls { auto["exclude_tolls"] = true }
+        if avoidingFerries { auto["exclude_ferries"] = true }
         if localStreets { auto["use_highways"] = localStreetsUseHighways }
         if !auto.isEmpty { options["costing_options"] = ["auto": auto] }
         if !closed.isEmpty {
@@ -192,11 +196,34 @@ public final class RoutePlanner {
         // already emptied by the first.
         let excluding = !closedRoads.isEmpty
         do {
-            return try await answer(userLocation: userLocation, waypoints: waypoints, deviceFirst: deviceFirst, localStreets: localStreets)
+            let found = try await answer(userLocation: userLocation, waypoints: waypoints, deviceFirst: deviceFirst, localStreets: localStreets)
+            return try sensible(found, from: userLocation, to: waypoints)
         } catch where excluding && !Task.isCancelled {
             closedRoads = []
-            return try await answer(userLocation: userLocation, waypoints: waypoints, deviceFirst: deviceFirst, localStreets: localStreets)
+            let found = try await answer(userLocation: userLocation, waypoints: waypoints, deviceFirst: deviceFirst, localStreets: localStreets)
+            return try sensible(found, from: userLocation, to: waypoints)
         }
+    }
+
+    /// The answer without the routes that are none. With tolls and ferries both excluded Valhalla takes Kadıköy
+    /// → Beşiktaş round the Black Sea (6 631 km, FOSSGIS, 2026-11-16) rather than say there is no way; with one
+    /// of them excluded a way that long is no better. `noRoute` when nothing else is left.
+    private func sensible(
+        _ found: (routes: [Route], notes: [RouteNotes], offline: Bool), from start: UserLocation, to waypoints: [Waypoint]
+    ) throws -> (routes: [Route], notes: [RouteNotes], offline: Bool) {
+        guard avoidsTolls || avoidsFerries, let end = waypoints.last?.coordinate else { return found }
+        let direct: CLLocationDistance = CLLocation(latitude: start.coordinates.lat, longitude: start.coordinates.lng)
+            .distance(from: CLLocation(latitude: end.lat, longitude: end.lng))
+        let kept: [Int] = found.routes.indices.filter { !Self.isDetour(distance: found.routes[$0].distance, direct: direct) }
+        guard !kept.isEmpty else { throw PlanningError.noRoute }
+        let notes: [RouteNotes] = kept.map { found.notes.indices.contains($0) ? found.notes[$0] : RouteNotes() }
+        return (routes: kept.map { found.routes[$0] }, notes: notes, offline: found.offline)
+    }
+
+    /// A way so far round that it answers nothing: over 100 km and more than ten times the straight line.
+    /// Gebze → Yalova round the gulf without tolls is 117 km for 21 km in a straight line, and is a route.
+    static func isDetour(distance: CLLocationDistance, direct: CLLocationDistance) -> Bool {
+        distance > 100_000 && distance > 10 * direct
     }
 
     /// Online first; with no connection or a failing server, the same request answered on the device.
@@ -224,9 +251,9 @@ public final class RoutePlanner {
     /// once, when it is built, so a request for local streets or round closed roads gets one of its own; any
     /// of them reads the answers.
     private func requestAdapter(localStreets: Bool) throws -> RouteAdapter {
-        if !localStreets, closedRoads.isEmpty { return avoidsTolls ? tollFreeAdapter : adapter }
+        if !localStreets, !avoidsFerries, closedRoads.isEmpty { return avoidsTolls ? tollFreeAdapter : adapter }
         return try RouteAdapter.fromWellKnownRouteProvider(wellKnownRouteProvider: Self.valhallaProvider(
-            avoidingTolls: avoidsTolls, localStreets: localStreets, closed: closedRoads
+            avoidingTolls: avoidsTolls, avoidingFerries: avoidsFerries, localStreets: localStreets, closed: closedRoads
         ))
     }
 
