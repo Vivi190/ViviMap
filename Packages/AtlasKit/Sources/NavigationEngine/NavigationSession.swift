@@ -85,6 +85,14 @@ public final class NavigationSession {
     @ObservationIgnored private var planner = AnnouncementPlanner()
     @ObservationIgnored private var lastSpeed: Double = 0
     @ObservationIgnored private var lastFixTime = Date.distantPast
+    /// The last fix from the GPS itself, not one made up while it was silent (DeadReckoning).
+    @ObservationIgnored private var lastRealFix: CLLocation?
+    /// Metres along the route of the car and of the next maneuver as of the last real fix.
+    @ObservationIgnored private var reckonFrom: (travelled: CLLocationDistance, maneuver: CLLocationDistance)?
+    /// Made-up fixes are being fed; the states they bring are not the real fix's.
+    @ObservationIgnored private var isReckoning = false
+    /// Once a second while guiding: is the GPS silent?
+    @ObservationIgnored private var reckoner: Task<Void, Never>?
     /// Spoken warning when clearly over the posted limit (map settings → Uyarılar); set before a route starts.
     @ObservationIgnored public var warnsSpeeding = true
     /// km/h over the limit before the spoken warning; 0 is SpeedingWatch's own rule. Read at `start`.
@@ -159,9 +167,33 @@ public final class NavigationSession {
         // A fix CoreLocation marks as invalid (negative accuracy) would pass every accuracy gate in Ferrostar,
         // which only rejects accuracies above its thresholds.
         guard isActive, location.horizontalAccuracy >= 0, CLLocationCoordinate2DIsValid(location.coordinate) else { return }
+        lastRealFix = location
+        isReckoning = false
+        forward(location)
+    }
+
+    private func forward(_ location: CLLocation) {
         lastSpeed = max(location.speed, 0)
         lastFixTime = location.timestamp
         bridge.forward(location)
+    }
+
+    /// One made-up fix while the GPS is silent: the car moved along the route at its last speed (DeadReckoning).
+    private func reckon(at now: Date) {
+        guard isActive, !hasArrived, !isOffRoute, !isRerouting, let real = lastRealFix, let from = reckonFrom,
+              let path = routePath,
+              let target = DeadReckoning.offset(
+                  from: from.travelled, speed: max(real.speed, 0), elapsed: now.timeIntervalSince(real.timestamp),
+                  maneuver: from.maneuver, length: path.length
+              )
+        else { return }
+        isReckoning = true
+        let point = path.point(at: target)
+        // As placed as a good fix, so Ferrostar takes it; the real one replaces it the moment it comes.
+        forward(CLLocation(
+            coordinate: point.coordinate, altitude: real.altitude, horizontalAccuracy: 10, verticalAccuracy: -1,
+            course: point.course, speed: real.speed, timestamp: now
+        ))
     }
 
     /// - Parameter expectedDuration: the time to say at the start when it is known better than the route's own
@@ -183,6 +215,16 @@ public final class NavigationSession {
         // Not the last fix of the drive before: its speed would set this one's first lead distances and zoom.
         lastSpeed = max(location.speed, 0)
         lastFixTime = location.timestamp
+        lastRealFix = location
+        reckonFrom = nil
+        isReckoning = false
+        reckoner?.cancel()
+        reckoner = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                self?.reckon(at: .now)
+            }
+        }
         hasArrived = false
         arrivedAt = nil
         subscription = core.$state
@@ -296,6 +338,11 @@ public final class NavigationSession {
     public func stop() {
         core.stopNavigation()
         subscription = nil
+        reckoner?.cancel()
+        reckoner = nil
+        lastRealFix = nil
+        reckonFrom = nil
+        isReckoning = false
         onUpdate = nil
         onPuck = nil
         onRouteAhead = nil
@@ -413,6 +460,7 @@ public final class NavigationSession {
             // New route (start, reroute or a taken suggestion): find the cameras and bumps it passes.
             let path = RoutePath(routeCoordinates)
             routePath = path
+            reckonFrom = nil
             arrowSteps = nil // the arrow is rebuilt on the new geometry
             lightSteps = nil
             // The same watch with what it has announced: a camera in range is not warned of a second time.
@@ -483,6 +531,9 @@ public final class NavigationSession {
                 onRouteAhead?(routeAhead)
                 travelled = at
             }
+        }
+        if !isReckoning, routePath != nil, !offRoute {
+            reckonFrom = (travelled: travelled, maneuver: travelled + progress.distanceToNextManeuver)
         }
         // Off the route `travelled` belongs to a point the car is not at, and so would the provider's limit.
         let limit = Self.speedLimit(
