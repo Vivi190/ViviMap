@@ -9,6 +9,7 @@ TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 - **Home and Work with their times:** the "Ev" and "İş" chips under the search bar show the drive there now with live traffic ("Ev · 24 dk"), as Yandex's start screen does; measured again every ten minutes while the map is open, and after about a kilometre of driving. One route request and one traffic request per place, only while the app is in front.
 - **İSPARK fees:** an İSPARK car park's card shows what it costs and its free minutes ("1 sa 110 TL · 2 sa 140 TL · Tam gün 370 TL · İlk 15 dk ücretsiz"), from the municipality's open data.
 - **Warnings without a route:** with the map open, speed bumps and cameras ahead on the road are said without a destination too, as Yandex's navigator mode does ("80 metre sonra kasis."). The road ahead is judged by the course, so a bend or a road alongside can mislead; a switch in the settings turns it off.
+- **Guidance settings:** "Dönüşleri seslendir" off leaves only the warnings spoken (cameras, bumps, speed, road events), for a driver who knows the way; the speed warning's threshold ("Otomatik", +5, +10 or +20 km/h); and "Navigasyonda kuzey yukarıda" for a flat map with north up instead of one turning with the car.
 - The settings sheets are opaque at half height.
 
 ## Build 33 — 2026-11-16
