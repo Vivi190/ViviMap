@@ -115,6 +115,10 @@ struct HomeScreen: View {
     @State private var businessOverlay = BusinessOverlay()
     /// The businesses in view, loaded where the map comes to rest (BusinessLoader).
     @State private var mapBusinesses: [MapBusiness] = []
+    /// A search's results as pins on the map ("Haritada göster"), until taken off or guidance starts.
+    @State private var resultPins: [Place] = []
+    /// What they are, for the chip under the search bar: the query, with the place a list is around.
+    @State private var resultsTitle = ""
     /// Feeds the user puck during real guidance with the fix snapped to the route (NavigationSession.onPuck).
     @State private var guidedPuck: StaticLocationManager?
     @State private var trafficEstimates: [Int: TrafficEstimate] = [:]
@@ -282,6 +286,15 @@ struct HomeScreen: View {
         return showsCityTraffic ? cityTraffic.lines : []
     }
 
+    /// The search results as pins: not while routes are on screen or guiding. The chosen one has the
+    /// destination pin instead.
+    private var displayedPins: [MapPin] {
+        guard !isNavigating, routes.isEmpty else { return [] }
+        return resultPins.filter { $0.id != selectedPlace?.id }.map {
+            MapPin(id: $0.id, name: $0.name, coordinate: $0.point.coordinate)
+        }
+    }
+
     /// Live traffic is known for the route on screen; it is then drawn in traffic colours instead of blue.
     private var routeIsMeasured: Bool {
         if isNavigating { return trafficWatch.arrival != nil }
@@ -333,6 +346,7 @@ struct HomeScreen: View {
                 trafficOverlay: trafficOverlay,
                 businesses: isNavigating ? [] : mapBusinesses,
                 businessOverlay: businessOverlay,
+                pins: displayedPins,
                 puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,
                 guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,
@@ -450,6 +464,9 @@ struct HomeScreen: View {
                                 routeError = "Konumunuz henüz bilinmiyor."
                             }
                         }
+                    }
+                    if selectedPlace == nil, !resultPins.isEmpty {
+                        ResultsChip(title: resultsTitle, count: resultPins.count, onList: { sheet = .search }, onClear: clearResults)
                     }
                     GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
                     if !connectivity.isOnline { offlineChip }
@@ -590,6 +607,11 @@ struct HomeScreen: View {
     }
 
     private func select(_ place: Place) {
+        // Picked from another search than the one on the map: its pins are done with.
+        if !resultPins.contains(where: { $0.id == place.id }) {
+            resultPins = []
+            resultsTitle = ""
+        }
         search.remember(place)
         show(place)
         camera = .center(place.point.coordinate, zoom: max(viewport.zoom, 16), pitch: is3D ? Self.pitch3D : 0)
@@ -627,6 +649,12 @@ struct HomeScreen: View {
     /// The card opens at once with the name the map shows; address, kind and area follow from the search
     /// service. An area (a mall, a hospital) changes where the route should end, so its routes are asked again.
     private func pick(_ badge: MapPlace) {
+        // A search result's pin: the place as the search found it; the map stays where it is.
+        if let id = badge.id, let place = resultPins.first(where: { $0.id == id }) {
+            search.remember(place)
+            show(place)
+            return
+        }
         // One of the index's own businesses: its record is on the device, address included.
         if let id = badge.id, let place = OfflinePlaceIndex.businesses?.place(id: id) {
             show(place)
@@ -890,6 +918,9 @@ struct HomeScreen: View {
             navigation.warnsSpeeding = settings.warnsSpeeding
             navigation.voice.isMuted = isMuted
             try navigation.start(route, from: start, expectedDuration: estimate?.duration)
+            // The drive has its destination: the other results are done with.
+            resultPins = []
+            resultsTitle = ""
             // The speed limits that came with this route's times (shown where OpenStreetMap has none) and the
             // road events on it (said once each on the way).
             navigation.setSpeedLimits((estimate?.limits ?? []).map { RouteSpeedLimit($0) })
@@ -1040,6 +1071,31 @@ struct HomeScreen: View {
         prefetch = nil
         planner?.closedRoads = []
         // Done with this place: the next search opens on recents, shortcuts and "Yakında", not the old results.
+        // Unless those are on the map: the chip opens their list again.
+        if resultPins.isEmpty { search.query = "" }
+    }
+
+    /// "Haritada göster" in the search sheet: the results as pins, all of them in view.
+    private func showOnMap(_ places: [Place]) {
+        guard !places.isEmpty else { return }
+        resultsTitle = search.nearbyCenter.map { "\(search.query) · \($0.name)" } ?? search.query
+        resultPins = places
+        // A place on screen before is put away, and with the pins on the map the query stays for the chip.
+        clearPlace()
+        sheet = nil
+        let latitudes = places.map(\.point.latitude), longitudes = places.map(\.point.longitude)
+        camera = .fitting(
+            southWest: CLLocationCoordinate2D(latitude: latitudes.min()!, longitude: longitudes.min()!),
+            northEast: CLLocationCoordinate2D(latitude: latitudes.max()!, longitude: longitudes.max()!),
+            padding: isLandscape
+                ? UIEdgeInsets(top: 40, left: 450, bottom: 40, right: 90)
+                : UIEdgeInsets(top: 230, left: 50, bottom: 140, right: 90)
+        )
+    }
+
+    private func clearResults() {
+        resultPins = []
+        resultsTitle = ""
         search.query = ""
     }
 
@@ -1259,10 +1315,15 @@ struct HomeScreen: View {
         NavigationStack {
             switch sheet {
             case .search:
-                SearchSheet(search: search, onSelect: select) { place in
-                    select(place)
-                    planRoute(to: place)
-                }
+                SearchSheet(
+                    search: search,
+                    onSelect: select,
+                    onShortcut: { place in
+                        select(place)
+                        planRoute(to: place)
+                    },
+                    onShowOnMap: showOnMap
+                )
             case .mapSettings: MapSettingsView(showDiagnostics: { self.sheet = .diagnostics })
             case .diagnostics: LocationDiagnosticsView()
             case .attribution: MapAttributionView()

@@ -51,6 +51,19 @@ public struct MapIncident: Sendable {
     }
 }
 
+/// A place a search found, shown as a pin on the map; a tap hands its id back (`onPlaceTap`).
+public struct MapPin: Sendable {
+    public let id: String
+    public let name: String
+    public let coordinate: CLLocationCoordinate2D
+
+    public init(id: String, name: String, coordinate: CLLocationCoordinate2D) {
+        self.id = id
+        self.name = name
+        self.coordinate = coordinate
+    }
+}
+
 /// A place badge of the base map that was tapped (a shop, a pharmacy, a station), as the tiles describe it.
 public struct MapPlace: Sendable {
     /// The name its label shows: the Turkish one when the tiles have it.
@@ -101,6 +114,7 @@ public struct AtlasMapView: View {
     private let trafficOverlay: TrafficOverlay?
     private let businesses: [MapBusiness]
     private let businessOverlay: BusinessOverlay?
+    private let pins: [MapPin]
     private let showsGuidanceCursor: Bool
     private let onFollowingChanged: ((Bool) -> Void)?
     private let onTap: (() -> Void)?
@@ -134,6 +148,7 @@ public struct AtlasMapView: View {
         trafficOverlay: TrafficOverlay? = nil,
         businesses: [MapBusiness] = [],
         businessOverlay: BusinessOverlay? = nil,
+        pins: [MapPin] = [],
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         guidanceZoom: Double? = nil,
@@ -164,6 +179,7 @@ public struct AtlasMapView: View {
         self.trafficOverlay = trafficOverlay
         self.businesses = businesses
         self.businessOverlay = businessOverlay
+        self.pins = pins
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.guidanceZoom = guidanceZoom
@@ -317,6 +333,30 @@ public struct AtlasMapView: View {
             }
             if !bumpMarks.isEmpty {
                 Self.markLayer("bump", bumpMarks, Self.bumpMark)
+            }
+            // A search's results as pins, their names under them where there is room. The chosen one has the
+            // destination pin instead, drawn after these and so on top.
+            if !pins.isEmpty {
+                let results = ShapeSource(identifier: Self.resultsLayerID) {
+                    pins.map { pin in
+                        MLNPointFeature(coordinate: pin.coordinate) { $0.attributes = ["name": pin.name, "id": pin.id] } as MLNShape
+                    }
+                }
+                // Names apart from the pins: a name that collides is left out, the pin stays.
+                SymbolStyleLayer(identifier: Self.resultNamesLayerID, source: results)
+                    .text(featurePropertyNamed: "name")
+                    // The style's own font: MapLibre's default stack is not on the tile server.
+                    .textFontNames(["Noto Sans Regular"])
+                    .textFontSize(12)
+                    .textAnchor("top")
+                    .maximumTextWidth(8)
+                    .textColor(night ? Self.resultTextNight : Self.resultTextDay)
+                    .textHaloColor(night ? Self.routeCasingNight : .white)
+                    .textHaloWidth(1.4)
+                SymbolStyleLayer(identifier: Self.resultsLayerID, source: results)
+                    .iconImage(Self.resultPin)
+                    .iconAnchor("bottom")
+                    .iconAllowsOverlap(true)
             }
             if let destination {
                 let pin = ShapeSource(identifier: "atlas-destination") {
@@ -480,8 +520,12 @@ public struct AtlasMapView: View {
     }
 
     private static let routeLabelLayers: Set<String> = ["atlas-route-label-0", "atlas-route-label-1", "atlas-route-label-2"]
-    /// What a tap can hit: the route callouts and the base map's place badges.
-    private static let tapLayers: Set<String> = routeLabelLayers.union(MapLayerID.places + [BusinessOverlay.layerID])
+    private static let resultsLayerID = "atlas-results"
+    private static let resultNamesLayerID = "atlas-result-names"
+    /// What a tap can hit: the route callouts, the place badges and the search results' pins.
+    private static let tapLayers: Set<String> = routeLabelLayers.union(
+        MapLayerID.places + [BusinessOverlay.layerID, resultsLayerID, resultNamesLayerID]
+    )
 
     private static func routeLabelLayer(_ slot: Int, _ label: RouteLabel, night: Bool) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-route-label-\(slot)") {
@@ -495,8 +539,15 @@ public struct AtlasMapView: View {
 
     /// The destination as Apple Maps and Yandex mark it: a red drop with a white rim and dot, its tip on the place
     /// (bottom-anchored). A plain dot covered the place's own icon and label.
-    private static let destinationPin: UIImage = {
-        let margin: CGFloat = 3, radius: CGFloat = 14, tipBelowCircle: CGFloat = 14
+    private static let destinationPin = drop(destinationColor, radius: 14, dot: 11)
+    /// A search result: the same drop, smaller and in the app's blue, so the chosen place stands out in red.
+    private static let resultPin = drop(POIIcons.rgb(0x1F6FEB), radius: 10, dot: 7)
+    private static let resultTextDay = POIIcons.rgb(0x2C2C2E)
+    private static let resultTextNight = POIIcons.rgb(0xEEF1F6)
+
+    /// A drop: a circle of `radius` running down to a tip as far below it, with a white rim and a white dot.
+    private static func drop(_ color: UIColor, radius: CGFloat, dot: CGFloat) -> UIImage {
+        let margin: CGFloat = 3, tipBelowCircle = radius
         let size = CGSize(width: radius * 2 + margin * 2, height: radius * 2 + tipBelowCircle + margin * 2)
         return UIGraphicsImageRenderer(size: size).image { context in
             let center = CGPoint(x: size.width / 2, y: margin + radius)
@@ -507,16 +558,16 @@ public struct AtlasMapView: View {
             drop.addLine(to: tip)
             drop.close()
             context.cgContext.setShadow(offset: CGSize(width: 0, height: 1), blur: 3, color: UIColor.black.withAlphaComponent(0.35).cgColor)
-            destinationColor.setFill()
+            color.setFill()
             drop.fill()
             context.cgContext.setShadow(offset: .zero, blur: 0, color: nil)
             UIColor.white.setStroke()
             drop.lineWidth = 2
             drop.stroke()
             UIColor.white.setFill()
-            UIBezierPath(ovalIn: CGRect(x: center.x - 5.5, y: center.y - 5.5, width: 11, height: 11)).fill()
+            UIBezierPath(ovalIn: CGRect(x: center.x - dot / 2, y: center.y - dot / 2, width: dot, height: dot)).fill()
         }
-    }()
+    }
 
     private static let closureColor = UIColor(red: 0.90, green: 0.22, blue: 0.21, alpha: 1)
     /// "No entry": a white bar on a red disc.

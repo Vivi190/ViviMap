@@ -156,6 +156,23 @@ final class HomeScreenshotTests: XCTestCase {
         guard trips.waitForExistence(timeout: 3) else { return }
         trips.tap()
         if app.navigationBars["Sürüşlerim"].waitForExistence(timeout: 5) { capture("8-trips") }
+
+        // A search's results as pins on the map (night). Soft as well: Photon is a shared public server.
+        let tripsBar = app.navigationBars["Sürüşlerim"]
+        if tripsBar.exists { tripsBar.buttons.element(boundBy: 0).tap() }
+        let done = app.buttons["Bitti"]
+        guard done.waitForExistence(timeout: 3) else { return }
+        done.tap()
+        app.buttons["search.open"].tap()
+        let query = app.searchFields.firstMatch
+        guard query.waitForExistence(timeout: 5) else { return }
+        query.tap()
+        query.typeText("eczane")
+        let onMap = app.buttons["search.showOnMap"]
+        guard onMap.waitForExistence(timeout: 20) else { return }
+        onMap.tap()
+        settle(6)
+        capture("9-results-map")
     }
 
     private func settle(_ seconds: TimeInterval) {

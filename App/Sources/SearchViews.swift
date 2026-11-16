@@ -72,6 +72,8 @@ struct SearchSheet: View {
     let onSelect: (Place) -> Void
     /// Home / work: one tap goes straight to the route.
     let onShortcut: (Place) -> Void
+    /// "Haritada göster": the results as pins on the map.
+    var onShowOnMap: (([Place]) -> Void)? = nil
     @Environment(LocationProvider.self) private var location
     @State private var isSearchPresented = true
 
@@ -96,6 +98,14 @@ struct SearchSheet: View {
                         }
                     } footer: {
                         Text("Haritada nöbet çizelgesi yok. En yakın eczaneler için \"eczane\" yazın; açık olup olmadığını bu listeden kontrol edin.")
+                    }
+                }
+                if let onShowOnMap, search.results.count > 1, !search.isSearching {
+                    Section {
+                        Button { onShowOnMap(search.results) } label: {
+                            Label("\(search.results.count) sonucu haritada göster", systemImage: "map")
+                        }
+                        .accessibilityIdentifier("search.showOnMap")
                     }
                 }
                 if let center = search.nearbyCenter {
@@ -250,6 +260,46 @@ struct SearchSheet: View {
     private func distanceText(to place: Place) -> String? {
         guard let from = search.nearbyCenter?.point ?? location.lastLocation.map({ GeoPoint($0.coordinate) }) else { return nil }
         return Formatting.distance(meters: from.distance(to: place.point))
+    }
+}
+
+/// Under the search bar while a search's results are pins on the map: what they are, a tap for their list
+/// again, and a cross to take them off.
+struct ResultsChip: View {
+    let title: String
+    let count: Int
+    let onList: () -> Void
+    let onClear: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button(action: onList) {
+                HStack(spacing: Spacing.xs) {
+                    Image(systemName: "list.bullet")
+                        .foregroundStyle(Color.atlasAccent)
+                    Text("\(title) · \(count)")
+                        .lineLimit(1)
+                }
+                .padding(.leading, Spacing.m)
+                .padding(.trailing, Spacing.s)
+                .padding(.vertical, Spacing.s)
+                .contentShape(Rectangle())
+            }
+            .accessibilityLabel(Text("\(title), \(count) sonuç: listeyi aç"))
+            Button(action: onClear) {
+                Image(systemName: "xmark")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.vertical, Spacing.s)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel(Text("Sonuçları haritadan kaldır"))
+            .accessibilityIdentifier("results.clear")
+        }
+        .font(.subheadline.weight(.semibold))
+        .buttonStyle(.plain)
+        .atlasFloatingSurface(in: Capsule())
     }
 }
 
