@@ -36,7 +36,7 @@
 - Cihaz başına aylık istek bütçesi, kullanımı sağlayıcının ücretsiz kotasında tutar.
 
 **Arama**, İstanbul'a göre ayarlı (Photon, OpenStreetMap, Overture Maps)
-- İşletmeler adıyla, en yakından başlayarak ve bağlantı olmadan da bulunur: Overture Maps'in açık yer verisinden üretilmiş, cihazdaki 389 000 dükkân, restoran ve iş yerinden oluşan dizin.
+- İşletmeler adıyla, en yakından başlayarak ve bağlantı olmadan da bulunur: Overture Maps'in açık yer verisinden üretilmiş, cihazdaki 389 000 dükkân, restoran ve iş yerinden oluşan dizin. Sokak yakınlığında haritada rozet olarak görünürler; kartlarında, veride varsa, telefon numarası ve web sitesi yer alır.
 - Adresler insanların yazdığı gibi: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
 - Yakındaki yer türleri (*"benzinlik"*, *"en yakın eczane"*), bir semtte (*"esentepe eczane"*) ve hedefin çevresindeki otoparklar.
 - OpenStreetMap'e karşı ölçüldü: ölçüm sorgularının 64'ünde 64'ünde ilk sonuç kastedilen yer ([rapor](docs/research/2026-11-14-arama-olcumu.md)).
@@ -95,7 +95,7 @@ Mac'te: `brew install xcodegen`, `xcodegen`, sonra `Atlas.xcodeproj`'u aç. HERE
 
 ## Gizlilik
 
-Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda kalır. Uygulama işini yapmak için arama metnini ve konumunu Photon'a (yakındaki sonuçları öne almak için), başlangıç ve hedefi Valhalla'ya, trafik için rota şeklini ve harita bölgesini HERE'ye gönderir; ekrandaki bölgenin harita karolarını OpenFreeMap'ten ister. Kimlik bilgisi gönderilmez.
+Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda kalır. Uygulama işini yapmak için arama metnini ve konumunu Photon'a (yakındaki sonuçları öne almak için), başlangıç ve hedefi Valhalla'ya, trafik için rota şeklini ve harita bölgesini HERE'ye gönderir; ekrandaki bölgenin harita karolarını OpenFreeMap'ten ister. Kimlik bilgisi gönderilmez. İşletmeler telefonda aranır. Yer kartı, yorumları için yeri Google Haritalar'da ya da Yandex Haritalar'da açabilir; yerin adı ve konumu yalnızca o zaman ve istendiğinde o servise gider.
 
 ## Veri ve teşekkür
 

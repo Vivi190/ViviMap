@@ -36,7 +36,7 @@
 - A monthly request budget per device keeps usage inside the provider's free tier.
 
 **Search**, tuned for Istanbul (Photon, OpenStreetMap, Overture Maps)
-- Businesses by name, nearest first, also without a connection: an on-device index of 389 000 shops, restaurants and offices from the open places data of Overture Maps.
+- Businesses by name, nearest first, also without a connection: an on-device index of 389 000 shops, restaurants and offices from the open places data of Overture Maps. They show as badges on the map at street zoom, and their cards carry phone number and website where the data has them.
 - Addresses as people write them: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
 - Kinds of places near you (*"benzinlik"*, *"en yakın eczane"*), in a district (*"esentepe eczane"*), and car parks around a destination.
 - Measured against OpenStreetMap: the first result is the intended place for 64 of 64 benchmark queries ([report](docs/research/2026-11-14-arama-olcumu.md), in Turkish).
@@ -95,7 +95,7 @@ On a Mac: `brew install xcodegen`, run `xcodegen`, then open `Atlas.xcodeproj`. 
 
 ## Privacy
 
-No accounts, analytics or tracking. Saved places and trip history stay on the phone. To do its job the app sends search text and your location to Photon (to rank nearby results), start and destination to Valhalla, route shapes and map areas to HERE for traffic, and requests map tiles for the area on screen from OpenFreeMap. No identifiers are sent.
+No accounts, analytics or tracking. Saved places and trip history stay on the phone. To do its job the app sends search text and your location to Photon (to rank nearby results), start and destination to Valhalla, route shapes and map areas to HERE for traffic, and requests map tiles for the area on screen from OpenFreeMap. No identifiers are sent. Businesses are searched on the phone. A place card can open the place in Google Maps or Yandex Maps for its reviews; only then, and only when asked, does the place's name and position go to that service.
 
 ## Data and acknowledgements
 
