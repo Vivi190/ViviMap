@@ -27,7 +27,8 @@ jobs:
 
       - name: Istanbul extract
         run: |
-          curl -fsSL -o turkey.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf
+          # Retried: one refused connection to the mirror must not cost the whole build.
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 30 -o turkey.osm.pbf https://download.geofabrik.de/europe/turkey-latest.osm.pbf
           sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
           osmium extract -b "$BBOX" turkey.osm.pbf -o istanbul.osm.pbf --overwrite
           rm turkey.osm.pbf

@@ -40,7 +40,7 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
 1. **Başlat**'a basın. Sol üstte küçük mavi bir panel çıkmalı: dönüş oku, büyük mesafe ve gidilecek yolun adı (ad yoksa "Sağa dönün" gibi talimat). Ardışık manevrada ikinci, küçük bir ok görünür. Sağ üstte iki daire durur: hız ve yolun hız sınırı. Araç dururken "0" yazar; sınır aşılınca hız kırmızıya döner ve tabela kırmızı dolar.
 2. Rota çizgisi araç okunun altından başlamalı; geçilen kısım silinir. Araç büyük, iki tonlu mavi bir okla gösterilir. Bir sonraki dönüş rotanın üstünde beyaz bir okla gösterilir.
 3. Altta tek satır durur: kalan mesafe, varış saati ve kalan süre; solunda rotanın tamamını gösteren düğme, sağında navigasyonu bitiren ✕. Satırın üstünde o an üzerinde bulunulan yolun adı yazar.
-4. Sesli uyarılar "siz" diliyle gelir ("300 metre sonra sağa dönün"): şehirde yaklaşık 400 m, 120 m ve dönüşte; hızlı yolda daha erken ve iki kez. Yalnızca adı değişen yolda uyarı gelmez. Trafik ışıklı kavşakta "Işıklarda sağa dönün", göbekte "Göbekten ikinci çıkıştan çıkın", hedefe yaklaşırken "Hedefe 400 metre kaldı" denmeli.
+4. Sesli uyarılar "siz" diliyle gelir ("300 metre sonra sağa dönün"): şehirde yaklaşık 400 m, 120 m ve dönüşte; hızlı yolda daha erken ve iki kez. Yalnızca adı değişen yolda uyarı gelmez. Trafik ışıklı kavşakta "Işıklarda sağa dönün", döner kavşakta "Döner kavşakta ikinci çıkıştan çıkın", hedefe yaklaşırken "Hedefe 400 metre kaldı" denmeli.
 5. Rotadan çıkınca "Rotadan çıktınız" denmeli ve panelde yazmalı; yeni rota çizilince "Rota yeniden oluşturuldu" denmeli.
 6. Haritaya dokununca sağda ses ve paylaş düğmeleri 6 saniyeliğine çıkar. Harita elle kaydırılınca ya da "Rotanın tamamı" düğmesine dokununca alt satırın üstünde **Rotaya devam et** düğmesi çıkmalı; dokunulmazsa görünüm 12 saniye sonra kendiliğinden araca dönmeli.
 7. Navigasyon sürerken ekran kararmamalı. Yan tuşla kilitlenince sesli yönlendirme sürmeli; kilit ekranında ve Dynamic Island'da sonraki manevra, mesafe ve varış görünmeli.
@@ -50,11 +50,13 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
 
 ## Trafik
 
-1. Uygulama açılınca trafik katmanı açık olmalı: yollar yön başına ince çizgilerle çizilir; akan yeşil, yavaş sarı, yoğun kırmızı, duran koyu kırmızı. Renk trafiğin değiştiği yerde değişmeli; uzun bir yol baştan sona tek renk olmamalı. Arama çubuğunun altında "4 puan · Yoğun, yer yer akıcı" gibi bölge puanı yazar. Sağdaki arabalı düğme katmanı kapatır.
+1. Uygulama açılınca trafik katmanı açık olmalı: yollar yön başına ince çizgilerle çizilir; akan yeşil, yavaş sarı, yoğun kırmızı, duran koyu kırmızı. Renk trafiğin değiştiği yerde değişmeli; uzun bir yol baştan sona tek renk olmamalı. Arama çubuğunun altında "4 puan · Yer yer yoğun" gibi bölge puanı yazar. Sağdaki arabalı düğme katmanı kapatır.
    Aynı anda Yandex Haritalar açılıp aynı yollar karşılaştırılmalı: renkler büyük ölçüde örtüşmeli.
-2. Kapalı yollar kırmızı kesikli çizgi ve girilmez işaretiyle, kazalar ve yol çalışmaları kendi işaretleriyle görünmeli. Navigasyonda rotanın üstündekiler görünmeye devam eder.
+2. Kapalı yollar kırmızı kesikli çizgi ve girilmez işaretiyle, kazalar ve yol çalışmaları kendi işaretleriyle görünmeli. Navigasyonda rotanın üstündekiler görünmeye devam eder. Rotanın üstünde bir olay varsa yaklaşık bir kilometre kala bir kez söylenmeli ("1 kilometre sonra yol çalışması.", "800 metre sonra kaza."); olaylar 3 dakikada bir yenilenir.
 3. Navigasyonda trafik katmanı açık kalır: rotanın çevresindeki yollar da renkli görünür. Canlı trafikle rota çizgisi trafik renklerindedir ve alt satırdaki ince şerit kalan yolu gösterir. Varış saati 3 dakikada bir trafiğe göre yenilenir; altında "Canlı trafik · © HERE" yazar.
 4. Belirgin bir kazanç (en az 3 dk ve %15) olursa "Daha hızlı rota" bandı çıkar ("Değiştir" yeni rotaya geçer, "Hayır" bandı kapatır); 20 saniye içinde dokunulmazsa mevcut rota kalır.
+5. Kapalı bir yol: rota kartında hiçbir seçenek trafiğin kapalı bildirdiği bir kesimden geçmemeli (başka yol varken). Sürüş sırasında rotanın üstünde bir yol kapanırsa "Yol kapalı. Rota değiştirildi." denmeli ve rota kapalı kesimin etrafından dolaşmalı. Bilinen bir kapalı yol (yol çalışması, pazar kurulan sokak) varsa oraya rota isteyip deneyin.
+6. Rota kartındaki seçeneklerden biri ana yollar yerine ara yolları kullanan bir rota olabilir; D-100 tıkalıyken bu seçeneğin süresine bakın.
 
 ## Sürüş uyarıları ve harita
 
@@ -62,13 +64,13 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
    Tek yönlü sokaklarda yol boyunca küçük gri oklar görünmeli; bildiğiniz tek yönlü sokaklarda yönün doğru olduğunu kontrol edin.
 2. Navigasyonda "Kasis · 80 m" ya da "Hız kamerası · 300 m" etiketi çıkmalı ve uyarı bir kez seslendirilmeli. Ayarlar → Uyarılar'dan açılıp kapanır.
 3. Bölgede OSM'de neredeyse kamera yok; bilinen kameralar ve kasisler uzun basıp "…" menüsünden işaretlenebilir. İşaretler Ayarlar → Uyarılar → İşaretlerim'den silinir.
-4. Hız sınırı bilinen bir yolda sınırın belirgin üstünde (50'lik yolda 57 ve üstü) 3 saniye kalınca "Hız sınırı 50." denmeli.
+4. Canlı trafikli bir rotada hız sınırı neredeyse her yolda görünmeli (OpenStreetMap'te sınır olmayan yollarda HERE'nin sınırı kullanılır). Tabeladaki sınırla karşılaştırın; yanlış ya da eksik gördüğünüz yolları not edin. Uçak modunda sınır yalnızca OpenStreetMap'te olan yollarda görünür. Sınırın belirgin üstünde (50'lik yolda 57 ve üstü) 3 saniye kalınca "Hız sınırı 50." denmeli.
 5. Sağ üstteki hız göstergesi araçla tutarlı olmalı; tünelde "–" ve sol üstte "GPS sinyali yok" görünmeli.
 6. Gün batımından sonra harita kendiliğinden gece moduna geçmeli.
 
 ## Çevrimdışı
 
-Uçak modu açıkken uygulama açılınca üstte "İnternet yok · İstanbul çevrimdışı" yazmalı ve harita cihazdaki İstanbul paketinden gelmeli. Arama cihazdaki dizinden sonuç vermeli, rota kartında "Çevrimdışı rota" yazmalı ve rotadan çıkınca yeni rota yine cihazda hesaplanmalı.
+Uçak modu açıkken uygulama açılınca üstte "İnternet yok · çevrimdışı harita" yazmalı ve harita cihazdaki İstanbul paketinden gelmeli. Arama cihazdaki dizinden sonuç vermeli, rota kartında "Çevrimdışı rota" yazmalı ve rotadan çıkınca yeni rota yine cihazda hesaplanmalı.
 
 ## Ses
 

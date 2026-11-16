@@ -4,6 +4,13 @@ TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
 ## Build 32 — 2026-11-16
 
+**Guidance**
+- The speed limit shows on nearly every road of a route. Where OpenStreetMap has none, nine roads in ten around Kartal, Pendik and Tuzla, the limit HERE gives for that stretch is used; it comes with the route's traffic time, at no extra request. Without a connection the limit is OpenStreetMap's alone.
+- Road events on the rest of the route (a closed road, an accident, road works) are renewed with every traffic round and said once, about a kilometre ahead ("1 kilometre sonra yol çalışması.").
+- A route no longer runs through a stretch that live traffic reports as closed when there is another way: on the route card the candidate is replaced by a way round it before its time is measured; while driving, the route changes and says so ("Yol kapalı. Rota değiştirildi.").
+- Every plan also asks for a route that prefers local streets, for when the main roads are jammed; the card offers the three routes that differ most.
+- Roundabouts are "döner kavşak" in the prompts ("Döner kavşakta ikinci çıkıştan çıkın"), the destination's side "Hedefiniz solda".
+
 **Places on the map and their cards**
 - At street zoom the businesses of the search index show as badges on the map, in the look of the base map's own place badges; a tap opens the business's card. The base map alone showed about a tenth of a street's shops.
 - Hairdressers, offices, car services, vets, bakeries, butchers, dry cleaners and chargers have badges of their own; the base map's places of these kinds, which were not drawn at all, show too. A business whose kind is unknown is a plain dot, drawn where the others leave room.
@@ -30,6 +37,7 @@ TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
 **Wording**
 - One form of address ("siz") in messages and settings, as in the spoken prompts. The faster-route offer is answered with "Değiştir" or "Hayır". One wording for a time without traffic ("Trafiksiz tahmini süre").
+- The traffic score beside the map has words of the app's own ("4 puan · Yer yer yoğun"). Error messages no longer show a server's status code.
 
 ## Build 31 — 2026-11-16
 

@@ -93,6 +93,9 @@ Full rationale and sources: [research/2026-11-13-faz0-arastirma.md](research/202
 - **Speeds are not invented for side streets without traffic data.** Road class, traffic lights and turn count enter the score as an uncertainty margin.
 - The thresholds (3 min, 15%, 300 m) are **initial estimates**, to be tuned with real drives in Phase 8.
 - A "better than Google or Yandex" claim needs measurement. Phase 7 records predicted and actual duration for every drive.
+- **As built (2026-11-16):** a plan sends two Valhalla requests at once, the default with two alternatives and one that prefers local streets (`use_highways` 0.1); the three candidates that share least road are offered. The corridor candidate (`linear_cost_factors`) is not built.
+- **Closed roads:** before the candidates are measured, the flow along the first one shows the stretches HERE reports as closed. A candidate running through one is replaced from a new Valhalla answer asked with those stretches excluded (`exclude_locations`, at most 40 points: the public server refuses more than 50). While guiding, a closed stretch ahead found by a traffic round leads to the same request from the car and a spoken change of route. A request that fails with exclusions is asked again without them: a closure never leaves the driver without a route.
+- **What comes with the import:** the same `/v8/import` call that measures a route returns HERE's speed limit per span and the road events on the route (`spans=maxSpeed,length,incidents`, `return=polyline,…,incidents`), at no extra request. The limits are shown where OpenStreetMap has none (it has them on 9 to 16 % of the road length around Pendik, Kartal and Tuzla); the events are said once on the way. A plan costs at most three imports.
 
 ## ADR-6 — Search
 
