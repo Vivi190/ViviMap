@@ -2,11 +2,25 @@
 
 /// SF Symbols for maneuvers and lanes (right-hand traffic).
 enum ManeuverSymbols {
-    static func symbol(type: ManeuverType?, modifier: ManeuverModifier?) -> String {
+    /// - Parameter roundaboutExitDegrees: the angle driven round a roundabout, which picks its symbol.
+    static func symbol(type: ManeuverType?, modifier: ManeuverModifier?, roundaboutExitDegrees: UInt16? = nil) -> String {
         switch type {
         case .arrive: return "flag.checkered"
         case .depart: return "location.north.fill"
-        case .roundabout, .rotary, .roundaboutTurn, .exitRoundabout, .exitRotary:
+        case .roundabout, .rotary, .roundaboutTurn:
+            // By where the car leaves it: one symbol turning right for every roundabout showed a right turn
+            // for the exit straight across and for the way back.
+            guard let roundaboutExitDegrees else {
+                return modifier.map(isLeft) == true ? "arrow.turn.up.left" : "arrow.triangle.turn.up.right.circle"
+            }
+            switch RoundaboutExit(degrees: roundaboutExitDegrees) {
+            case .right: return "arrow.triangle.turn.up.right.circle"
+            case .straight: return "arrow.up"
+            case .left: return "arrow.turn.up.left"
+            case .back: return "arrow.uturn.left"
+            }
+        case .exitRoundabout, .exitRotary:
+            // Inside the circle the way out is always to the right.
             return "arrow.triangle.turn.up.right.circle"
         case .merge: return "arrow.triangle.merge"
         case .fork: return modifier.map(isLeft) == true ? "arrow.up.left" : "arrow.up.right"

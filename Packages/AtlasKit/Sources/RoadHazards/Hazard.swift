@@ -13,7 +13,7 @@ public struct Hazard: Sendable, Equatable, Codable {
     public let longitude: Double
     /// Limit a camera enforces, when mapped.
     public let maxspeed: Int?
-    /// Direction of travel a camera watches, in degrees, when mapped; nil = both ways.
+    /// Where a camera looks, in degrees, when mapped: it faces the traffic it watches. nil = not mapped.
     public let direction: Double?
 
     public init(kind: Kind, latitude: Double, longitude: Double, maxspeed: Int? = nil, direction: Double? = nil) {

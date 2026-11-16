@@ -15,19 +15,44 @@ struct RouteHazardsTests {
         #expect(path.project(CLLocationCoordinate2D(latitude: 40.9003, longitude: 29.2025), tolerance: 10) == nil) // ~33 m away
     }
 
+    /// A camera's mapped direction is where it looks, so it faces the traffic it watches.
     @Test func onlyHazardsTheRoutePasses() {
         let hazards = [
             Hazard(kind: .bump, latitude: 40.9, longitude: 29.205), // on the road
             Hazard(kind: .bump, latitude: 40.9002, longitude: 29.206), // ~22 m off: a side street
-            Hazard(kind: .camera, latitude: 40.90012, longitude: 29.203, maxspeed: 50), // beside the road, both ways
-            Hazard(kind: .camera, latitude: 40.9001, longitude: 29.207, direction: 270), // watches westbound traffic
-            Hazard(kind: .camera, latitude: 40.9001, longitude: 29.208, direction: 95), // watches us
+            Hazard(kind: .camera, latitude: 40.90012, longitude: 29.203, maxspeed: 50), // beside the road, no direction mapped
+            Hazard(kind: .camera, latitude: 40.9001, longitude: 29.207, direction: 270), // looks west, at us driving east
+            Hazard(kind: .camera, latitude: 40.9001, longitude: 29.208, direction: 95), // looks our way: watches the oncoming carriageway
             Hazard(kind: .bump, latitude: 41.2, longitude: 28.9), // elsewhere in Istanbul
         ]
         let found = RouteHazards.along(path, hazards: hazards)
         #expect(found.map(\.hazard.kind) == [.camera, .bump, .camera])
-        #expect(found.map(\.hazard.longitude) == [29.203, 29.205, 29.208])
+        #expect(found.map(\.hazard.longitude) == [29.203, 29.205, 29.207])
         #expect(found.map(\.offset) == found.map(\.offset).sorted())
+    }
+
+    /// Only a camera looking within 60° of the car's own course is left out.
+    @Test func aCameraIsDroppedOnlyWhenItLooksTheWayTheCarDrives() {
+        // The route runs east (90°). 160° and 0° look across the road rather than along it.
+        let directions: [Double?] = [90, 45, 140, 160, 0, 292, nil]
+        let kept: [Bool] = directions.map { direction in
+            let camera = Hazard(kind: .camera, latitude: 40.9001, longitude: 29.204, direction: direction)
+            return !RouteHazards.along(path, hazards: [camera]).isEmpty
+        }
+        #expect(kept == [false, false, false, true, true, true, true])
+    }
+
+    @Test func neighboursOfOneKindCountOnce() {
+        let hazards = [
+            Hazard(kind: .bump, latitude: 40.9, longitude: 29.2020),
+            Hazard(kind: .bump, latitude: 40.9, longitude: 29.2023), // ~25 m on: the same run of bumps
+            Hazard(kind: .bump, latitude: 40.9, longitude: 29.2026), // ~25 m after that one, 50 m after the first
+            Hazard(kind: .camera, latitude: 40.9, longitude: 29.2024), // another kind keeps its own warning
+            Hazard(kind: .bump, latitude: 40.9, longitude: 29.2060), // ~285 m further: a new warning
+        ]
+        let found = RouteHazards.along(path, hazards: hazards)
+        #expect(found.map(\.hazard.longitude) == [29.2020, 29.2024, 29.2060])
+        #expect(found.map(\.hazard.kind) == [.bump, .camera, .bump])
     }
 }
 
@@ -48,6 +73,40 @@ struct HazardWatchTests {
         // Past the camera the bump is next, but only in range from 80 m (14 m/s × 6 s = 84 m).
         #expect(watch.update(travelled: 1010, speed: 14).alert == nil)
         #expect(watch.update(travelled: 1120, speed: 14).sentence == "80 metre sonra kasis.")
+    }
+
+    /// Each kind has its own next hazard: looking only at the nearest one, the bump kept the camera behind it
+    /// (in range from 300 m) unannounced until the bump was passed.
+    @Test func aBumpDoesNotHideTheCameraBehindIt() {
+        var watch = HazardWatch(hazards: [hazard(.bump, at: 1000), hazard(.camera, at: 1050, limit: 50)])
+        #expect(watch.update(travelled: 700, speed: 14).alert == nil)
+        let first = watch.update(travelled: 760, speed: 14)
+        #expect(first.alert == HazardAlert(kind: .camera, distance: 290, maxspeed: 50))
+        #expect(first.sentence == "300 metre sonra hız kamerası, hız sınırı 50.")
+        // Both in range: the chip shows the nearer one, and the bump gets its own sentence.
+        let second = watch.update(travelled: 925, speed: 14)
+        #expect(second.alert == HazardAlert(kind: .bump, distance: 75, maxspeed: nil))
+        #expect(second.sentence == "80 metre sonra kasis.")
+        // Past the bump the camera is shown again, and not announced again.
+        let third = watch.update(travelled: 1010, speed: 14)
+        #expect(third.alert == HazardAlert(kind: .camera, distance: 40, maxspeed: 50))
+        #expect(third.sentence == nil)
+    }
+
+    /// The watch outlives a change of route: the session only replaces its hazards.
+    @Test func aNewRouteDoesNotRepeatAWarning() {
+        let camera = Hazard(kind: .camera, latitude: 41.0, longitude: 29.0, maxspeed: 50)
+        var watch = HazardWatch(hazards: [RouteHazard(hazard: camera, offset: 1000)])
+        #expect(watch.update(travelled: 750, speed: 14).sentence == "250 metre sonra hız kamerası, hız sınırı 50.")
+        // The new route starts at the car: the same camera is now 200 m from its start.
+        watch.hazards = [RouteHazard(hazard: camera, offset: 200)]
+        let after = watch.update(travelled: 0, speed: 14)
+        #expect(after.alert == HazardAlert(kind: .camera, distance: 200, maxspeed: 50))
+        #expect(after.sentence == nil)
+        // Another camera on the new route is announced as usual.
+        let other = Hazard(kind: .camera, latitude: 41.01, longitude: 29.0)
+        watch.hazards.append(RouteHazard(hazard: other, offset: 600))
+        #expect(watch.update(travelled: 310, speed: 14).sentence == "300 metre sonra hız kamerası.")
     }
 
     @Test func fasterMeansEarlier() {

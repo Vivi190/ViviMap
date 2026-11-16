@@ -64,13 +64,21 @@ struct SimulatedDriveTests {
         #expect(updates > 10, "update callback ran \(updates) times")
         #expect(arrivalSeen, "the callback never saw the arrival")
         #expect(session.arrivedAt.map { $0 >= startTime } == true)
-        #expect(prompts.first?.hasPrefix("Rota başladı") == true)
-        #expect(prompts.last == "Hedefe ulaştın.")
-        #expect(!prompts.contains("Yeni rota hesaplanıyor."), "rerouted while exactly on the route: \(prompts)")
-        // Maneuver prompts only: camera / bump warnings ("80 metre sonra kasis.") would also match " sonra ".
-        let turns = prompts.dropFirst().dropLast().filter { !$0.contains("kasis") && !$0.contains("Kasis") && !$0.contains("kamera") }
+        #expect(prompts.first?.hasPrefix("Rota oluşturuldu.") == true)
+        #expect(prompts.last == "Hedefinize ulaştınız.")
+        // Said once, however many updates follow the arrival.
+        let arrivals = prompts.filter { $0 == "Hedefinize ulaştınız." }
+        #expect(arrivals.count == 1)
+        #expect(!prompts.contains("Rotadan çıktınız."), "left the route while exactly on it: \(prompts)")
+        #expect(!prompts.contains("Rota yeniden oluşturuldu."), "rerouted while exactly on the route: \(prompts)")
+        // Maneuver prompts only: camera / bump warnings ("80 metre sonra kasis.") would also match " sonra ",
+        // and the approach to the destination ("Hedefe 400 metre kaldı.") is not a turn.
+        let turns = prompts.dropFirst().dropLast().filter {
+            !$0.contains("kasis") && !$0.contains("Kasis") && !$0.contains("kamera") && !$0.hasPrefix("Hedefe")
+        }
         #expect(turns.contains { $0.contains(" sonra ") }, "no advance warning: \(prompts)")
         #expect(turns.contains { !$0.contains(" sonra ") }, "no at-the-turn prompt: \(prompts)")
+        #expect(prompts.contains { $0.hasPrefix("Hedefe ") && $0.contains(" kaldı") }, "no approach to the destination: \(prompts)")
         #expect(session.durationRemaining == nil, "arrival must clear the remaining time")
         #expect(arrowSeen, "no turn arrow on a route with turns")
         #expect(session.maneuverArrow.isEmpty, "arrival must clear the turn arrow")
@@ -103,7 +111,8 @@ struct SimulatedDriveTests {
         }
         try await Task.sleep(for: .milliseconds(200))
 
-        #expect(log.lines.contains("Yeni rota hesaplanıyor."), "no reroute prompt: \(log.lines)")
+        #expect(log.lines.contains("Rotadan çıktınız."), "leaving the route was not announced: \(log.lines)")
+        #expect(log.lines.contains("Rota yeniden oluşturuldu."), "the new route was not announced: \(log.lines)")
         let newStart = try #require(session.routeCoordinates.first)
         #expect(Self.distance(newStart, originalStart) > 100, "route geometry was not replaced")
         #expect(Self.distance(newStart, away) < 250, "new route does not start where the driver is")
@@ -159,8 +168,10 @@ struct SimulatedDriveTests {
         let grown = Self.peakMemory() - halfway
 
         #expect(session.hasArrived, "never arrived; last prompts: \(log.lines.suffix(5))")
-        #expect(!log.lines.contains("Yeni rota hesaplanıyor."), "rerouted while exactly on the route")
-        #expect(log.lines.count > 20, "only \(log.lines.count) prompts in \(Int(path.length)) m")
+        #expect(!log.lines.contains("Rotadan çıktınız."), "left the route while exactly on it")
+        #expect(!log.lines.contains("Rota yeniden oluşturuldu."), "rerouted while exactly on the route")
+        // Fewer than before by design: name changes are silent and a turn at speed gets two prompts, not three.
+        #expect(log.lines.count > 10, "only \(log.lines.count) prompts in \(Int(path.length)) m")
         #expect(grown < 8 * 1024 * 1024, "memory grew \(grown / 1024) KB in the second half")
     }
 

@@ -58,7 +58,7 @@ public final class NavigationSession {
     /// Set once per maneuver, not per fix.
     public private(set) var maneuverArrow: [[CLLocationCoordinate2D]] = []
     @ObservationIgnored private var arrowSteps: Int?
-    /// Whether the next maneuver is at a traffic light ("Işıklarda sağa dön"), worked out once per maneuver.
+    /// Whether the next maneuver is at a traffic light ("Işıklarda sağa dönün"), worked out once per maneuver.
     @ObservationIgnored private var maneuverAtLight = false
     @ObservationIgnored private var lightSteps: Int?
     /// The next camera or bump within warning range, for the banner chip.
@@ -93,16 +93,37 @@ public final class NavigationSession {
     @ObservationIgnored private var routePath: RoutePath?
     /// Road names of the current route by folded name, in their Turkish spelling (TurkishFold.preferredSpellings).
     @ObservationIgnored private var spellings: [String: String] = [:]
+    /// Whether the last update had the car off every remaining step; "Rotadan çıktınız." is said on the way in.
+    @ObservationIgnored private var isOffRoute = false
+    /// A failed reroute has been announced; Ferrostar keeps retrying, and nothing more is said until the car
+    /// is back on a route.
+    @ObservationIgnored private var rerouteFailed = false
+    @ObservationIgnored private var statusThrottle = StatusThrottle()
 
-    /// - Parameter routes: also answers reroutes, so they fall back to the device without a connection.
+    /// - Parameter routes: also answers reroutes: from the tiles on the device when the build has them, else
+    ///   from the server.
     public init(routes: RoutePlanner) {
         let bridge = FerrostarLocationBridge()
         self.bridge = bridge
         let config = SwiftNavigationControllerConfig(
             waypointAdvance: .waypointWithinRange(100.0),
-            stepAdvanceCondition: stepAdvanceDistanceEntryAndExit(
-                distanceToEndOfStep: 30, distanceAfterEndOfStep: 5, minimumHorizontalAccuracy: 32
-            ),
+            // A step ends in one of two ways, whichever comes first.
+            // 1. A fix within 30 m of its end, then the position snapped to the route 5 m past it. Measured on
+            //    the raw fix alone, 5 m of GPS error beside the line (the outer lane) counted as past the end:
+            //    below 50 km/h the card, the arrow and the zoom moved on up to 25 m before the turn.
+            // 2. A fix within 30 m of its end, then the raw fix more than 20 m from the step. Ferrostar 0.59's
+            //    snapped condition forgets its entry whenever an exit check fails, so its two checks alternate
+            //    from fix to fix. Between 90 and 125 km/h a fix can pass both by; the step then never ends and
+            //    Ferrostar reroutes a car that is on its route (1 step end in 6 at 108 km/h with fixes on the
+            //    line once a second). This condition keeps its entry and ends the step on the next fix.
+            stepAdvanceCondition: stepAdvanceOr(conditions: [
+                stepAdvanceDistanceEntryAndSnappedExit(
+                    distanceToEndOfStep: 30, distanceAfterEndOfStep: 5, minimumHorizontalAccuracy: 32
+                ),
+                stepAdvanceDistanceEntryAndExit(
+                    distanceToEndOfStep: 30, distanceAfterEndOfStep: 20, minimumHorizontalAccuracy: 32
+                ),
+            ]),
             arrivalStepAdvanceCondition: stepAdvanceDistanceToEndOfStep(distance: 20, minimumHorizontalAccuracy: 32),
             routeDeviationTracking: .staticThreshold(minimumHorizontalAccuracy: 25, maxAcceptableDeviation: 50),
             snappedLocationCourseFiltering: .snapToRoute
@@ -119,16 +140,27 @@ public final class NavigationSession {
 
     /// Every GPS fix goes through here while navigating.
     public func ingest(_ location: CLLocation) {
-        guard isActive else { return }
+        // A fix CoreLocation marks as invalid (negative accuracy) would pass every accuracy gate in Ferrostar,
+        // which only rejects accuracies above its thresholds.
+        guard isActive, location.horizontalAccuracy >= 0, CLLocationCoordinate2DIsValid(location.coordinate) else { return }
         lastSpeed = max(location.speed, 0)
         lastFixTime = location.timestamp
         bridge.forward(location)
     }
 
-    public func start(_ option: RouteOption, from location: CLLocation) throws {
+    /// - Parameter expectedDuration: the time to say at the start when it is known better than the route's own
+    ///   (measured with traffic); nil says the route's.
+    public func start(_ option: RouteOption, from location: CLLocation, expectedDuration: TimeInterval? = nil) throws {
         planner = AnnouncementPlanner()
         speedingWatch = SpeedingWatch()
         speedingWatch.isEnabled = warnsSpeeding
+        statusThrottle = StatusThrottle()
+        isOffRoute = false
+        rerouteFailed = false
+        if isRerouting { isRerouting = false }
+        // Not the last fix of the drive before: its speed would set this one's first lead distances and zoom.
+        lastSpeed = max(location.speed, 0)
+        lastFixTime = location.timestamp
         hasArrived = false
         arrivedAt = nil
         subscription = core.$state
@@ -138,13 +170,15 @@ public final class NavigationSession {
             }
         try core.startNavigation(route: option.route, userLocation: UserLocation(clLocation: location))
         isActive = true
-        voice.speak("Rota başladı. \(Formatted.duration(option.duration)) sürecek.")
+        voice.speak("Rota oluşturuldu. \(Formatted.duration(expectedDuration ?? option.duration)) sürecek.")
     }
 
     /// Moves guidance to another route (an accepted traffic suggestion) without ending the session.
     public func switchRoute(to option: RouteOption, from location: CLLocation) throws {
         planner = AnnouncementPlanner()
         try core.startNavigation(route: option.route, userLocation: UserLocation(clLocation: location))
+        // Ferrostar drops a reroute still in flight; the route about to arrive is this one, with its own sentence.
+        if isRerouting { isRerouting = false }
         voice.speak("Daha hızlı rotaya geçildi.")
     }
 
@@ -239,6 +273,8 @@ public final class NavigationSession {
         hazardAlert = nil
         speedLimit = nil
         hazardWatch = HazardWatch()
+        isOffRoute = false
+        rerouteFailed = false
     }
 
     /// A traffic light within 35 m of the maneuver: OSM puts the node at the stop line or on the junction.
@@ -251,12 +287,33 @@ public final class NavigationSession {
         }
     }
 
-    /// Plain turns at a junction; roundabouts, ramps and forks are not "at the lights".
-    nonisolated static func turnsAtJunction(_ type: ManeuverType?) -> Bool {
-        switch type {
-        case .turn?, .endOfRoad?: true
-        default: false
+    /// The road a banner names, nil when it names none. For a road with no name, sign or number Valhalla fills
+    /// the banner with the maneuver's own sentence ("sağa dönün."), the very text the step after it carries as
+    /// its instruction; that is not a name to show as the headline or to read out after the comma.
+    nonisolated static func roadName(banner text: String, nextInstruction: String?) -> String? {
+        text.isEmpty || text == nextInstruction ? nil : text
+    }
+
+    /// Off every remaining step, not just the current one (which Ferrostar also reports while the car is on
+    /// the route but ahead of the step it is tracking, and where its distances still mean something).
+    nonisolated static func isCompletelyOffRoute(_ deviation: RouteDeviation?) -> Bool {
+        guard let deviation else { return false }
+        switch deviation {
+        case .noDeviation:
+            return false
+        case let .deviation(kind: kind):
+            switch kind {
+            case .completelyOffRoute: return true
+            case .offStepOnRoute: return false
+            }
         }
+    }
+
+    /// Whether the car is on a ferry, from the maneuver each remaining step ends with (the current step first).
+    /// Valhalla marks every change of travel mode with a `notification` and a car route ends on a road, so an
+    /// odd number of them ahead means the current leg is a crossing and the next `notification` ends it.
+    nonisolated static func isOnFerry(_ maneuversAhead: [ManeuverType?]) -> Bool {
+        !maneuversAhead.filter { $0 == .notification }.count.isMultiple(of: 2)
     }
 
     /// Ferrostar hands over the current segment's Valhalla annotation as JSON; its `maxspeed` is
@@ -278,7 +335,7 @@ public final class NavigationSession {
         guard isActive, let state else { return }
         defer { onUpdate?(self) }
         if let puck = state.preferredUserLocation?.clLocation { onPuck?(puck) }
-        if state.isCalculatingNewRoute, !isRerouting { voice.speak("Yeni rota hesaplanıyor.") }
+        let wasRerouting = isRerouting
         isRerouting = state.isCalculatingNewRoute
         // Assign only when the geometry changed (reroute): observers re-render on every set.
         if state.routeGeometry.count != routeCoordinates.count
@@ -292,24 +349,37 @@ public final class NavigationSession {
             routePath = path
             arrowSteps = nil // the arrow is rebuilt on the new geometry
             lightSteps = nil
-            hazardWatch = HazardWatch(hazards: RouteHazards.along(path, hazards: hazards + userHazards))
+            // The same watch with what it has announced: a camera in range is not warned of a second time.
+            hazardWatch.hazards = RouteHazards.along(path, hazards: hazards + userHazards)
             hazardWatch.kinds = hazardKinds
             spellings = TurkishFold.preferredSpellings((state.remainingSteps ?? []).flatMap { step in
                 [step.roadName].compactMap { $0 } + step.visualInstructions.map(\.primaryContent.text)
             })
+            // The planner knows a maneuver by the number of steps left, and a new route can have as many left
+            // as the old one: its first maneuver would inherit the stages already spoken.
+            planner = AnnouncementPlanner()
+            isOffRoute = false
+            rerouteFailed = false
+            // Ferrostar's own reroute; `start` and `switchRoute` say their own sentence.
+            if wasRerouting { status("Rota yeniden oluşturuldu.") }
+        } else if wasRerouting, !state.isCalculatingNewRoute, !rerouteFailed {
+            // The request ended with no new route. Ferrostar drops the error and tries again after 5 s and
+            // 50 m, so this is said once, not at every attempt.
+            rerouteFailed = true
+            status("Yeni rota oluşturulamadı.")
         }
 
         if case .complete = state.tripState {
             guard !hasArrived else { return }
-            voice.speak("Hedefe ulaştın.")
+            voice.speak("Hedefinize ulaştınız.")
             hasArrived = true
             arrivedAt = .now
-            // Cleared so the bottom bar says "Vardın" instead of a stale arrival time.
+            // Cleared so the bottom bar says "Vardınız" instead of a stale arrival time.
             distanceToManeuver = nil
             distanceRemaining = nil
             durationRemaining = nil
             maneuverSymbol = ManeuverSymbols.symbol(type: .arrive, modifier: nil)
-            actionText = "Hedefe ulaştın"
+            actionText = "Hedefinize ulaştınız"
             nextRoad = nil
             currentRoad = nil
             lanes = []
@@ -320,14 +390,28 @@ public final class NavigationSession {
             return
         }
         guard let progress = state.currentProgress else { return }
-        distanceToManeuver = progress.distanceToNextManeuver
+        // Off the route altogether, Ferrostar's distance belongs to a point the car is not at, and it sends
+        // no banner; the card says so instead of counting down to a turn that cannot be made from here.
+        let offRoute = Self.isCompletelyOffRoute(state.currentDeviation)
+        if offRoute, !isOffRoute { status("Rotadan çıktınız.") }
+        isOffRoute = offRoute
+        if case .noDeviation? = state.currentDeviation { rerouteFailed = false }
+        distanceToManeuver = offRoute ? nil : progress.distanceToNextManeuver
         distanceRemaining = progress.distanceRemaining
         durationRemaining = progress.durationRemaining
-        if let path = routePath, let puck = state.preferredUserLocation?.clLocation,
-           let at = Self.offset(of: puck.coordinate, on: path, travelled: path.length - progress.distanceRemaining) {
-            aheadOffset = at
-            routeAhead = path.remainder(after: at)
-            onRouteAhead?(routeAhead)
+        // Metres driven along the path: the snapped position's own offset when it projects onto the path.
+        // Ferrostar's remaining distance is the fallback only: it adds up Valhalla's step lengths, whose metres
+        // drift from the path's by tens of metres on a long route.
+        var travelled: CLLocationDistance = 0
+        if let path = routePath {
+            travelled = max(0, path.length - progress.distanceRemaining)
+            if let puck = state.preferredUserLocation?.clLocation,
+               let at = Self.offset(of: puck.coordinate, on: path, travelled: path.length - progress.distanceRemaining) {
+                aheadOffset = at
+                routeAhead = path.remainder(after: at)
+                onRouteAhead?(routeAhead)
+                travelled = at
+            }
         }
         let limit = Self.speedLimit(fromAnnotation: state.currentAnnotationJSON)
         if limit != speedLimit { speedLimit = limit }
@@ -335,80 +419,135 @@ public final class NavigationSession {
         let zoom = GuidanceZoom.level(speed: lastSpeed, distanceToManeuver: progress.distanceToNextManeuver, current: guidanceZoom)
         if zoom != guidanceZoom { guidanceZoom = zoom }
 
-        if let path = routePath {
-            let (alert, sentence) = hazardWatch.update(travelled: max(0, path.length - progress.distanceRemaining), speed: lastSpeed)
+        if routePath != nil {
+            let (alert, sentence) = hazardWatch.update(travelled: travelled, speed: lastSpeed)
             if alert != hazardAlert { hazardAlert = alert }
             if let sentence { voice.speak(sentence) }
         }
 
+        // remaining[0] is the current step. The step after it begins with the maneuver the banner shows, and
+        // the one after that with the follow-up maneuver; a roundabout's exit number is on the step it begins.
+        let remaining: [RouteStep] = state.remainingSteps ?? []
+        let following: RouteStep? = remaining.count > 1 ? remaining[1] : nil
+        let afterFollowing: RouteStep? = remaining.count > 2 ? remaining[2] : nil
         let content = state.currentVisualInstruction?.primaryContent
-        maneuverSymbol = ManeuverSymbols.symbol(type: content?.maneuverType, modifier: content?.maneuverModifier)
+        maneuverSymbol = ManeuverSymbols.symbol(
+            type: content?.maneuverType, modifier: content?.maneuverModifier, roundaboutExitDegrees: content?.roundaboutExitDegrees
+        )
         let laneInfo = state.currentVisualInstruction?.subContent?.laneInfo ?? content?.laneInfo ?? []
         lanes = laneInfo.map { lane in
             Lane(symbol: ManeuverSymbols.lane(lane.activeDirection ?? lane.directions.first), isActive: lane.active)
         }
-        let maneuverIndex = state.remainingSteps?.count ?? 0
+        let maneuverIndex = remaining.count
         if maneuverIndex != lightSteps, let path = routePath {
             lightSteps = maneuverIndex
-            let at = path.length - progress.distanceRemaining + progress.distanceToNextManeuver
-            maneuverAtLight = Self.nearLight(path.point(at: at).coordinate)
+            maneuverAtLight = Self.nearLight(path.point(at: travelled + progress.distanceToNextManeuver).coordinate)
         }
+        let onFerry = Self.isOnFerry(remaining.map { $0.visualInstructions.first?.primaryContent.maneuverType })
         let action = TurkishInstructions.action(
             type: content?.maneuverType,
             modifier: content?.maneuverModifier,
-            roundaboutExitDegrees: content?.roundaboutExitDegrees
+            roundaboutExitDegrees: content?.roundaboutExitDegrees,
+            roundaboutExitNumber: following?.roundaboutExitNumber,
+            leavingFerry: onFerry
         )
-        actionText = (maneuverAtLight && Self.turnsAtJunction(content?.maneuverType) ? action.map(TurkishInstructions.atLights) : action)
-            ?? content?.text
+        let atLight = maneuverAtLight && TurkishInstructions.isTurn(type: content?.maneuverType, modifier: content?.maneuverModifier)
+        let shown: String? = (atLight ? action.map(TurkishInstructions.atLights) : action) ?? content?.text
+        actionText = offRoute ? "Rotadan çıktınız" : shown
         // The banner text from Valhalla is the next road's name for most maneuvers.
-        nextRoad = content.flatMap { $0.maneuverType == .arrive ? nil : $0.text }
-            .map { spellings[TurkishFold.fold($0)] ?? $0 }
+        var named: String?
+        if let content, content.maneuverType != .arrive {
+            named = Self.roadName(banner: content.text, nextInstruction: following?.instruction)
+        }
+        nextRoad = named.map { spellings[TurkishFold.fold($0)] ?? $0 }
         let road = state.currentRoadName.flatMap { $0.isEmpty ? nil : spellings[TurkishFold.fold($0)] ?? $0 }
         if road != currentRoad { currentRoad = road }
 
-        // remainingSteps[0] is the current step; the step after it ends at the follow-up maneuver.
-        let following = state.remainingSteps.flatMap { $0.count > 1 ? $0[1] : nil }
         let followingContent = following?.visualInstructions.first?.primaryContent
-        let followUp = following.flatMap { step in
+        let followUp: String? = following.flatMap { step in
             TurkishInstructions.followUp(
                 type: followingContent?.maneuverType,
                 modifier: followingContent?.maneuverModifier,
                 roundaboutExitDegrees: followingContent?.roundaboutExitDegrees,
+                roundaboutExitNumber: afterFollowing?.roundaboutExitNumber,
                 after: step.distance
             )
         }
-        let symbol = followUp.map { _ in
-            ManeuverSymbols.symbol(type: followingContent?.maneuverType, modifier: followingContent?.maneuverModifier)
+        var symbol: String?
+        if !offRoute, followUp != nil {
+            symbol = ManeuverSymbols.symbol(
+                type: followingContent?.maneuverType, modifier: followingContent?.maneuverModifier,
+                roundaboutExitDegrees: followingContent?.roundaboutExitDegrees
+            )
         }
         if symbol != thenSymbol { thenSymbol = symbol }
 
         // Once per maneuver: through a roundabout the arrow runs on to the exit (the step after it).
-        let steps = state.remainingSteps?.count ?? 0
+        let steps = remaining.count
         if steps != arrowSteps, let path = routePath {
             // Until the step's banner is there, try again on the next fix.
             arrowSteps = content == nil ? nil : steps
             let type = content?.maneuverType
-            let at = path.length - progress.distanceRemaining + progress.distanceToNextManeuver
+            let at = travelled + progress.distanceToNextManeuver
             let arrow = ManeuverArrow.wanted(type: type, modifier: content?.maneuverModifier)
                 ? ManeuverArrow.lines(along: path, maneuverAt: at, after: ManeuverArrow.reach(type: type, nextStep: following?.distance))
                 : []
             if !(arrow.isEmpty && maneuverArrow.isEmpty) { maneuverArrow = arrow }
         }
 
-        announce(step: state.remainingSteps?.count ?? 0, distance: progress.distanceToNextManeuver, followUp: followUp)
+        // Nothing is said on a ferry: the only maneuver ahead is driving off it.
+        guard !offRoute, !onFerry, let banner = content, let phrase = actionText else { return }
+        // In a jam the car's own speed would pull every prompt in to its 30 km/h distance, on a motorway too;
+        // the speed the route expects on this step keeps the road's scale.
+        var expected: Double = 0
+        if let current = remaining.first, current.duration > 0 { expected = current.distance / current.duration }
+        announce(
+            banner, phrase: phrase, step: remaining.count, distance: progress.distanceToNextManeuver,
+            speed: max(lastSpeed, expected), followUp: followUp
+        )
     }
 
-    private func announce(step: Int, distance: Double, followUp: String?) {
-        guard let action = actionText,
-              let stage = planner.stage(step: step, distance: distance, speed: lastSpeed)
-        else { return }
-        let sentence = TurkishInstructions.spoken(
-            action: action,
-            distance: stage == .now ? nil : distance,
-            road: nextRoad,
-            then: followUp
-        )
-        voice.speak(sentence)
+    /// Speaks for the maneuver ahead when the planner says it is time.
+    private func announce(
+        _ content: VisualInstructionContent, phrase: String, step: Int, distance: Double, speed: Double, followUp: String?
+    ) {
+        let type = content.maneuverType
+        let modifier = content.maneuverModifier
+        guard !TurkishInstructions.isSilent(type: type, modifier: modifier) else { return }
+        let arriving = type == .arrive
+        // At the destination itself only its side is worth a sentence; "Hedefinize ulaştınız." follows on arrival.
+        let hasNow = !arriving || TurkishInstructions.side(modifier) != nil
+        guard let stage = planner.stage(
+            step: step, distance: distance, speed: speed, hasNow: hasNow, holdsDistance: voice.isSpeaking
+        ) else { return }
+        let ahead: Double? = stage == .now ? nil : distance
+        let sentence = arriving
+            ? TurkishInstructions.arrival(distance: ahead, modifier: modifier)
+            : TurkishInstructions.spoken(action: phrase, distance: ahead, road: nextRoad, then: followUp)
+        if stage == .now {
+            // Never queued behind a hazard, speed or status sentence: three seconds late is past the turn.
+            voice.speakNow(sentence)
+        } else {
+            voice.speak(sentence)
+        }
+    }
+
+    /// Sentences about the route itself (left it, rebuilt, could not be rebuilt), each at most once in 30 s.
+    private func status(_ sentence: String) {
+        if statusThrottle.allows(sentence, at: lastFixTime) { voice.speak(sentence) }
+    }
+}
+
+/// Keeps a sentence about the route from repeating within 30 s of driving: a fix wavering around the
+/// deviation threshold, or a new route the car leaves again at once, would otherwise say it every few seconds.
+struct StatusThrottle {
+    private var last: [String: Date] = [:]
+
+    /// - Parameter time: the fix's timestamp, so the rhythm follows the drive rather than the wall clock.
+    mutating func allows(_ sentence: String, at time: Date) -> Bool {
+        if let previous = last[sentence], time.timeIntervalSince(previous) < 30 { return false }
+        last[sentence] = time
+        return true
     }
 }
 

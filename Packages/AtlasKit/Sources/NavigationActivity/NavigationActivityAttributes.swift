@@ -10,7 +10,7 @@ public struct NavigationActivityAttributes: ActivityAttributes, Sendable {
         public var symbol: String
         /// "300 m", "1,2 km".
         public var distance: String
-        /// "Sola dön".
+        /// "Sola dönün".
         public var instruction: String
         public var road: String?
         public var arrival: Date
