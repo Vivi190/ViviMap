@@ -98,6 +98,11 @@ struct SearchSheet: View {
                         if let work = search.work { shortcut("İş", "briefcase.fill", work) }
                     }
                 }
+                if !search.saved.isEmpty {
+                    Section("Kaydedilenler") {
+                        ForEach(search.saved) { place in row(place) }
+                    }
+                }
                 if !search.recents.isEmpty {
                     recentsSection
                 }
@@ -138,10 +143,10 @@ struct SearchSheet: View {
         .accessibilityLabel(Text("\(title): rota"))
     }
 
-    /// Nearest fuel, parking, pharmacy, charger from the shipped Istanbul index: instant, and offline too.
+    /// The nearest of a kind from the shipped indexes: instant, and offline too. Four to a row.
     /// Bordered buttons, so each one takes its own tap inside the shared list row.
     private var nearbyButtons: some View {
-        HStack(spacing: Spacing.s) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.s), count: 4), spacing: Spacing.s) {
             ForEach(NearbyKind.allCases, id: \.self) { kind in
                 Button { search.showNearby(kind) } label: {
                     VStack(spacing: Spacing.xs) {
@@ -188,7 +193,7 @@ struct SearchSheet: View {
                     ContentUnavailableView.search(text: search.query)
                 }
             }
-        } else if search.recents.isEmpty, search.home == nil, search.work == nil {
+        } else if search.recents.isEmpty, search.saved.isEmpty, search.home == nil, search.work == nil {
             ContentUnavailableView(
                 "Nereye gidiyoruz?",
                 systemImage: "magnifyingglass",
@@ -243,6 +248,11 @@ struct PlaceCard: View {
     let place: Place
     /// Phone number and website, when the business index has them for this place.
     var contact: OfflinePlaceIndex.Contact? = nil
+    /// Driving time of the route asked for in advance, once it is in; without traffic, so "about".
+    var drivingTime: TimeInterval? = nil
+    /// Starred by the driver; nil hides the item (a place still being looked up has no identity to save).
+    var isSaved: Bool? = nil
+    var onToggleSaved: () -> Void = {}
     let isPlanning: Bool
     let error: String?
     let onRoute: () -> Void
@@ -269,7 +279,8 @@ struct PlaceCard: View {
                         } else {
                             Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                         }
-                        Text(isPlanning ? "Rota hesaplanıyor" : "Rota")
+                        Text(isPlanning ? "Rota hesaplanıyor" : drivingTime.map { "Rota · \(Formatting.duration(seconds: $0))" } ?? "Rota")
+                            .contentTransition(.numericText())
                     }
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -283,8 +294,16 @@ struct PlaceCard: View {
                     if let onParking {
                         Button("Yakındaki otoparklar", systemImage: "parkingsign", action: onParking)
                     }
+                    if let isSaved {
+                        Button(isSaved ? "Kaydedilenlerden çıkar" : "Kaydet", systemImage: isSaved ? "star.slash" : "star", action: onToggleSaved)
+                    }
                     Button("Ev olarak kaydet", systemImage: "house.fill") { onSave(.home) }
                     Button("İş olarak kaydet", systemImage: "briefcase.fill") { onSave(.work) }
+                    if let link = PlaceLinks.share(place) {
+                        ShareLink(item: link, subject: Text(place.name), message: Text(place.name)) {
+                            Label("Yeri paylaş", systemImage: "square.and.arrow.up")
+                        }
+                    }
                     // Reviews, photos and opening hours are those services' own: the app can link to them, not show them.
                     Section("Yorumlar ve fotoğraflar") {
                         if let website = contact?.website {
@@ -799,6 +818,16 @@ enum PlaceLinks {
             URLQueryItem(name: "text", value: query(place)),
             URLQueryItem(name: "ll", value: "\(place.point.longitude),\(place.point.latitude)"),
             URLQueryItem(name: "z", value: "17"),
+        ]
+        return components?.url
+    }
+
+    /// A link anyone can open, whatever map app they use: Apple Maps on an iPhone, its site elsewhere.
+    static func share(_ place: Place) -> URL? {
+        var components = URLComponents(string: "https://maps.apple.com/")
+        components?.queryItems = [
+            URLQueryItem(name: "ll", value: "\(place.point.latitude),\(place.point.longitude)"),
+            URLQueryItem(name: "q", value: place.name),
         ]
         return components?.url
     }

@@ -265,6 +265,7 @@ struct BusinessSearchTests {
         var sql = """
         CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL, category TEXT, lat REAL NOT NULL, lon REAL NOT NULL, weight INTEGER NOT NULL);
         CREATE VIRTUAL TABLE place_fts USING fts4(folded, tokenize=unicode61);
+        CREATE VIRTUAL TABLE place_terms USING fts4aux(place_fts);
         CREATE TABLE contact (id INTEGER PRIMARY KEY, phone TEXT, website TEXT);
         INSERT INTO contact VALUES (1, '+902164830420', 'http://www.kiyipastanesi.com');
         INSERT INTO contact VALUES (3, '+902163066161', NULL);
@@ -311,6 +312,90 @@ struct BusinessSearchTests {
         let kiosk = try #require(index.place(id: "poi-4"))
         #expect(index.contact(of: kiosk) == nil)
         #expect(index.contact(of: place("Migros", 100, id: "N8")) == nil)
+    }
+
+    /// A word typed wrong: the spelling the index knows that, with the rest of the query, names a place.
+    @Test func aMisspeltWordIsRespelt() async throws {
+        let index = try businesses()
+        let respelt = try #require(index.respelt("kıyı pastenesi", near: here))
+        #expect(respelt.query == "kiyi pastanesi")
+        #expect(respelt.places.map(\.id) == ["poi-1", "poi-2"])
+        // Nothing near enough, and a lone short word is not guessed at.
+        #expect(index.respelt("migros", near: here) == nil)
+        #expect(index.respelt("kıy", near: here) == nil)
+
+        let provider = BusinessSearchProvider(base: Failing(), businesses: index)
+        #expect(try await provider.search("kıyı pastenesi", near: here).map(\.id) == ["poi-1", "poi-2"])
+        // The other provider has a name with the words as typed: they were right, and nothing is respelt.
+        let asTyped = place("Kıyı Pastenesi Büfe", 50, id: "N3")
+        let both = BusinessSearchProvider(base: Fixed(places: [asTyped]), businesses: index)
+        #expect(try await both.search("kıyı pastenesi", near: here).map(\.id) == ["N3"])
+    }
+
+    @Test func lettersBetweenTwoWords() {
+        #expect(OfflinePlaceIndex.editDistance("mediamarket", "mediamarkt", atMost: 2) == 1)
+        #expect(OfflinePlaceIndex.editDistance("kebabci", "kebapci", atMost: 1) == 1)
+        #expect(OfflinePlaceIndex.editDistance("bauhouse", "bauhaus", atMost: 2) == 2)
+        #expect(OfflinePlaceIndex.editDistance("migros", "migros", atMost: 1) == 0)
+        // Further apart than asked about: one more than the limit, whatever the true number.
+        #expect(OfflinePlaceIndex.editDistance("migros", "akbank", atMost: 2) == 3)
+        #expect(OfflinePlaceIndex.next(after: "me") == "mf")
+    }
+
+    /// An apostrophe joins, the way people type: "mcdonalds" is "McDonald's".
+    @Test func anApostropheJoinsTheWord() {
+        #expect(BusinessSearchProvider.words(of: "McDonald's Kartal") == ["mcdonalds", "kartal"])
+        #expect(BusinessSearchProvider.quality(of: "McDonald's", asked: ["mcdonalds"]) == 0)
+        #expect(BusinessSearchProvider.quality(of: "McDonald's Kartal", asked: ["mcdonald"]) == 1)
+        #expect(BusinessSearchProvider.quality(of: "Burger King", asked: ["mcdonalds"]) == nil)
+    }
+
+    /// The nearest of a kind from both indexes, each place once.
+    @Test func theNearestOfAKindFromBothSources() {
+        let surveyed = [place("Şifa Eczanesi", 400, id: "N1", category: "amenity=pharmacy")]
+        let listed = [place("Derman Eczanesi", 150, id: "poi-1", category: "amenity=pharmacy"),
+                      place("Sifa Eczanesi Kartal", 420, id: "poi-2", category: "amenity=pharmacy")]
+        #expect(BusinessSearchProvider.nearest(surveyed, listed, near: here).map(\.id) == ["poi-1", "N1"])
+        #expect(NearbyKind.market.categories == ["shop=supermarket", "shop=convenience"])
+        #expect(NearbyKind.fuel.categories == ["amenity=fuel"])
+    }
+
+    /// "esentepe eczane": the pharmacies around that district, not around the driver.
+    @Test func aKindNextToADistrictIsSearchedAroundTheDistrict() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("streets-\(UUID()).sqlite")
+        var db: OpaquePointer?
+        #expect(sqlite3_open(url.path, &db) == SQLITE_OK)
+        // One district, 20 km north of the driver.
+        let sql = """
+        CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL, category TEXT, lat REAL NOT NULL, lon REAL NOT NULL);
+        CREATE VIRTUAL TABLE place_fts USING fts4(folded, tokenize=unicode61);
+        INSERT INTO place VALUES (1, 'Esentepe', '', 'place=suburb', 41.0700, 29.1905);
+        INSERT INTO place_fts (docid, folded) VALUES (1, 'esentepe');
+        """
+        #expect(sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK)
+        sqlite3_close(db)
+        // The index's pharmacy is at the driver; the other provider knows one in the district.
+        let inDistrict = Place(id: "N5", name: "Esentepe Eczanesi", subtitle: "", point: GeoPoint(latitude: 41.0705, longitude: 29.1905), category: "amenity=pharmacy")
+        let provider = BusinessSearchProvider(
+            base: Fixed(places: [inDistrict]), businesses: try businesses(), districts: OfflinePlaceIndex(url: url)
+        )
+        // Both are pharmacies; the one in the district named comes first.
+        #expect(try await provider.search("esentepe eczane", near: here).map(\.id) == ["N5", "poi-3"])
+    }
+
+    @MainActor
+    @Test func aStarredPlaceIsKept() throws {
+        let defaults = try #require(UserDefaults(suiteName: "atlas.test.\(UUID())"))
+        let cafe = place("Kıyı Pastanesi", 200, id: "N1", category: "amenity=cafe")
+        let controller = SearchController(provider: Fixed(places: []), nearbyIndex: nil, businessIndex: nil, defaults: defaults)
+        #expect(!controller.isSaved(cafe))
+        controller.toggleSaved(cafe)
+        #expect(controller.saved == [cafe])
+        // The next launch reads it back.
+        let relaunched = SearchController(provider: Fixed(places: []), nearbyIndex: nil, businessIndex: nil, defaults: defaults)
+        #expect(relaunched.isSaved(cafe))
+        controller.toggleSaved(cafe)
+        #expect(controller.saved.isEmpty)
     }
 
     /// An address with a house number is no business's name.

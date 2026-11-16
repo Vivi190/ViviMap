@@ -15,6 +15,8 @@ public final class SearchController {
     /// The place "Yakındaki otoparklar" listed around; distances are measured from it. nil: from the user.
     public private(set) var nearbyCenter: Place?
     public private(set) var recents: [Place]
+    /// Places the driver starred, newest first; kept on the device only.
+    public private(set) var saved: [Place]
     public private(set) var home: Place?
     public private(set) var work: Place?
 
@@ -27,10 +29,13 @@ public final class SearchController {
     @ObservationIgnored private let provider: any PlaceSearchProvider
     /// Answers "Yakında: Benzinlik"; nil in builds without the offline packages, and the buttons are hidden.
     @ObservationIgnored private let nearbyIndex: OfflinePlaceIndex?
+    /// The businesses of the same kinds, listed with the street index's (nil in builds without it).
+    @ObservationIgnored private let businessIndex: OfflinePlaceIndex?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var task: Task<Void, Never>?
 
     private static let recentsKey = "atlas.recentPlaces"
+    private static let savedKey = "atlas.savedPlaces"
     private static let maxRecents = 12
 
     /// Photon online, the shipped street index without a connection, and with either the shipped business index
@@ -40,18 +45,21 @@ public final class SearchController {
             primary: PhotonSearchProvider(districts: OfflinePlaceIndex.bundled), fallback: OfflinePlaceIndex.bundled
         )
         guard let businesses = OfflinePlaceIndex.businesses else { return streets }
-        return BusinessSearchProvider(base: streets, businesses: businesses)
+        return BusinessSearchProvider(base: streets, businesses: businesses, districts: OfflinePlaceIndex.bundled)
     }
 
     public init(
         provider: any PlaceSearchProvider = SearchController.standardProvider,
         nearbyIndex: OfflinePlaceIndex? = OfflinePlaceIndex.bundled,
+        businessIndex: OfflinePlaceIndex? = OfflinePlaceIndex.businesses,
         defaults: UserDefaults = .standard
     ) {
         self.provider = provider
         self.nearbyIndex = nearbyIndex
+        self.businessIndex = businessIndex
         self.defaults = defaults
         recents = defaults.data(forKey: Self.recentsKey).flatMap { try? JSONDecoder().decode([Place].self, from: $0) } ?? []
+        saved = defaults.data(forKey: Self.savedKey).flatMap { try? JSONDecoder().decode([Place].self, from: $0) } ?? []
         home = Self.load(.home, from: defaults)
         work = Self.load(.work, from: defaults)
     }
@@ -101,6 +109,20 @@ public final class SearchController {
         )
     }
 
+    public func isSaved(_ place: Place) -> Bool {
+        saved.contains { $0.id == place.id }
+    }
+
+    /// Stars a place, or takes its star away.
+    public func toggleSaved(_ place: Place) {
+        if isSaved(place) {
+            saved.removeAll { $0.id == place.id }
+        } else {
+            saved.insert(place, at: 0)
+        }
+        if let data = try? JSONEncoder().encode(saved) { defaults.set(data, forKey: Self.savedKey) }
+    }
+
     /// Call when the user picks a place, so it shows up first next time.
     public func remember(_ place: Place) {
         recents.removeAll { $0.id == place.id }
@@ -132,8 +154,13 @@ public final class SearchController {
             return
         }
         isSearching = true
+        let businesses = businessIndex
         task = Task {
-            let found = await Task.detached { (try? index.nearby(kind, near: center)) ?? [] }.value
+            let found = await Task.detached {
+                let surveyed = (try? index.nearby(kind, near: center)) ?? []
+                let listed = (try? businesses?.nearby(kind, near: center)) ?? []
+                return BusinessSearchProvider.nearest(surveyed, listed, near: center)
+            }.value
             guard !Task.isCancelled else { return }
             results = found
             isSearching = false

@@ -667,6 +667,11 @@ struct HomeScreen: View {
         PlaceCard(
             place: place,
             contact: placeContact,
+            // The fastest of the routes asked for when the card opened, once they are in.
+            drivingTime: prefetch.flatMap { $0.point == place.point ? $0.routes?.map(\.duration).min() : nil },
+            // Not while its address is still being looked up: the place has no identity of its own yet.
+            isSaved: ["map", "picked"].contains(place.id) ? nil : search.isSaved(place),
+            onToggleSaved: { search.toggleSaved(place) },
             isPlanning: isPlanning,
             error: routeError,
             onRoute: { planRoute(to: place) },

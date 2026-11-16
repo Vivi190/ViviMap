@@ -132,6 +132,14 @@ def contact(properties):
     return phone, site
 
 
+def searchable(name):
+    """The folded name as the index reads it. "McDonald's" is also "mcdonalds", the way it is typed: the
+    tokenizer splits at the apostrophe, so the joined spelling is added beside it."""
+    folded = fold(name)
+    joined = folded.replace("'", "").replace("’", "")
+    return folded if joined == folded else f"{folded} {joined}"
+
+
 def wanted(properties):
     """A place worth a row: named, likely to exist, open, and not an advertisement posing as a name."""
     name = clean((properties.get("names") or {}).get("primary"))
@@ -175,6 +183,9 @@ def main(source, target):
         CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL,
                             category TEXT, lat REAL NOT NULL, lon REAL NOT NULL, weight INTEGER NOT NULL);
         CREATE VIRTUAL TABLE place_fts USING fts4(folded, tokenize=unicode61);
+        -- The words of the names with their counts: where the app looks up a misspelt word's nearest spelling.
+        DROP TABLE IF EXISTS place_terms;
+        CREATE VIRTUAL TABLE place_terms USING fts4aux(place_fts);
         -- Read for one place at a time, when its card opens; a table of its own keeps the searched one small.
         DROP TABLE IF EXISTS contact;
         CREATE TABLE contact (id INTEGER PRIMARY KEY, phone TEXT, website TEXT);
@@ -182,7 +193,7 @@ def main(source, target):
     for confidence, name, line, kind, lat, lon, phone, site in best.values():
         cursor = db.execute("INSERT INTO place (name, subtitle, category, lat, lon, weight) VALUES (?, ?, ?, ?, ?, ?)",
                             (name, line, kind, lat, lon, round(confidence * 100)))
-        db.execute("INSERT INTO place_fts (docid, folded) VALUES (?, ?)", (cursor.lastrowid, fold(name)))
+        db.execute("INSERT INTO place_fts (docid, folded) VALUES (?, ?)", (cursor.lastrowid, searchable(name)))
         if phone or site:
             db.execute("INSERT INTO contact (id, phone, website) VALUES (?, ?, ?)", (cursor.lastrowid, phone or None, site or None))
     # "Nearest of a kind" filters on the category before it sorts by distance.
@@ -218,6 +229,8 @@ if __name__ == "__main__":
         assert contact({"phones": ["+902163066161"], "websites": ["https://example.com/"]}) == ("+902163066161", "https://example.com/")
         assert contact({"phones": ["ara beni"], "websites": ["example.com"]}) == ("", "")
         assert contact({}) == ("", "")
+        assert searchable("McDonald's Kartal") == "mcdonald's kartal mcdonalds kartal"
+        assert searchable("Kıyı Pastanesi") == "kiyi pastanesi"
         print("self-test ok")
     else:
         main(sys.argv[1], sys.argv[2])

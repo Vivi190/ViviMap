@@ -35,6 +35,19 @@ public enum NearbyKind: String, CaseIterable, Sendable {
     case parking = "amenity=parking"
     case pharmacy = "amenity=pharmacy"
     case charging = "amenity=charging_station"
+    case market = "shop=supermarket"
+    case atm = "amenity=atm"
+    case restaurant = "amenity=restaurant"
+    case cafe = "amenity=cafe"
+
+    /// Every tag that counts as this kind: a corner shop is a market too, a fast-food place a place to eat.
+    public var categories: [String] {
+        switch self {
+        case .market: [rawValue, "shop=convenience"]
+        case .restaurant: [rawValue, "amenity=fast_food"]
+        default: [rawValue]
+        }
+    }
 
     public var title: String {
         switch self {
@@ -42,6 +55,10 @@ public enum NearbyKind: String, CaseIterable, Sendable {
         case .parking: "Otopark"
         case .pharmacy: "Eczane"
         case .charging: "Şarj"
+        case .market: "Market"
+        case .atm: "ATM"
+        case .restaurant: "Restoran"
+        case .cafe: "Kafe"
         }
     }
 
@@ -51,6 +68,10 @@ public enum NearbyKind: String, CaseIterable, Sendable {
         case .parking: "parkingsign"
         case .pharmacy: "cross.case.fill"
         case .charging: "bolt.car.fill"
+        case .market: "cart.fill"
+        case .atm: "banknote.fill"
+        case .restaurant: "fork.knife"
+        case .cafe: "cup.and.saucer.fill"
         }
     }
 }
@@ -111,7 +132,7 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     /// The nearest places of one kind by straight-line distance, from the shipped index alone: instant and
     /// without a connection (2026-11-14 index: 833 fuel stations, 1 151 car parks, 5 195 pharmacies, 87 chargers).
     public func nearby(_ kind: NearbyKind, near point: GeoPoint, limit: Int = 12) throws -> [Place] {
-        try nearby(categories: [kind.rawValue], near: point, limit: limit)
+        try nearby(categories: kind.categories, near: point, limit: limit)
     }
 
     /// The nearest places in any of `categories` ("shop=supermarket", …).
@@ -159,9 +180,94 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     /// The places whose names have every word of `query` (as typed so far: the last one may be unfinished),
     /// nearest first. For a caller that ranks them itself (BusinessSearchProvider).
     func matches(_ query: String, near: GeoPoint?, limit: Int = 60) throws -> [Place] {
-        let words = TurkishFold.fold(query).split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        let words = BusinessSearchProvider.words(of: query)
         guard !words.isEmpty else { return [] }
         return try rows(matching: words.map { $0 + "*" }.joined(separator: " "), near: near, limit: limit)
+    }
+
+    /// Names for a query that matched none, with one of its words respelt: "mediamarket" → "mediamarkt",
+    /// "kebabçı uzunlar" → "kebapci uzunlar". A word is replaced by the most common word of the index within one
+    /// letter of it (two for words of six letters and more) that, with the rest of the query, names a place.
+    /// The first two letters have to be right. nil when no respelling finds anything, and for an index built
+    /// without its list of words.
+    func respelt(_ query: String, near: GeoPoint?, limit: Int = 60) -> (places: [Place], query: String)? {
+        let words = BusinessSearchProvider.words(of: query)
+        // A lone short word has too many neighbours to guess among; next to other words they decide.
+        let shortest = words.count > 1 ? 3 : 4
+        for (index, word) in words.enumerated() where word.count >= shortest {
+            for candidate in neighbours(of: word) {
+                var respelt = words
+                respelt[index] = candidate
+                let text = respelt.joined(separator: " ")
+                if let found = try? matches(text, near: near, limit: limit), !found.isEmpty { return (found, text) }
+            }
+        }
+        return nil
+    }
+
+    /// The three most common words of the index near `word`, the most common first.
+    private func neighbours(of word: String) -> [String] {
+        let start = String(word.prefix(2))
+        guard let candidates = try? terms(from: start, upTo: Self.next(after: start), limit: 20_000) else { return [] }
+        let allowed = word.count >= 6 ? 2 : 1
+        let near: [(term: String, distance: Int, uses: Int)] = candidates.compactMap { candidate in
+            guard candidate.term != word else { return nil }
+            let distance = Self.editDistance(word, candidate.term, atMost: allowed)
+            return distance <= allowed ? (candidate.term, distance, candidate.uses) : nil
+        }
+        // A spelling the index has seen five times and more before one it has seen once (somebody else's typing
+        // error); among those the nearer one, then the more common: "teknoza" is "teknosa", not "tekno".
+        func order(_ entry: (term: String, distance: Int, uses: Int)) -> (Int, Int, Int, String) {
+            (entry.uses < 5 ? 1 : 0, entry.distance, -entry.uses, entry.term)
+        }
+        return near.sorted { order($0) < order($1) }.prefix(3).map { $0.term }
+    }
+
+    /// The index's words from `lower` up to, not including, `upper`, with the number of names each is in.
+    private func terms(from lower: String, upTo upper: String, limit: Int) throws -> [(term: String, uses: Int)] {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            sqlite3_close(db)
+            throw CocoaError(.fileReadUnknown)
+        }
+        defer { sqlite3_close(db) }
+        var statement: OpaquePointer?
+        let sql = "SELECT term, documents FROM place_terms WHERE col = '*' AND term >= ?1 AND term < ?2 LIMIT ?3"
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { throw CocoaError(.fileReadCorruptFile) }
+        defer { sqlite3_finalize(statement) }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        sqlite3_bind_text(statement, 1, lower, -1, transient)
+        sqlite3_bind_text(statement, 2, upper, -1, transient)
+        sqlite3_bind_int(statement, 3, Int32(limit))
+        var found: [(term: String, uses: Int)] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let text = sqlite3_column_text(statement, 0) else { continue }
+            found.append((String(cString: text), Int(sqlite3_column_int64(statement, 1))))
+        }
+        return found
+    }
+
+    /// The first text after every text that starts with `prefix`: its last character moved one on.
+    static func next(after prefix: String) -> String {
+        guard let last = prefix.unicodeScalars.last, let bumped = Unicode.Scalar(last.value + 1) else { return prefix }
+        return String(prefix.unicodeScalars.dropLast()) + String(bumped)
+    }
+
+    /// Letters to change, add or drop to turn one word into the other; `limit` + 1 as soon as it is more than
+    /// `limit` (the caller only asks whether it is that near).
+    static func editDistance(_ a: String, _ b: String, atMost limit: Int) -> Int {
+        let first = Array(a.unicodeScalars), second = Array(b.unicodeScalars)
+        guard abs(first.count - second.count) <= limit else { return limit + 1 }
+        var previous = Array(0 ... second.count)
+        for (i, x) in first.enumerated() {
+            var current = [i + 1] + Array(repeating: 0, count: second.count)
+            for (j, y) in second.enumerated() {
+                current[j + 1] = min(previous[j] + (x == y ? 0 : 1), previous[j + 1] + 1, current[j] + 1)
+            }
+            guard current.min()! <= limit else { return limit + 1 }
+            previous = current
+        }
+        return min(previous[second.count], limit + 1)
     }
 
     /// The places with a kind inside a box, the likeliest to exist first: what the map shows as badges. Empty
