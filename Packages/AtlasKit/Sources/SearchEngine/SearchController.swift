@@ -31,6 +31,8 @@ public final class SearchController {
     @ObservationIgnored private let nearbyIndex: OfflinePlaceIndex?
     /// The businesses of the same kinds, listed with the street index's (nil in builds without it).
     @ObservationIgnored private let businessIndex: OfflinePlaceIndex?
+    /// İSPARK's car parks with their free spaces, added to a list of car parks; nil leaves them out.
+    @ObservationIgnored private let carParks: ISPARKCarParks?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var task: Task<Void, Never>?
 
@@ -52,11 +54,13 @@ public final class SearchController {
         provider: any PlaceSearchProvider = SearchController.standardProvider,
         nearbyIndex: OfflinePlaceIndex? = OfflinePlaceIndex.bundled,
         businessIndex: OfflinePlaceIndex? = OfflinePlaceIndex.businesses,
+        carParks: ISPARKCarParks? = ISPARKCarParks(),
         defaults: UserDefaults = .standard
     ) {
         self.provider = provider
         self.nearbyIndex = nearbyIndex
         self.businessIndex = businessIndex
+        self.carParks = carParks
         self.defaults = defaults
         recents = defaults.data(forKey: Self.recentsKey).flatMap { try? JSONDecoder().decode([Place].self, from: $0) } ?? []
         saved = defaults.data(forKey: Self.savedKey).flatMap { try? JSONDecoder().decode([Place].self, from: $0) } ?? []
@@ -155,6 +159,7 @@ public final class SearchController {
         }
         isSearching = true
         let businesses = businessIndex
+        let live = kind == .parking ? carParks : nil
         task = Task {
             let found = await Task.detached {
                 let surveyed = (try? index.nearby(kind, near: center)) ?? []
@@ -164,6 +169,10 @@ public final class SearchController {
             guard !Task.isCancelled else { return }
             results = found
             isSearching = false
+            // The indexes answer at once; the car parks that report their free spaces join when their
+            // request returns, and the list stands without them when it does not.
+            guard let live, let reporting = try? await live.places(), !Task.isCancelled else { return }
+            results = ISPARKCarParks.merged(reporting, with: found, near: center)
         }
     }
 
@@ -185,6 +194,8 @@ public final class SearchController {
         isSearching = true
         let origin = origin()
         let provider = provider
+        // "otopark", "en yakın otopark" typed out: the same list as the "Otopark" button, free spaces included.
+        let live = PlaceRanking.kind(text) == ["amenity:parking"] ? carParks : nil
         task = Task {
             try? await Task.sleep(for: .milliseconds(300)) // debounce typing
             guard !Task.isCancelled else { return }
@@ -198,6 +209,9 @@ public final class SearchController {
                 errorMessage = Self.message(for: error)
             }
             isSearching = false
+            guard let live, let origin, let reporting = try? await live.places(), !Task.isCancelled else { return }
+            results = ISPARKCarParks.merged(reporting, with: results, near: origin)
+            errorMessage = nil
         }
     }
 

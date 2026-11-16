@@ -383,16 +383,39 @@ struct BusinessSearchTests {
         #expect(try await provider.search("esentepe eczane", near: here).map(\.id) == ["N5", "poi-3"])
     }
 
+    /// The service's answer in its own shape (strings for the coordinates), with made-up car parks.
+    @Test func carParksReportTheirFreeSpaces() throws {
+        let json = """
+        [{"parkID":1,"parkName":" Cevizli Açık Otoparkı ","lat":"40.9001","lng":"29.1702","capacity":100,"emptyCapacity":83,
+          "workHours":"08:00-19:00","parkType":"AÇIK OTOPARK","freeTime":15,"district":"KARTAL","isOpen":1},
+         {"parkID":2,"parkName":"Sahil Otoparkı","lat":"40.8885","lng":"29.1900","capacity":50,"emptyCapacity":0,
+          "workHours":"24 Saat","parkType":"KAPALI OTOPARK","freeTime":0,"district":"KARTAL","isOpen":1},
+         {"parkID":3,"parkName":"Kapalı Olan","lat":"40.8900","lng":"29.1910","capacity":50,"emptyCapacity":50,
+          "workHours":"08:00-19:00","parkType":"AÇIK OTOPARK","freeTime":0,"district":"KARTAL","isOpen":0},
+         {"parkID":4,"parkName":"Koordinatsız","lat":"","lng":"","capacity":10,"emptyCapacity":5,"workHours":"","parkType":"","freeTime":0,"district":"","isOpen":1}]
+        """
+        let live = try ISPARKCarParks.places(from: Data(json.utf8))
+        #expect(live.map(\.id) == ["ispark-1", "ispark-2"]) // the closed one and the one without a position are left out
+        #expect(live[0].name == "Cevizli Açık Otoparkı")
+        #expect(live[0].subtitle == "83 boş yer · 100 araçlık · 08:00-19:00 · İSPARK")
+        #expect(live[1].subtitle == "Dolu · 50 araçlık · 24 Saat · İSPARK")
+        #expect(live[0].category == "amenity=parking")
+        // With the indexes' car parks: the same car park under another name is listed once, as the live record.
+        let others = [place("İSPARK Sahil Katlı Otoparkı", -50, id: "N1", category: "amenity=parking"),
+                      place("Özel Otopark", 300, id: "poi-9", category: "amenity=parking")]
+        #expect(ISPARKCarParks.merged(live, with: others, near: here).map(\.id) == ["ispark-2", "poi-9", "ispark-1"])
+    }
+
     @MainActor
     @Test func aStarredPlaceIsKept() throws {
         let defaults = try #require(UserDefaults(suiteName: "atlas.test.\(UUID())"))
         let cafe = place("Kıyı Pastanesi", 200, id: "N1", category: "amenity=cafe")
-        let controller = SearchController(provider: Fixed(places: []), nearbyIndex: nil, businessIndex: nil, defaults: defaults)
+        let controller = SearchController(provider: Fixed(places: []), nearbyIndex: nil, businessIndex: nil, carParks: nil, defaults: defaults)
         #expect(!controller.isSaved(cafe))
         controller.toggleSaved(cafe)
         #expect(controller.saved == [cafe])
         // The next launch reads it back.
-        let relaunched = SearchController(provider: Fixed(places: []), nearbyIndex: nil, businessIndex: nil, defaults: defaults)
+        let relaunched = SearchController(provider: Fixed(places: []), nearbyIndex: nil, businessIndex: nil, carParks: nil, defaults: defaults)
         #expect(relaunched.isSaved(cafe))
         controller.toggleSaved(cafe)
         #expect(controller.saved.isEmpty)

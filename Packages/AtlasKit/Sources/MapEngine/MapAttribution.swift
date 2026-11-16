@@ -15,6 +15,9 @@ public struct MapAttributionView: View {
                 // Per record CDLA-Permissive-2.0, Apache-2.0 or CC0-1.0; the licences ask for this notice.
                 link("Overture Maps Foundation: Meta, Microsoft, Foursquare ve diğer kaynaklar", "https://docs.overturemaps.org/attribution/")
             }
+            Section("Otoparklar") {
+                link("Boş yer sayıları: İSPARK, İBB Açık Veri Portalı", "https://data.ibb.gov.tr/license")
+            }
             Section("Trafik") {
                 link("Canlı trafik ve trafikli süreler: © HERE", "https://legal.here.com/")
             }

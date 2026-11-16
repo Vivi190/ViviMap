@@ -214,8 +214,11 @@ struct SearchSheet: View {
                     Text(place.name)
                         .foregroundStyle(.primary)
                         .lineLimit(2)
-                    if !place.subtitle.isEmpty {
-                        Text(place.subtitle)
+                    // What it is, then where: "Kafe · Ankara Caddesi 54, Kartal".
+                    let line = [PlaceSymbol.kind(for: place.category), place.subtitle.isEmpty ? nil : place.subtitle]
+                        .compactMap { $0 }.joined(separator: " · ")
+                    if !line.isEmpty {
+                        Text(line)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
