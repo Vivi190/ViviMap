@@ -277,7 +277,8 @@ public final class NavigationSession {
         rerouteFailed = false
     }
 
-    /// A traffic light within 35 m of the maneuver: OSM puts the node at the stop line or on the junction.
+    /// A traffic light within 35 m of the maneuver: OpenStreetMap puts its node at the stop line or on the
+    /// junction, and the municipality's list has the junction's centre.
     nonisolated static func nearLight(_ point: CLLocationCoordinate2D, lights: [CLLocationCoordinate2D] = TrafficSignals.bundled) -> Bool {
         let metresPerDegreeLon = 111_320 * cos(point.latitude * .pi / 180)
         return lights.contains { light in

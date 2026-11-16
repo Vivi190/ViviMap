@@ -66,15 +66,59 @@ public struct HazardCatalog: Sendable {
     }
 }
 
-/// Traffic lights from OpenStreetMap (Tools/hazards/fetch_signals.py; 4 118 in Istanbul, 2026-11-15), for the
-/// map only: guidance does not warn about them.
+/// Traffic lights of Istanbul, for the map and for "Işıklarda sağa dönün": the lights OpenStreetMap has (a point
+/// per signal, at the stop line; Tools/hazards/fetch_signals.py, 4 118 on 2026-11-15) and, where it has none, the
+/// municipality's signalised junctions (a point per junction; fetch_junctions.py, 2 587 on 2026-11-16).
+/// OpenStreetMap misses about half of them: 1 246 of the 2 587 had no light of its within 80 m, 320 of the 479
+/// around Kartal, Pendik and Tuzla. The two files stay apart, each under its own licence, and meet here.
 public enum TrafficSignals {
-    public static let bundled: [CLLocationCoordinate2D] = {
-        guard let url = Bundle.module.url(forResource: "signals-istanbul", withExtension: "json"),
-              let data = try? Data(contentsOf: url)
-        else { return [] }
+    public static let bundled: [CLLocationCoordinate2D] = merged(points(in: "signals-istanbul"), junctions: points(in: "junctions-istanbul"))
+
+    private static func points(in file: String) -> [CLLocationCoordinate2D] {
+        guard let url = Bundle.module.url(forResource: file, withExtension: "json"), let data = try? Data(contentsOf: url) else { return [] }
         return (try? decode(data)) ?? []
-    }()
+    }
+
+    /// `lights`, and every junction with none of them within `reach` metres. 60 m: a light stands at its stop
+    /// line, 10 to 40 m from the centre of its junction, and the next junction is rarely nearer than 100 m.
+    static func merged(_ lights: [CLLocationCoordinate2D], junctions: [CLLocationCoordinate2D], reach: Double = 60) -> [CLLocationCoordinate2D] {
+        // Lights by cell of 0.001° (about 100 m): a junction looks in its own cell and the eight around it.
+        var cells: [Cell: [CLLocationCoordinate2D]] = [:]
+        for light in lights { cells[Cell(light), default: []].append(light) }
+        let unlit = junctions.filter { junction in
+            let home = Cell(junction)
+            for row in home.row - 1 ... home.row + 1 {
+                for column in home.column - 1 ... home.column + 1 {
+                    for light in cells[Cell(row: row, column: column)] ?? [] where metres(light, junction) <= reach {
+                        return false
+                    }
+                }
+            }
+            return true
+        }
+        return lights + unlit
+    }
+
+    private struct Cell: Hashable {
+        let row: Int
+        let column: Int
+
+        init(row: Int, column: Int) {
+            self.row = row
+            self.column = column
+        }
+
+        init(_ point: CLLocationCoordinate2D) {
+            row = Int((point.latitude * 1000).rounded(.down))
+            column = Int((point.longitude * 1000).rounded(.down))
+        }
+    }
+
+    private static func metres(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
+        let dx = (b.longitude - a.longitude) * 111_320 * cos(a.latitude * .pi / 180)
+        let dy = (b.latitude - a.latitude) * 110_540
+        return (dx * dx + dy * dy).squareRoot()
+    }
 
     static func decode(_ data: Data) throws -> [CLLocationCoordinate2D] {
         struct File: Decodable { let points: [[Double]] }

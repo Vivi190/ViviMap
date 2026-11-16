@@ -182,9 +182,22 @@ struct TrafficSignalsTests {
         #expect(points[0].latitude == 40.88925 && points[0].longitude == 29.18712)
     }
 
+    /// A junction of the municipality's list is added only where OpenStreetMap has no light at it.
+    @Test func aJunctionWithoutALightIsAdded() {
+        let light = CLLocationCoordinate2D(latitude: 40.9000, longitude: 29.2000)
+        let atTheLight = CLLocationCoordinate2D(latitude: 40.9003, longitude: 29.2001) // 34 m on: its junction
+        let elsewhere = CLLocationCoordinate2D(latitude: 40.9020, longitude: 29.2000) // 220 m on: another one
+        let acrossACell = CLLocationCoordinate2D(latitude: 40.89995, longitude: 29.19999) // 6 m away, in the next cell
+        let merged = TrafficSignals.merged([light], junctions: [atTheLight, elsewhere, acrossACell])
+        #expect(merged.count == 2)
+        #expect(merged[1].latitude == 40.9020)
+        #expect(TrafficSignals.merged([], junctions: [elsewhere]).count == 1)
+    }
+
     @Test func theShippedFileHasIstanbulsLights() {
-        // 4 118 nodes on 2026-11-15; refreshed with Tools/hazards/fetch_signals.py.
-        #expect(TrafficSignals.bundled.count > 3_000)
+        // 4 118 OpenStreetMap nodes (2026-11-15) and the junctions they miss, about 1 300 of the
+        // municipality's 2 587 (2026-11-16); refreshed with Tools/hazards/fetch_signals.py and fetch_junctions.py.
+        #expect(TrafficSignals.bundled.count > 5_000)
         #expect(TrafficSignals.bundled.allSatisfy { (40.75 ... 41.6).contains($0.latitude) && (28.0 ... 29.95).contains($0.longitude) })
     }
 }
