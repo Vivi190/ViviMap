@@ -22,7 +22,7 @@ final class GuidanceActivity {
         // Off in Settings → Atlas → Live Activities: guidance simply runs without it.
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let state = NavigationActivityAttributes.ContentState(
-            symbol: "location.north.fill", distance: "", instruction: "Rota başladı", road: nil,
+            symbol: "location.north.fill", distance: "", instruction: "Rota oluşturuldu", road: nil,
             arrival: arrival, arrivalWithTraffic: false
         )
         activityID = try? Activity.request(
@@ -59,7 +59,7 @@ final class GuidanceActivity {
         return NavigationActivityAttributes.ContentState(
             symbol: navigation.maneuverSymbol,
             distance: navigation.distanceToManeuver.map { Formatting.distance(meters: $0) } ?? "",
-            instruction: navigation.actionText ?? "Rotayı izle",
+            instruction: navigation.actionText ?? "Rotayı izleyin",
             road: navigation.nextRoad,
             arrival: Date(timeIntervalSinceReferenceDate: (arrival.timeIntervalSinceReferenceDate / 60).rounded() * 60),
             arrivalWithTraffic: trafficArrival != nil

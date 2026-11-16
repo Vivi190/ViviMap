@@ -28,6 +28,8 @@ public extension Color {
     static let atlasCritical = Color(light: 0xD7263D, dark: 0xFF5A6A)
     /// Ground of the reading panels (atlasCardSurface).
     static let atlasCard = Color(light: 0xFFFFFF, dark: 0x1C1C1E)
+    /// The turn panel while guiding: one saturated blue with white content, day and night.
+    static let atlasGuidance = Color(light: 0x1F6FEB, dark: 0x2563D9)
 }
 
 extension Color {

@@ -48,17 +48,21 @@ struct SpeedOverlay: View {
     @Environment(LocationProvider.self) private var location
     /// The road's limit while guiding, when known.
     var limit: Int?
+    /// While guiding the tile stays put: 0 at a red light, "–" without a usable fix (a tunnel). On the plain
+    /// map it only appears while moving.
+    var staysVisible = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let reading = location.speedReading(at: context.date)
+            let shown = staysVisible || (reading.kmh ?? 0) > 0
             ZStack {
-                if let kmh = reading.kmh, kmh > 0 {
-                    SpeedometerView(kmh: kmh, isReliable: reading.isReliable, limit: limit)
+                if shown {
+                    SpeedometerView(kmh: reading.kmh, isReliable: reading.isReliable, limit: limit)
                         .transition(.scale(scale: 0.85).combined(with: .opacity))
                 }
             }
-            .animation(.snappy(duration: 0.25), value: (reading.kmh ?? 0) > 0)
+            .animation(.snappy(duration: 0.25), value: shown)
         }
     }
 }

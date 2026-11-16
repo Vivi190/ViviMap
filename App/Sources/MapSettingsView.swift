@@ -138,7 +138,7 @@ struct MapSettingsView: View {
             LabeledContent("Ses", value: voice.map { "\($0.name) · \(quality)" } ?? "Türkçe ses yok")
             if voice != nil {
                 Button("Örnek dinle", systemImage: "play.circle") {
-                    sampleVoice.speak("300 metre sonra sağa dön, Ankara Caddesi.")
+                    sampleVoice.speak("300 metre sonra sağa dönün, Ankara Caddesi.")
                 }
             }
         } header: {

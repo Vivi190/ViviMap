@@ -67,6 +67,11 @@ struct HomeScreen: View {
     @State private var selectedPlace: Place?
     @State private var routes: [RouteOption] = []
     @State private var routeSelection = 0
+    /// The driver chose a route by hand: traffic times arriving later must not move the selection.
+    @State private var userPickedRoute = false
+    /// MapLibre stopped following the car (a gesture or the route overview), as it reports itself. The camera
+    /// binding misses gestures made while the map is still moving, which it always is behind a driving car.
+    @State private var mapDetached = false
     /// Where each candidate's time bubble sits (RouteLabel.place), worked out once per route request.
     @State private var routeLabelPoints: [Int: CLLocationCoordinate2D] = [:]
     /// Routes to the place on the card, asked for as soon as the card opens (as Apple Maps does), so "Rota" shows
@@ -97,12 +102,16 @@ struct HomeScreen: View {
     @State private var simulatedPuck: StaticLocationManager?
     /// Starts the route line at the car on every fix while guiding (NavigationSession.onRouteAhead).
     @State private var routeTrimmer = RouteLineTrimmer()
+    /// Draws the city traffic lines straight on the map style (TrafficOverlay).
+    @State private var trafficOverlay = TrafficOverlay()
     /// Feeds the user puck during real guidance with the fix snapped to the route (NavigationSession.onPuck).
     @State private var guidedPuck: StaticLocationManager?
     @State private var trafficEstimates: [Int: TrafficEstimate] = [:]
     @State private var trafficStatus = RouteCard.TrafficStatus.unavailable
     /// Slow stretches per route alternative, fetched for the one on screen.
     @State private var previewTraffic: [Int: [TrafficSection]] = [:]
+    /// Traffic around each measured alternative, from the same answer: guidance opens with it on the map.
+    @State private var previewAround: [Int: [TrafficSection]] = [:]
     /// Bumped per route request so a late traffic answer never lands on newer routes.
     @State private var planGeneration = 0
     @State private var trafficWatch = TrafficWatch()
@@ -112,6 +121,9 @@ struct HomeScreen: View {
     @State private var isMuted = false
     /// Returns a guided map to the car after the driver looked around (see `.onChange(of: camera)`).
     @State private var recenterTask: Task<Void, Never>?
+    /// The guidance side buttons are on screen (a tap on the map shows them for a few seconds).
+    @State private var showsGuidanceControls = false
+    @State private var hideControlsTask: Task<Void, Never>?
     /// The 0.6 s between centring on the car and following it (recenterOnCourse): not "the driver moved the map".
     @State private var isRecentering = false
     @State private var guidanceActivity = GuidanceActivity()
@@ -163,7 +175,9 @@ struct HomeScreen: View {
 
     private var routeTapHandler: (Int) -> Void {
         { index in
-            if navigation?.isActive != true { routeSelection = index }
+            guard navigation?.isActive != true else { return }
+            routeSelection = index
+            userPickedRoute = true
         }
     }
 
@@ -175,6 +189,13 @@ struct HomeScreen: View {
     private var simulateHandler: (() -> Void)? {
         if navigation == nil || !settings.showsDriveSimulation { return nil }
         return { startNavigation(simulated: true) }
+    }
+
+    /// The route guidance is on, nil when not guiding: the traffic watch restarts with it (start, reroute,
+    /// accepted suggestion).
+    private var guidanceRoute: TrafficWatch.RouteKey? {
+        guard isNavigating, let coordinates = navigation?.routeCoordinates, coordinates.count > 1 else { return nil }
+        return TrafficWatch.RouteKey(coordinates)
     }
 
     /// During guidance the session's geometry wins: it changes after a reroute (read for that, so a reroute redraws
@@ -198,19 +219,29 @@ struct HomeScreen: View {
         return routes.filter { $0.index != active.index }.map(\.coordinates)
     }
 
-    /// Every candidate's time on the map while choosing; tapping a bubble or a tile in the card chooses that route.
+    /// The candidates' callouts on the map while choosing: the chosen route's time and distance, the others'
+    /// difference from it; tapping one (or a tile in the card) chooses that route.
     private var routeLabels: [RouteLabel] {
         guard !isNavigating, let active = activeRoute else { return [] }
-        return routes.compactMap { option in
-            routeLabelPoints[option.index].map {
-                RouteLabel(
-                    route: option.index,
-                    coordinate: $0,
-                    text: Formatting.duration(seconds: RouteCard.time(of: option, traffic: trafficEstimates, status: trafficStatus)),
-                    isSelected: option.index == active.index
-                )
+        let chosen = RouteCard.time(of: active, traffic: trafficEstimates, status: trafficStatus)
+        var labels: [RouteLabel] = []
+        for option in routes {
+            guard let point = routeLabelPoints[option.index] else { continue }
+            let time = RouteCard.time(of: option, traffic: trafficEstimates, status: trafficStatus)
+            if option.index == active.index {
+                labels.append(RouteLabel(
+                    route: option.index, coordinate: point,
+                    text: Formatting.duration(seconds: time), detail: Formatting.distance(meters: option.distance), tone: .selected
+                ))
+            } else {
+                let minutes = Int((abs(time - chosen) / 60).rounded())
+                labels.append(RouteLabel(
+                    route: option.index, coordinate: point,
+                    text: "\(time < chosen ? "−" : "+")\(minutes) dk", tone: time < chosen ? .faster : .slower
+                ))
             }
         }
+        return labels
     }
 
     private var hazardKinds: Set<Hazard.Kind> {
@@ -218,6 +249,20 @@ struct HomeScreen: View {
         if settings.warnsCameras { kinds.insert(.camera) }
         if settings.warnsBumps { kinds.insert(.bump) }
         return kinds
+    }
+
+    /// The traffic layer: the roads around what is on screen; while guiding, the roads around the rest of the
+    /// route (from the guidance rounds, no request of its own), as Yandex keeps jams visible on the way.
+    private var areaTraffic: [TrafficLine] {
+        guard settings.showsTrafficLayer else { return [] }
+        if isNavigating { return trafficWatch.around.map { TrafficLine($0) } }
+        return showsCityTraffic ? cityTraffic.lines : []
+    }
+
+    /// Live traffic is known for the route on screen; it is then drawn in traffic colours instead of blue.
+    private var routeIsMeasured: Bool {
+        if isNavigating { return trafficWatch.arrival != nil }
+        return activeRoute.map { previewTraffic[$0.index] != nil } ?? false
     }
 
     private var displayedTraffic: [TrafficLine] {
@@ -254,18 +299,24 @@ struct HomeScreen: View {
                 destination: selectedPlace?.point.coordinate,
                 route: displayedRoute,
                 alternatives: alternativeRoutes,
+                routeIsMeasured: routeIsMeasured,
                 routeLabels: routeLabels,
                 traffic: displayedTraffic,
-                areaTraffic: showsCityTraffic ? cityTraffic.lines : [],
+                areaTraffic: areaTraffic,
                 marks: userHazards.hazards.map { MapMark(isCamera: $0.kind == .camera, coordinate: $0.coordinate) },
                 maneuverArrow: isNavigating ? navigation?.maneuverArrow ?? [] : [],
                 roadMarks: Self.roadMarks,
                 incidents: displayedIncidents,
                 routeTrimmer: routeTrimmer,
+                trafficOverlay: trafficOverlay,
                 puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,
                 guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,
                 isOffline: !connectivity.isOnline,
+                // Until arrival: afterwards the map goes back to live GPS and MapLibre's own puck.
+                showsGuidanceCursor: isNavigating && navigation?.hasArrived != true,
+                onFollowingChanged: followingHandler,
+                onTap: mapTapHandler,
                 onRouteTap: routeTapHandler,
                 onLongPress: longPressHandler
             ) { proxy in
@@ -304,12 +355,18 @@ struct HomeScreen: View {
         .onAppear {
             search.origin = { [location] in location.lastLocation.map { GeoPoint($0.coordinate) } }
         }
-        .task(id: isNavigating) { await watchTraffic() }
+        .task(id: guidanceRoute) { await watchTraffic() }
         .onChange(of: hazardKinds) { _, kinds in navigation?.hazardKinds = kinds }
         .onChange(of: navigation?.hasArrived) { _, arrived in
             if arrived == true {
                 recordTrip(arrived: true)
                 guidanceActivity.end()
+                // Ferrostar keeps reporting the arrival fix once the trip is complete: back to live GPS so the
+                // arrow follows the car to its parking space, and nothing keeps the screen or background GPS on
+                // if the driver walks away without ending guidance.
+                guidedPuck = nil
+                location.setNavigating(false)
+                UIApplication.shared.isIdleTimerDisabled = false
             }
         }
         .onChange(of: routeSelection) { _, index in
@@ -319,20 +376,34 @@ struct HomeScreen: View {
             // First fix after a cold start: jump to the user unless they already moved the map.
             guard hasFix, awaitingFirstFix else { return }
             awaitingFirstFix = false
-            if camera.trackingMode == .none, !userMovedMap {
+            if camera.trackingMode == .none, !userMovedMap, selectedPlace == nil {
                 camera = .trackUserLocation(zoom: 15.5)
             }
         }
-        .onChange(of: camera) { _, newCamera in
-            // While guiding, a driver who moved the map or looked at the whole route gets the road ahead back
-            // by itself 12 s after the last change, as in Waze; every gesture restarts the wait.
-            recenterTask?.cancel()
-            guard isNavigating, newCamera.trackingMode == .none, let navigation else { return }
-            recenterTask = Task {
-                try? await Task.sleep(for: .seconds(12))
-                guard !Task.isCancelled, isNavigating else { return }
-                recenterOnCourse(zoom: navigation.guidanceZoom)
-            }
+        .onChange(of: camera) { _, _ in scheduleReturn() }
+        .onChange(of: mapDetached) { _, _ in scheduleReturn() }
+        .onChange(of: settings.avoidsTolls) { _, _ in
+            // The routes (or the "no toll-free route" message) on screen were planned with the old setting.
+            if let place = selectedPlace, !isNavigating, !routes.isEmpty || routeError != nil { planRoute(to: place) }
+        }
+    }
+
+    /// While guiding, a driver who moved the map or looked at the whole route gets the road ahead back by
+    /// itself 12 s after the last change the map reports; every further gesture restarts the wait.
+    private func scheduleReturn() {
+        recenterTask?.cancel()
+        guard isNavigating, mapDetached, let navigation else { return }
+        recenterTask = Task {
+            try? await Task.sleep(for: .seconds(12))
+            guard !Task.isCancelled, isNavigating, mapDetached else { return }
+            recenterOnCourse(zoom: navigation.guidanceZoom)
+        }
+    }
+
+    /// MapLibre's own word on whether it follows the car (AtlasMapView.onFollowingChanged).
+    private var followingHandler: (Bool) -> Void {
+        { follows in
+            if mapDetached == follows { mapDetached = !follows }
         }
     }
 
@@ -345,17 +416,23 @@ struct HomeScreen: View {
                     SearchBarButton { sheet = .search }
                         .frame(maxWidth: isLandscape ? 420 : .infinity)
                     if selectedPlace == nil, search.home != nil || search.work != nil {
-                        ShortcutChips(hasHome: search.home != nil, hasWork: search.work != nil) { _ = openShortcut($0) }
+                        ShortcutChips(hasHome: search.home != nil, hasWork: search.work != nil) { slot in
+                            if !openShortcut(slot), let place = slot == .home ? search.home : search.work {
+                                select(place)
+                                routeError = "Konumun henüz bilinmiyor."
+                            }
+                        }
                     }
                     GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
                     if !connectivity.isOnline { offlineChip }
                     if settings.showsTrafficLayer, let notice = cityTraffic.notice {
                         StatusChip(systemImage: "car.2.fill", title: notice, tone: .warning)
                     } else if showsCityTraffic, let score = cityTraffic.score {
-                        // Yandex-style score for the roads around, 0 flowing … 10 standstill (AreaTraffic.score).
+                        // The roads around on Yandex's scale and in its words, 0 clear … 10 gridlock
+                        // (AreaTraffic.score); its badge turns yellow from 4 and red from 7.
                         StatusChip(
                             systemImage: "car.2.fill",
-                            title: "Trafik \(score)/10 · \(score >= 7 ? "çok yoğun" : score >= 4 ? "yoğun" : "akıcı")",
+                            title: "\(score) puan · \(AreaTraffic.label(score: score))",
                             tone: score >= 7 ? .critical : score >= 4 ? .warning : .neutral
                         )
                     }
@@ -565,7 +642,14 @@ struct HomeScreen: View {
             trafficStatus: trafficStatus,
             // What these routes were planned with; the switch may have moved since (re-planning clears them).
             avoidsTolls: planner?.avoidsTolls == true,
-            selection: $routeSelection,
+            error: routeError,
+            selection: Binding(
+                get: { routeSelection },
+                set: { index in
+                    routeSelection = index
+                    userPickedRoute = true
+                }
+            ),
             onStart: startHandler,
             onSimulate: simulateHandler,
             onClose: {
@@ -590,20 +674,11 @@ struct HomeScreen: View {
     /// iPhone on its side (car mounts): panels move into a left column and the map gets the rest.
     private var isLandscape: Bool { verticalSizeClass == .compact }
 
+    /// Sound and sharing, out of the way while driving: shown for a few seconds after a tap on the map and
+    /// while the map is not following the car. The overview button is in the bottom strip; the way back to the
+    /// car ("Rotaya devam et") appears above it.
     private func navigationControls(_ navigation: NavigationSession) -> some View {
         MapControlGroup {
-            MapControlButton(
-                systemImage: "point.topleft.down.to.point.bottomright.curvepath",
-                label: "Rotanın tamamı",
-                isActive: camera.trackingMode == .none
-            ) { showRouteOverview(navigation) }
-            MapControlDivider()
-            MapControlButton(
-                systemImage: "location.north.line.fill",
-                label: "Konumumu göster",
-                isActive: camera.trackingMode == .followDirection
-            ) { recenterOnCourse(zoom: navigation.guidanceZoom) }
-            MapControlDivider()
             MapControlButton(
                 systemImage: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
                 label: isMuted ? "Sesli yönlendirmeyi aç" : "Sesli yönlendirmeyi kapat",
@@ -622,24 +697,24 @@ struct HomeScreen: View {
                 .frame(maxWidth: isLandscape ? 380 : .infinity)
             if isLandscape {
                 Spacer(minLength: 0)
-                navigationControls(navigation)
+                if showsGuidanceControls || mapDetached { navigationControls(navigation) }
             }
         }
-        .padding(.horizontal, Spacing.l)
+        .padding(.horizontal, Spacing.m)
         .padding(.vertical, Spacing.s)
         .animation(.snappy(duration: 0.3), value: trafficWatch.suggestion?.option.id)
     }
 
+    /// Guidance, laid out as drivers know it from Yandex Navigator: the turn panel top left, speed and limit top
+    /// right, the road name over one slim trip row at the bottom; the middle stays map.
     private func navigationColumn(_ navigation: NavigationSession) -> some View {
         VStack(spacing: Spacing.s) {
-            NavigationBanner(navigation: navigation)
-            if let suggestion = trafficWatch.suggestion {
-                RouteSuggestionBanner(suggestion: suggestion, onAccept: acceptSuggestion) { trafficWatch.dismiss() }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: Spacing.s) {
                 VStack(alignment: .leading, spacing: Spacing.s) {
+                    NavigationBanner(navigation: navigation)
                     HazardChipSlot(navigation: navigation)
+                    // A tunnel or weak signal must read as "no GPS", not as a frozen app.
+                    GPSStatusChip(openSettings: openSettings, showDiagnostics: { sheet = .diagnostics })
                     if !connectivity.isOnline { offlineChip }
                     if simulatedPuck != nil {
                         // Always visible: a simulated drive must never pass for real guidance.
@@ -657,42 +732,55 @@ struct HomeScreen: View {
                     }
                 }
                 Spacer(minLength: 0)
-                if !isLandscape { navigationControls(navigation) }
-            }
-            Spacer(minLength: 0)
-            SpeedOverlay(limit: navigation.speedLimit)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .bottom) {
-                    if camera.trackingMode == .none, !isRecentering {
-                        // The driver moved the map: one clear way back, as Yandex offers (it also returns by itself).
-                        Button { recenterOnCourse(zoom: navigation.guidanceZoom) } label: {
-                            Label("Rotaya dön", systemImage: "location.north.line.fill")
-                                .font(.subheadline.weight(.semibold))
-                                .padding(.horizontal, Spacing.s)
-                                .frame(minHeight: 36)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .buttonBorderShape(.capsule)
-                        .accessibilityIdentifier("nav.recenter")
-                    } else if let road = navigation.currentRoad {
-                        CurrentRoadLabel(road: road)
+                VStack(alignment: .trailing, spacing: Spacing.m) {
+                    GuidanceSpeed(navigation: navigation)
+                    if !isLandscape, showsGuidanceControls || mapDetached {
+                        navigationControls(navigation)
+                            .transition(.opacity)
                     }
                 }
+            }
+            if let suggestion = trafficWatch.suggestion {
+                RouteSuggestionBanner(suggestion: suggestion, onAccept: acceptSuggestion) { trafficWatch.dismiss() }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            Spacer(minLength: 0)
+            GuidanceRoadRow(navigation: navigation, isDetached: mapDetached && !isRecentering) {
+                recenterOnCourse(zoom: navigation.guidanceZoom)
+            }
             NavigationBottomBar(
                 navigation: navigation,
                 trafficArrival: trafficWatch.arrival,
                 onParking: search.canShowNearby ? { findParking() } : nil,
                 trafficSections: trafficWatch.sections,
+                isOverview: mapDetached,
+                onOverview: { showRouteOverview(navigation) },
                 onEnd: { endNavigation() }
             )
+        }
+        .animation(.easeOut(duration: 0.2), value: showsGuidanceControls || mapDetached)
+    }
+
+    /// A tap on the map while guiding: the side buttons for six seconds.
+    private var mapTapHandler: () -> Void {
+        {
+            guard navigation?.isActive == true else { return }
+            showsGuidanceControls = true
+            hideControlsTask?.cancel()
+            hideControlsTask = Task {
+                try? await Task.sleep(for: .seconds(6))
+                if !Task.isCancelled { showsGuidanceControls = false }
+            }
         }
     }
 
     /// Traffic rounds while guiding; the task is cancelled when navigation ends (its id changes).
     private func watchTraffic() async {
-        guard isNavigating, let traffic, let planner, let navigation, let destination = selectedPlace else { return }
-        trafficWatch.reset()
-        var wait: Duration = .seconds(20) // first look soon after the start, then every few minutes
+        guard isNavigating, let traffic, let planner, let navigation, let destination = selectedPlace,
+              navigation.routeCoordinates.count > 1 else { return }
+        // A route the card or an accepted suggestion already measured: next look in a full interval. One
+        // nothing is known about (a reroute, or traffic failed on the card): soon.
+        var wait: Duration = trafficWatch.follows(navigation.routeCoordinates) ? TrafficWatch.interval : .seconds(10)
         while !Task.isCancelled {
             try? await Task.sleep(for: wait)
             wait = TrafficWatch.interval
@@ -718,12 +806,19 @@ struct HomeScreen: View {
             routeError = "Konumun henüz bilinmiyor."
             return
         }
+        // What the route card showed for this route: the spoken start, the bar and the lock screen open with
+        // the same time and colours instead of the free-flow ones until the first traffic round.
+        let estimate = trafficStatus == .ready ? trafficEstimates[route.index] : nil
         do {
             navigation.hazardKinds = hazardKinds
             navigation.userHazards = userHazards.hazards
             navigation.warnsSpeeding = settings.warnsSpeeding
             navigation.voice.isMuted = isMuted
-            try navigation.start(route, from: start)
+            try navigation.start(route, from: start, expectedDuration: estimate?.duration)
+            trafficWatch.begin(
+                on: route.coordinates, duration: estimate?.duration,
+                sections: previewTraffic[route.index] ?? [], around: previewAround[route.index] ?? []
+            )
             navigation.onRouteAhead = { [routeTrimmer, trafficWatch, weak navigation] ahead in
                 guard let navigation else { return }
                 routeTrimmer.show(ahead, traffic: Self.trafficAhead(trafficWatch.sections, on: navigation))
@@ -738,7 +833,6 @@ struct HomeScreen: View {
                 guidedPuck = puck
                 navigation.onPuck = { puck.lastLocation = $0 }
                 if let place = selectedPlace {
-                    let estimate = trafficStatus == .ready ? trafficEstimates[route.index] : nil
                     tripStart = TripStart(
                         date: .now, destination: place.name, distance: route.distance,
                         predicted: estimate?.duration ?? route.duration, withTraffic: estimate != nil
@@ -750,7 +844,7 @@ struct HomeScreen: View {
                 destination: selectedPlace?.name ?? "Hedef",
                 navigation: navigation,
                 traffic: trafficWatch,
-                arrival: Date.now.addingTimeInterval(route.duration)
+                arrival: Date.now.addingTimeInterval(estimate?.duration ?? route.duration)
             )
         } catch {
             routeError = "Navigasyon başlatılamadı."
@@ -761,6 +855,8 @@ struct HomeScreen: View {
     /// the tracking mode, which cuts MapLibre's own fly-to short, so the map stayed where it was until the next
     /// fix and guidance opened on the route preview's centre instead of the car.
     private func recenterOnCourse(zoom: Double) {
+        // Set here as well as by the map's own report (followingHandler): the button must not wait for it.
+        mapDetached = false
         guard let here = (simulatedPuck ?? guidedPuck)?.lastLocation ?? location.lastLocation else { return followCourse(zoom: zoom) }
         let direction = here.course >= 0 ? here.course : viewport.bearing
         isRecentering = true
@@ -787,8 +883,11 @@ struct HomeScreen: View {
         camera = .fitting(
             southWest: CLLocationCoordinate2D(latitude: lats.min()!, longitude: lons.min()!),
             northEast: CLLocationCoordinate2D(latitude: lats.max()!, longitude: lons.max()!),
-            padding: UIEdgeInsets(top: 40, left: 40, bottom: 210, right: 70)
+            padding: isLandscape
+                ? UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 70)
+                : UIEdgeInsets(top: 40, left: 40, bottom: 210, right: 70)
         )
+        mapDetached = true
     }
 
     /// Drives the route at the average speed Valhalla assumed, so the simulated arrival matches the estimate.
@@ -895,6 +994,7 @@ struct HomeScreen: View {
                 }
                 guard generation == planGeneration else { return }
                 routeSelection = 0
+                userPickedRoute = false
                 routeLabelPoints = Dictionary(uniqueKeysWithValues: found.compactMap { option in
                     RouteLabel.place(on: option.coordinates, awayFrom: found.filter { $0.index != option.index }.map(\.coordinates))
                         .map { (option.index, $0) }
@@ -912,7 +1012,9 @@ struct HomeScreen: View {
                             latitude: found.map(\.northEast.latitude).max()!,
                             longitude: found.map(\.northEast.longitude).max()!
                         ),
-                        padding: UIEdgeInsets(top: 150, left: 50, bottom: 380, right: 90)
+                        padding: isLandscape
+                            ? UIEdgeInsets(top: 30, left: 450, bottom: 30, right: 80)
+                            : UIEdgeInsets(top: 150, left: 50, bottom: 380, right: 90)
                     )
                 }
             } catch RoutePlanner.PlanningError.noRoute where planner.avoidsTolls {
@@ -932,7 +1034,10 @@ struct HomeScreen: View {
     private func scoreTraffic(_ options: [RouteOption], generation: Int) {
         trafficEstimates = [:]
         previewTraffic = [:]
-        guard let traffic else {
+        previewAround = [:]
+        // A route computed on the device (no connection, or the server failing) is labelled "trafiksiz":
+        // scoring it would put a live-traffic time next to that label and spend the budget for nothing.
+        guard let traffic, options.first?.isOffline != true else {
             trafficStatus = .unavailable
             return
         }
@@ -956,8 +1061,13 @@ struct HomeScreen: View {
             }
             trafficEstimates = measured
             trafficStatus = .ready
-            if routeSelection == 0, let fastest = measured.min(by: { $0.value.duration < $1.value.duration })?.key, fastest != 0 {
-                routeSelection = fastest // onChange loads its colours
+            // Only while the driver has not chosen, and only for a minute or more: a card whose selection jumps
+            // for a few seconds' difference moves under the finger reaching for "Başlat".
+            if !userPickedRoute,
+               let fastest = measured.min(by: { $0.value.duration < $1.value.duration }),
+               let shown = measured[routeSelection],
+               fastest.key != routeSelection, shown.duration - fastest.value.duration >= 60 {
+                routeSelection = fastest.key // onChange loads its colours
             } else if let shown = options.first(where: { $0.index == routeSelection }) {
                 loadFlow(for: shown, generation: generation)
             }
@@ -971,6 +1081,7 @@ struct HomeScreen: View {
         Task {
             guard let flow = try? await traffic.flow(along: coordinates), generation == planGeneration else { return }
             previewTraffic[option.index] = RouteTraffic.sections(route: coordinates, flow: flow)
+            previewAround[option.index] = AreaTraffic.sections(flow)
         }
     }
 
@@ -1095,7 +1206,7 @@ private struct ArrivalShareButton: View {
             URLQueryItem(name: "ll", value: "\(place.point.latitude),\(place.point.longitude)"),
             URLQueryItem(name: "q", value: place.name),
         ]
-        let time = arrival.formatted(date: .omitted, time: .shortened)
+        let time = Formatting.clock(arrival)
         let traffic = withTraffic ? " (canlı trafikle)" : ""
         return "Varışım yaklaşık \(time)\(traffic) · \(place.name)\n\(link.url?.absoluteString ?? "")"
     }

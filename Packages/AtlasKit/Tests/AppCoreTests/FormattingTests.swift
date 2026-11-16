@@ -4,10 +4,13 @@ import Testing
 struct FormattingTests {
     @Test(arguments: [
         (4.0, "10 m"),
+        (124.0, "120 m"),
         (346.0, "350 m"),
         (949.0, "950 m"),
+        (990.0, "1 km"),
         (1_234.0, "1,2 km"),
-        (9_960.0, "10,0 km"),
+        (2_040.0, "2 km"),
+        (9_960.0, "10 km"),
         (18_400.0, "18 km"),
     ])
     func distance(meters: Double, expected: String) {

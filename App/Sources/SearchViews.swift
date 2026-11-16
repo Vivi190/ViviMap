@@ -363,6 +363,8 @@ struct RouteCard: View {
     let trafficStatus: TrafficStatus
     /// The "Ücretli yollardan kaçın" setting these routes were planned with.
     let avoidsTolls: Bool
+    /// Why "Başlat" did nothing (no position yet, guidance could not start).
+    var error: String? = nil
     @Binding var selection: Int
     /// nil when navigation could not be set up; the button is hidden rather than shown broken.
     let onStart: (() -> Void)?
@@ -416,14 +418,21 @@ struct RouteCard: View {
                 .accessibilityLabel(Text("Rotayı kapat"))
             }
             if routes.count > 1 {
-                // Side by side, fastest first, as Yandex lays them out; the map carries the same times in bubbles.
+                // Side by side in the router's order, which does not change when traffic times arrive: a tile
+                // must not move under the finger. The map carries the same times in bubbles.
+                let quickest = routes.min { duration($0) < duration($1) }?.index
                 HStack(spacing: Spacing.s) {
-                    ForEach(routes.sorted { duration($0) < duration($1) }) { option in
-                        optionTile(option, isSelected: option.index == route.index, fastest: fastest)
+                    ForEach(routes) { option in
+                        optionTile(option, isSelected: option.index == route.index, fastest: fastest, isFastest: option.index == quickest)
                     }
                 }
             }
-            summary(route)
+            summary(route, showsTime: routes.count == 1)
+            if let error {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(Color.atlasWarning)
+            }
             if route.isOffline {
                 // No connection: computed on the phone from the shipped Istanbul tiles, so no traffic either.
                 Label("Çevrimdışı rota · cihazdaki İstanbul verisiyle, trafiksiz", systemImage: "wifi.slash")
@@ -435,22 +444,22 @@ struct RouteCard: View {
             if let onStart {
                 HStack(spacing: Spacing.s) {
                     Button(action: onStart) {
-                        Label("Başlat", systemImage: "location.north.fill")
+                        Text("Başlat")
                             .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .frame(maxWidth: .infinity, minHeight: 36)
                     }
                     .buttonStyle(.borderedProminent)
-                    .buttonBorderShape(.capsule)
+                    .buttonBorderShape(.roundedRectangle(radius: 16))
                     .accessibilityIdentifier("route.start")
                     if let onSimulate {
                         Button(action: onSimulate) {
-                            Label("Simüle et", systemImage: "play.fill")
+                            Image(systemName: "play.fill")
                                 .font(.headline)
-                                .padding(.horizontal, Spacing.s)
-                                .frame(minHeight: 44)
+                                .frame(width: 36, height: 36)
                         }
                         .buttonStyle(.bordered)
-                        .buttonBorderShape(.capsule)
+                        .buttonBorderShape(.roundedRectangle(radius: 16))
+                        .accessibilityLabel(Text("Simüle et"))
                         .accessibilityIdentifier("route.simulate")
                     }
                 }
@@ -466,54 +475,68 @@ struct RouteCard: View {
         .animation(.snappy(duration: 0.25), value: trafficStatus)
     }
 
-    /// One candidate as a tile: its time, and "En hızlı" or how much slower; the chosen one outlined in blue.
-    private func optionTile(_ option: RouteOption, isSelected: Bool, fastest: TimeInterval) -> some View {
+    /// One candidate as a tile, as Yandex lays them out: what it is ("En hızlı", "+2 dk"), its time and its
+    /// distance; the chosen one filled blue.
+    private func optionTile(_ option: RouteOption, isSelected: Bool, fastest: TimeInterval, isFastest: Bool) -> some View {
         let time = duration(option)
         let extra = time - fastest
+        // One tile is the fastest; a rival within a minute says so instead of claiming the title too.
+        let note = isFastest ? "En hızlı" : extra >= 60 ? "+\(Formatting.duration(seconds: extra))" : "Benzer süre"
         let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         return Button { selection = option.index } label: {
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(note)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.85) : isFastest ? Color.atlasAccent : Color.secondary)
                 Text(Formatting.duration(seconds: time))
                     .font(.headline.weight(.bold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                Text(extra >= 60 ? "+\(Formatting.duration(seconds: extra))" : "En hızlı")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(extra >= 60 ? Color.secondary : Color.atlasAccent)
+                    .foregroundStyle(isSelected ? Color.white : Color.primary)
+                Text(Formatting.distance(meters: option.distance))
+                    .font(.caption.weight(.medium))
+                    .monospacedDigit()
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.85) : Color.secondary)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .padding(.horizontal, Spacing.m)
             .padding(.vertical, Spacing.s)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Color.atlasAccent.opacity(0.1) : Color.primary.opacity(0.05), in: shape)
-            .overlay(shape.strokeBorder(isSelected ? Color.atlasAccent : Color.clear, lineWidth: 2))
+            .background(isSelected ? Color.atlasAccent : Color.primary.opacity(0.05), in: shape)
             .contentShape(shape)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text("\(Formatting.duration(seconds: time)), \(Formatting.distance(meters: option.distance))"))
+        .accessibilityLabel(Text("\(note), \(Formatting.duration(seconds: time)), \(Formatting.distance(meters: option.distance))"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     /// The chosen route: time large, then distance and arrival, as the guidance bar shows them; under it the
     /// traffic delay, the main roads and tolls or ferries.
-    private func summary(_ option: RouteOption) -> some View {
+    private func summary(_ option: RouteOption, showsTime: Bool) -> some View {
         let time = duration(option)
-        let arrival = Date.now.addingTimeInterval(time).formatted(date: .omitted, time: .shortened)
+        let arrival = Formatting.clock(Date.now.addingTimeInterval(time))
         return VStack(alignment: .leading, spacing: Spacing.xs) {
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
-                Text(Formatting.duration(seconds: time))
-                    .font(.system(size: 28, weight: .bold))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                Text("\(Formatting.distance(meters: option.distance)) · Varış \(arrival)")
+            if showsTime {
+                // A single route has no tiles: its time and distance stand here.
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
+                    Text(Formatting.duration(seconds: time))
+                        .font(.system(size: 28, weight: .bold))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    Text("\(Formatting.distance(meters: option.distance)) · Varış \(arrival)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .accessibilityElement(children: .combine)
+            } else {
+                Label("Varış \(arrival)", systemImage: "flag.checkered")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
                     .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
             }
-            .accessibilityElement(children: .combine)
             if trafficStatus == .ready, let estimate = traffic[option.index] {
                 TrafficDelayLabel(estimate: estimate)
             }
@@ -567,7 +590,7 @@ struct TrafficDelayLabel: View {
         let text = estimate.delay >= 60 ? "Trafik \(Formatting.duration(seconds: estimate.delay)) ekliyor" : "Trafik akıcı"
         Label(text, systemImage: "car.fill")
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(share >= 0.25 ? Color.atlasCritical : share >= 0.1 ? Color.atlasWarning : Color.green)
+            .foregroundStyle(estimate.delay < 60 ? Color.green : share >= 0.25 ? Color.atlasCritical : share >= 0.1 ? Color.atlasWarning : Color.green)
     }
 }
 

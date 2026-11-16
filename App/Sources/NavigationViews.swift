@@ -6,86 +6,71 @@ import RoutingEngine
 import SwiftUI
 import TrafficEngine
 
-/// Turn card: the maneuver on a blue tile, the distance large, the road to take in bold and the Turkish action
-/// under it. An opaque card like the other reading panels (dark at night); lanes only when the data has them.
+/// Turn panel, placed and sized as drivers know it from Yandex Navigator: a compact blue panel in the top-left
+/// corner with the maneuver arrow, the distance and the road to take, so most of the width stays map. The
+/// maneuver right after it shows as a smaller arrow; lanes only when the data has them.
 struct NavigationBanner: View {
     let navigation: NavigationSession
 
-    /// The rows under the headline start where the text does, past the tile.
-    private static let indent: CGFloat = 64 + Spacing.m
-
     var body: some View {
-        // The road leads when there is one ("Hürriyet Caddesi"); the action ("Göbekten sağa çık") follows it.
         let road = navigation.nextRoad.flatMap { $0.isEmpty ? nil : $0 }
-        let action = navigation.actionText ?? "Rotayı izle"
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            HStack(alignment: .center, spacing: Spacing.m) {
+        let action = navigation.actionText ?? "Rotayı izleyin"
+        let distance = navigation.distanceToManeuver.map { Formatting.distance(meters: $0) }
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: Spacing.s) {
                 Image(systemName: navigation.maneuverSymbol)
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 36, weight: .bold))
                     .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 64, height: 64)
-                    .background(Color.atlasAccent, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                VStack(alignment: .leading, spacing: 1) {
-                    if let distance = navigation.distanceToManeuver {
-                        Text(Formatting.distance(meters: distance))
-                            .font(.system(size: 32, weight: .bold))
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                    }
-                    Text(road ?? action)
-                        .font(.title3.weight(.bold))
-                        .lineLimit(2)
-                    if road != nil {
-                        Text(action)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            if let then = navigation.thenSymbol {
-                // The next maneuver follows within 150 m: show it now, like the spoken "ardından".
-                HStack(spacing: Spacing.xs) {
-                    Text("Sonra")
-                        .font(.subheadline.weight(.semibold))
+                if let then = navigation.thenSymbol {
+                    // The next maneuver follows within 150 m: shown now, like the spoken "ardından".
                     Image(systemName: then)
-                        .font(.subheadline.weight(.bold))
+                        .font(.system(size: 22, weight: .bold))
+                        .opacity(0.7)
                 }
-                .foregroundStyle(Color.atlasAccent)
-                .padding(.horizontal, Spacing.m)
-                .padding(.vertical, Spacing.xs)
-                .background(Color.atlasAccent.opacity(0.12), in: Capsule())
-                .padding(.leading, Self.indent)
             }
+            if let distance {
+                Text(distance)
+                    .font(.system(size: 32, weight: .semibold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            // The road to take; the action in words only when there is no road name to show.
+            Text(road ?? action)
+                .font(.system(size: 17, weight: .medium))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             if !navigation.lanes.isEmpty {
-                HStack(spacing: Spacing.s) {
+                HStack(spacing: Spacing.xs) {
                     ForEach(Array(navigation.lanes.enumerated()), id: \.offset) { _, lane in
                         Image(systemName: lane.symbol)
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(lane.isActive ? Color.atlasAccent : Color.secondary.opacity(0.45))
+                            .opacity(lane.isActive ? 1 : 0.4)
                     }
                 }
-                .padding(.leading, Self.indent)
-                .accessibilityLabel(Text("Şerit bilgisi"))
+                .padding(.top, Spacing.xs)
             }
             if navigation.isRerouting {
-                Label("Yeni rota hesaplanıyor…", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.atlasAccent)
+                Label("Yeni rota…", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.footnote.weight(.semibold))
+                    .padding(.top, Spacing.xs)
             }
         }
-        .padding(Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .atlasCardSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .accessibilityElement(children: .combine)
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(minWidth: 118, maxWidth: 220, alignment: .leading)
+        .background(Color.atlasGuidance, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: .black.opacity(0.22), radius: 12, x: 0, y: 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text([distance, action, road].compactMap { $0 }.joined(separator: ", ")))
         .accessibilityIdentifier("nav.banner")
     }
 }
 
-/// The time left large, as Yandex shows it, with the arrival time and distance beside it and the traffic strip
-/// under; a small end button instead of the big red one.
+/// One slim row, as Yandex shows the trip: distance left, arrival time, time left and the end button, with the
+/// traffic strip under them.
 struct NavigationBottomBar: View {
     let navigation: NavigationSession
     /// From the last live-traffic round; nil = free-flow estimate, labelled as such.
@@ -94,67 +79,126 @@ struct NavigationBottomBar: View {
     var onParking: (() -> Void)? = nil
     /// Slow stretches on the rest of the route (TrafficWatch), for the strip under the times.
     var trafficSections: [TrafficSection] = []
+    /// The whole route on screen; highlighted while it is.
+    var isOverview = false
+    var onOverview: (() -> Void)? = nil
     let onEnd: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: Spacing.m) {
-            if let remaining = navigation.durationRemaining {
-                let arrival = trafficArrival ?? Date.now.addingTimeInterval(remaining)
-                let left = trafficArrival.map { max(0, $0.timeIntervalSinceNow) } ?? remaining
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
-                        Text(Formatting.duration(seconds: left))
-                            .font(.system(size: 28, weight: .bold))
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                        Text("\(arrival.formatted(date: .omitted, time: .shortened)) · \(Formatting.distance(meters: navigation.distanceRemaining ?? 0))")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack(alignment: .center, spacing: Spacing.m) {
+                if let onOverview, !navigation.hasArrived {
+                    barButton("point.topleft.down.to.point.bottomright.curvepath", label: "Rotanın tamamı", isActive: isOverview, action: onOverview)
+                }
+                if let remaining = navigation.durationRemaining {
+                    let arrival = trafficArrival ?? Date.now.addingTimeInterval(remaining)
+                    let left = trafficArrival.map { max(0, $0.timeIntervalSinceNow) } ?? remaining
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        figure(Formatting.distance(meters: navigation.distanceRemaining ?? 0))
+                        Spacer(minLength: Spacing.s)
+                        figure(Formatting.clock(arrival))
+                        Spacer(minLength: Spacing.s)
+                        figure(Formatting.duration(seconds: left))
                     }
                     .accessibilityElement(children: .combine)
-                    if trafficArrival != nil {
-                        let stretches = navigation.remainingFractions(of: trafficSections.map(\.coordinates))
-                        RouteTrafficStrip(stretches: zip(stretches, trafficSections).compactMap { range, section in
-                            range.map { (range: $0, level: section.level) }
-                        })
+                } else {
+                    Text(navigation.hasArrived ? "Vardınız" : "Rota hazırlanıyor")
+                        .font(.title3.weight(.semibold))
+                    Spacer(minLength: 0)
+                }
+                if navigation.hasArrived, let onParking {
+                    Button(action: onParking) {
+                        Label("Otopark", systemImage: "parkingsign")
+                            .font(.headline)
+                            .frame(minHeight: 36)
                     }
-                    // Always says where the time comes from.
-                    Text(trafficArrival == nil ? "Trafik hariç" : "Canlı trafikle · © HERE")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .tint(Color.atlasAccent)
+                    .accessibilityLabel(Text("Hedefin yakınındaki otoparklar"))
                 }
-            } else {
-                Text(navigation.hasArrived ? "Vardın" : "Rota hazırlanıyor")
-                    .font(.title3.weight(.semibold))
+                barButton("xmark", label: "Navigasyonu bitir", isActive: false, action: onEnd)
+                    .accessibilityIdentifier("nav.end")
             }
-            Spacer(minLength: 0)
-            if navigation.hasArrived, let onParking {
-                Button(action: onParking) {
-                    Label("Otopark", systemImage: "parkingsign")
-                        .font(.headline)
-                        .frame(minHeight: 44)
+            if navigation.durationRemaining != nil {
+                if trafficArrival != nil {
+                    let stretches = navigation.remainingFractions(of: trafficSections.map(\.coordinates))
+                    RouteTrafficStrip(stretches: zip(stretches, trafficSections).compactMap { range, section in
+                        range.map { (range: $0, level: section.level) }
+                    })
                 }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .tint(Color.atlasAccent)
-                .accessibilityLabel(Text("Hedefin yakınındaki otoparklar"))
+                // Always says where the time comes from; HERE's terms ask for the attribution where its data shows.
+                Text(trafficArrival == nil ? "Trafik hariç" : "Canlı trafik · © HERE")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            Button(role: .destructive, action: onEnd) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 17, weight: .bold))
-                    .frame(width: 30, height: 30)
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.circle)
-            .tint(Color.atlasCritical)
-            .accessibilityLabel(Text("Navigasyonu bitir"))
-            .accessibilityIdentifier("nav.end")
         }
-        .padding(Spacing.l)
-        .atlasCardSurface(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, Spacing.s)
+        .padding(.vertical, Spacing.s)
+        .atlasCardSurface(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    /// The three trip figures share one size and weight: none shouts over the turn panel.
+    private func figure(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 20, weight: .medium))
+            .monospacedDigit()
+            .contentTransition(.numericText())
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+    }
+
+    /// A square button at an end of the strip (overview, end).
+    private func barButton(_ systemImage: String, label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(isActive ? Color.atlasAccent : Color.primary.opacity(0.75))
+                .frame(width: 40, height: 40)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(label))
+    }
+}
+
+/// Speed and the road's limit, top right. Its own view: the limit changes every few hundred metres, and read
+/// here it redraws these circles instead of the whole screen (whose map rebuilds its layers on every update).
+struct GuidanceSpeed: View {
+    let navigation: NavigationSession
+
+    var body: some View {
+        SpeedOverlay(limit: navigation.speedLimit, staysVisible: true)
+    }
+}
+
+/// Above the bottom bar: the road being driven, or the way back to the car while the map is not following it.
+/// Its own view for the same reason as GuidanceSpeed (the road name changes often).
+struct GuidanceRoadRow: View {
+    let navigation: NavigationSession
+    /// The driver moved the map or opened the route overview.
+    let isDetached: Bool
+    let onRecenter: () -> Void
+
+    var body: some View {
+        ZStack {
+            if isDetached {
+                // One clear way back (the map also returns by itself after a few seconds).
+                Button(action: onRecenter) {
+                    Label("Rotaya devam et", systemImage: "location.north.line.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, Spacing.s)
+                        .frame(minHeight: 36)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.capsule)
+                .accessibilityIdentifier("nav.recenter")
+            } else if let road = navigation.currentRoad {
+                CurrentRoadLabel(road: road)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -164,10 +208,11 @@ struct CurrentRoadLabel: View {
 
     var body: some View {
         Text(road)
-            .font(.subheadline.weight(.semibold))
+            .font(.system(size: 16))
+            .foregroundStyle(Color.primary.opacity(0.8))
             .lineLimit(1)
             .padding(.horizontal, Spacing.m)
-            .padding(.vertical, Spacing.xs)
+            .frame(height: 32)
             .atlasFloatingSurface(in: Capsule())
             .frame(maxWidth: 200)
             .accessibilityLabel(Text("Şu anki yol: \(road)"))

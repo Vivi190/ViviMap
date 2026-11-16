@@ -92,7 +92,7 @@ final class HomeScreenshotTests: XCTestCase {
         capture("3e-landscape")
         XCUIDevice.shared.orientation = .portrait
         settle(3)
-        // Whole route in view: the map stops following and "Rotaya dön" brings it back to the car.
+        // Whole route in view: the map stops following and "Rotaya devam et" brings it back to the car.
         app.buttons["Rotanın tamamı"].tap()
         let recenter = app.buttons["nav.recenter"]
         XCTAssertTrue(recenter.waitForExistence(timeout: 5), "no way back to the car after the overview")

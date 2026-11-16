@@ -9,15 +9,24 @@ public enum Formatting {
         return rest == 0 ? "\(hours) sa" : "\(hours) sa \(rest) dk"
     }
 
-    /// Road-style distance in Turkish: "350 m", "1,2 km", "18 km".
+    /// Clock time the Turkish way, 24-hour ("19:30"), whatever region the device is set to.
+    public static func clock(_ date: Date) -> String {
+        date.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: Locale(identifier: "tr_TR")))
+    }
+
+    /// Road-style distance in Turkish: "80 m", "350 m", "1,2 km", "18 km". The step grows with the distance
+    /// (10 m up to 250 m, then 50 m), so a figure far ahead does not change with every fix; whole kilometres
+    /// drop the ",0".
     public static func distance(meters: Double) -> String {
-        if meters < 950 {
-            return "\(max(10, Int((meters / 10).rounded()) * 10)) m"
+        if meters < 975 {
+            let step: Double = meters < 250 ? 10 : 50
+            return "\(max(10, Int((meters / step).rounded() * step))) m"
         }
         let km = meters / 1000
-        let number = km < 10
-            ? km.formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: "tr_TR")))
-            : km.formatted(.number.precision(.fractionLength(0)).locale(Locale(identifier: "tr_TR")))
+        if km >= 10 { return "\(Int(km.rounded())) km" }
+        let tenths = (km * 10).rounded() / 10
+        if tenths == tenths.rounded() { return "\(Int(tenths)) km" }
+        let number = tenths.formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: "tr_TR")))
         return "\(number) km"
     }
 }
