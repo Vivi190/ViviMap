@@ -54,7 +54,7 @@ Harita ayarları → Test → **Sürüş simülasyonu** açılınca rota kartın
 
 ## Sürüş uyarıları ve harita
 
-1. Sokak düzeyinde trafik ışıkları, kasis levhaları ve kamera rozetleri haritada görünmeli; yer rozetleri (restoran, eczane, okul…) renkli simgelerle görünür ve navigasyonda gizlenir.
+1. Sokak düzeyinde trafik ışıkları, kasis levhaları ve kamera rozetleri haritada görünmeli. Bildiğiniz ışıklı kavşaklarda ışık simgesi olmalı (belediyenin sinyalize kavşak listesi eklendi; eksik kalan kavşakları not edin); yer rozetleri (restoran, eczane, okul…) renkli simgelerle görünür ve navigasyonda gizlenir.
 2. Navigasyonda "Kasis · 80 m" ya da "Hız kamerası · 300 m" etiketi çıkmalı ve uyarı bir kez seslendirilmeli. Ayarlar → Uyarılar'dan açılıp kapanır.
 3. Bölgede OSM'de neredeyse kamera yok; bilinen kameralar ve kasisler uzun basıp "…" menüsünden işaretlenebilir. İşaretler Ayarlar → Uyarılar → İşaretlerim'den silinir.
 4. Hız sınırı işli bir yolda sınırın belirgin üstünde (50'lik yolda 57 ve üstü) 3 saniye kalınca "Hız sınırı 50." denmeli.

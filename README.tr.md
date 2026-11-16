@@ -102,7 +102,7 @@ Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda
 - Harita verisi © [OpenStreetMap](https://www.openstreetmap.org/copyright) katkıcıları, ODbL. Karolar [OpenFreeMap](https://openfreemap.org) (OpenMapTiles şeması); çevrimdışı karolar [Planetiler](https://github.com/onthegomap/planetiler) ile üretilir.
 - Arama [Photon](https://github.com/komoot/photon) (komoot). Rota [Valhalla](https://github.com/valhalla/valhalla); FOSSGIS'in ortak sunucusunda ve cihazda [valhalla-mobile](https://github.com/Rallista/valhalla-mobile) ile.
 - Trafik © HERE.
-- İSPARK otoparklarındaki boş yer sayıları [İBB Açık Veri Portalı](https://data.ibb.gov.tr/license)'ndan (İBB Açık Veri Lisansı).
+- İSPARK otoparklarındaki boş yer sayıları ve sinyalize kavşak listesi [İBB Açık Veri Portalı](https://data.ibb.gov.tr/license)'ndan (İBB Açık Veri Lisansı). Bu depodaki kavşak listesi (`junctions-istanbul.json`) İstanbul Büyükşehir Belediyesi'nin bu lisans altındaki verisidir.
 - İşletmeler [Overture Maps Foundation](https://docs.overturemaps.org/attribution/) yer verisinden: Meta, Microsoft ve diğerleri (CDLA-Permissive-2.0), Foursquare (Apache-2.0) ve AllThePlaces (CC0-1.0) kayıtları.
 - Bu depodaki OpenStreetMap kesitleri (hız kameraları, kasisler, trafik ışıkları, test verileri) © OpenStreetMap katkıcıları, ODbL.
 - Kullanılan kütüphaneler: MapLibre Native (BSD-2-Clause), MapLibre SwiftUI DSL (BSD-3-Clause), Ferrostar (BSD-3-Clause), valhalla-mobile (MIT).

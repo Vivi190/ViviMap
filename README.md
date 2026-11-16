@@ -102,7 +102,7 @@ No accounts, analytics or tracking. Saved places and trip history stay on the ph
 - Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Tiles by [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema); offline tiles built with [Planetiler](https://github.com/onthegomap/planetiler).
 - Search by [Photon](https://github.com/komoot/photon) (komoot). Routing by [Valhalla](https://github.com/valhalla/valhalla), on the FOSSGIS public server and on the device through [valhalla-mobile](https://github.com/Rallista/valhalla-mobile).
 - Traffic © HERE.
-- Free spaces in İSPARK car parks from the [İBB Open Data Portal](https://data.ibb.gov.tr/license) (İBB Açık Veri Lisansı).
+- Free spaces in İSPARK car parks and the list of signalised junctions from the [İBB Open Data Portal](https://data.ibb.gov.tr/license) (İBB Açık Veri Lisansı). The junction list in this repository (`junctions-istanbul.json`) is İstanbul Büyükşehir Belediyesi's data under that licence.
 - Businesses from the places theme of the [Overture Maps Foundation](https://docs.overturemaps.org/attribution/): records from Meta, Microsoft and others (CDLA-Permissive-2.0), Foursquare (Apache-2.0) and AllThePlaces (CC0-1.0).
 - The OpenStreetMap extracts in this repository (speed cameras, speed bumps, traffic lights, test fixtures) are © OpenStreetMap contributors, ODbL.
 - Built with MapLibre Native (BSD-2-Clause), MapLibre SwiftUI DSL (BSD-3-Clause), Ferrostar (BSD-3-Clause) and valhalla-mobile (MIT).
