@@ -26,20 +26,24 @@ PALETTES = {
         "residential": "#F0EDE6",
         "industrial": "#E8E6E3",
         "institutional": "#F0E9E1",
-        "park": "#C8E8BC",
+        "park": "#C6EAB0",
         "wood": "#BCDDAC",
         "sand": "#F4EAD0",
-        "water": "#9CCFF0",
-        "waterway": "#92C8EC",
+        "water": "#93D2F7",
+        "waterway": "#8ACBF2",
         "building": "#E7E2D9",
         "building_outline": "#D9D2C6",
         "building_3d": "#E1DDD5",
         "building_opacity": 0.92,
         "aeroway": "#E0DED9",
-        "motorway": "#F6BF62",
-        "motorway_casing": "#DD9A35",
-        "trunk": "#F9D488",
-        "trunk_casing": "#E2AE55",
+        # Roads are neutral, as on Yandex and Apple Maps: traffic colours and the route line own the warm hues.
+        # A pair is (thin line at z11 and below, wide band from z14).
+        "motorway": ("#8FA3C4", "#C3CBDB"),
+        "motorway_casing": ("#8FA3C4", "#9FABC3"),
+        "trunk": ("#9AACC9", "#C9D0DE"),
+        "trunk_casing": ("#9AACC9", "#A8B3C9"),
+        "arterial": ("#BEC5D2", "#DCE1E9"),
+        "arterial_casing": ("#BEC5D2", "#BAC2CF"),
         "major": "#FFFFFF",
         "major_casing": "#D2CCC1",
         "minor": "#FFFFFF",
@@ -56,46 +60,60 @@ PALETTES = {
         "label_halo": "#FFFFFF",
         "label_water": "#4C789F",
         "label_house": "#8F8A83",
+        "label_area": "#8D8A9B",
     },
     "night": {
-        "background": "#14171C",
-        "residential": "#171A20",
-        "industrial": "#191B20",
-        "institutional": "#1A1B22",
-        "park": "#16231C",
-        "wood": "#15211A",
-        "sand": "#1E1D1A",
-        "water": "#0F2436",
-        "waterway": "#13304A",
-        "building": "#1D2026",
-        "building_outline": "#262A31",
-        "building_3d": "#282C33",
+        "background": "#202838",
+        "residential": "#222B3B",
+        "industrial": "#252E3F",
+        "institutional": "#262F41",
+        "park": "#1F4239",
+        "wood": "#1D3C35",
+        "sand": "#2C3036",
+        "water": "#13215C",
+        "waterway": "#1B2D70",
+        "building": "#293243",
+        "building_outline": "#333D50",
+        "building_3d": "#343E52",
         "building_opacity": 0.95,
-        "aeroway": "#22252B",
-        "motorway": "#9A7533",
-        "motorway_casing": "#5E4720",
-        "trunk": "#7E6838",
-        "trunk_casing": "#4D3F24",
-        "major": "#3C414A",
-        "major_casing": "#24272D",
-        "minor": "#31353C",
-        "minor_casing": "#1F2227",
-        "service": "#2A2D33",
-        "path": "#2C3036",
-        "tunnel": "#24272D",
-        "rail": "#3A3E45",
-        "ferry": "#2F5677",
-        "boundary": "#4C4558",
-        "label": "#E8EAED",
-        "label_secondary": "#9CA2AA",
-        "label_road": "#C8CCD2",
-        "label_halo": "#14171C",
-        "label_water": "#6F95B8",
-        "label_house": "#7D838B",
+        "aeroway": "#2E3748",
+        "motorway": ("#6F86B4", "#687CA6"),
+        "motorway_casing": ("#6F86B4", "#3B4864"),
+        "trunk": ("#657BA8", "#60749C"),
+        "trunk_casing": ("#657BA8", "#394661"),
+        "arterial": ("#56678C", "#566689"),
+        "arterial_casing": ("#56678C", "#343F57"),
+        "major": "#485673",
+        "major_casing": "#2C3548",
+        "minor": "#3D4860",
+        "minor_casing": "#283042",
+        "service": "#354056",
+        "path": "#38435A",
+        "tunnel": "#2C3548",
+        "rail": "#4A556D",
+        "ferry": "#3D5FA8",
+        "boundary": "#5A5470",
+        "label": "#EEF1F6",
+        "label_secondary": "#AAB4C8",
+        "label_road": "#D5DBE6",
+        "label_halo": "#202838",
+        "label_water": "#7E9CE0",
+        "label_house": "#8A93A6",
+        "label_area": "#8C96AD",
     },
 }
 
 NAME = ["coalesce", ["get", "name:tr"], ["get", "name"]]
+
+
+def short_name(name):
+    """The name with its street-type word abbreviated (Caddesi -> Cd., Sokağı/Sokak -> Sk., Bulvarı -> Blv.)."""
+    out = ["to-string", name]
+    for word, short in ((" Caddesi", " Cd."), (" Sokağı", " Sk."), (" Sokak", " Sk."), (" Bulvarı", " Blv.")):
+        cut = ["-", ["length", ["var", "s"]], len(word)]
+        out = ["let", "s", out, ["case", ["==", ["slice", ["var", "s"], cut], word],
+                                 ["concat", ["slice", ["var", "s"], 0, cut], short], ["var", "s"]]]
+    return out
 
 
 def width(*stops):
@@ -104,6 +122,13 @@ def width(*stops):
 
 
 RAMP = ["case", ["==", ["get", "ramp"], 1], 0.7, 1]
+
+
+def colour(value):
+    """A palette colour; a (thin, wide) pair fades from the first at z11 to the second at z14."""
+    if isinstance(value, tuple):
+        return ["interpolate", ["linear"], ["zoom"], 11, value[0], 14, value[1]]
+    return value
 
 # Places shown as Apple Maps-style badges: OpenMapTiles poi classes by group, with the label colour for day and
 # night. The badges themselves (a white SF Symbol on a circle in the group colour) are drawn by the app and
@@ -135,9 +160,9 @@ def poi_layers(name, p):
     layout = {
         "icon-image": ["concat", "poi-", ["get", "class"]],
         "text-field": NAME, "text-font": FONT_REGULAR,
-        "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10.5, 18, 12.5],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 14, 10.5, 18, 12.5],
         "text-anchor": "top", "text-offset": [0, 1.0], "text-max-width": 8,
-        # Badge and name together or not at all: lone badges cluttered the first CI screenshot (2026-11-15).
+        # Badge and name together or not at all: badges without their names clutter the map.
         "symbol-sort-key": ["coalesce", ["get", "rank"], 99],
     }
     paint = {"text-color": color, "text-halo-color": p["label_halo"], "text-halo-width": 1.3}
@@ -146,7 +171,8 @@ def poi_layers(name, p):
     major = ["match", ["get", "class"], [c for c in POI_CLASSES if c not in ("shop", "clothing_store")], True, False]
     return [
         {"id": "poi-major", "type": "symbol", "source": "openmaptiles", "source-layer": "poi",
-         "minzoom": 15, "maxzoom": 16.5, "filter": ["all", major, ["has", "name"], ["<=", ["coalesce", ["get", "rank"], 99], 20]],
+         "minzoom": 14, "maxzoom": 16.5, "filter": ["all", major, ["has", "name"],
+                                                    ["<=", ["coalesce", ["get", "rank"], 99], ["step", ["zoom"], 8, 15, 20]]],
          "layout": layout, "paint": paint},
         {"id": "poi-all", "type": "symbol", "source": "openmaptiles", "source-layer": "poi",
          "minzoom": 16.5, "filter": ["all", known, ["has", "name"]], "layout": layout, "paint": paint},
@@ -183,10 +209,10 @@ ROADS = [
      width(12.5, 0.6, 14, 2.2, 16, 7, 18, 20), 1.0),
     ("tertiary", classes("tertiary"), "major", "major_casing", 11,
      width(11, 0.8, 13, 2.5, 16, 9, 18, 24), 1.2),
-    ("secondary", classes("secondary"), "major", "major_casing", 9,
-     width(9, 0.8, 12, 2.4, 14, 5, 16, 11, 18, 28), 1.3),
-    ("primary", classes("primary"), "major", "major_casing", 8,
-     width(8, 0.8, 12, 3, 14, 6, 16, 13, 18, 32), 1.4),
+    ("secondary", classes("secondary"), "arterial", "arterial_casing", 9,
+     width(9, 0.8, 12, 2.8, 14, 5.5, 16, 12, 18, 28), 1.3),
+    ("primary", classes("primary"), "arterial", "arterial_casing", 8,
+     width(8, 1, 12, 4, 14, 8, 16, 16, 18, 34), 1.4),
     ("trunk", classes("trunk"), "trunk", "trunk_casing", 6,
      width(6, 0.8, 10, 2.2, 13, 5, 16, 14, 18, 34), 1.5),
     ("motorway", classes("motorway"), "motorway", "motorway_casing", 5,
@@ -207,7 +233,7 @@ def road_layers(p, brunnel):
         # Links (ramps) are drawn a little thinner than their parent class.
         line_width = road_width(w)
         casing_paint = {
-            "line-color": p[casing_key],
+            "line-color": colour(p[casing_key]),
             "line-width": road_width(w, extra * (1.6 if brunnel == "bridge" else 1)),
         }
         if brunnel == "tunnel":
@@ -224,7 +250,7 @@ def road_layers(p, brunnel):
             "source-layer": "transportation", "minzoom": minzoom, "filter": flt,
             "layout": {"line-cap": "round", "line-join": "round"},
             "paint": {
-                "line-color": p["tunnel"] if brunnel == "tunnel" else p[fill_key],
+                "line-color": p["tunnel"] if brunnel == "tunnel" else colour(p[fill_key]),
                 "line-width": line_width,
                 **({"line-opacity": 0.75} if brunnel == "tunnel" else {}),
             },
@@ -272,9 +298,9 @@ def build(name, p):
 
     layers += [
         {"id": "building", "type": "fill", "source": "openmaptiles", "source-layer": "building",
-         "minzoom": 13,
+         "minzoom": 15,
          "paint": {"fill-color": p["building"], "fill-outline-color": p["building_outline"],
-                   "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 1]}},
+                   "fill-opacity": ["interpolate", ["linear"], ["zoom"], 15, 0, 15.5, 1]}},
     ]
     layers += road_layers(p, "tunnel")
     layers += [
@@ -310,35 +336,37 @@ def build(name, p):
                     "text-letter-spacing": 0.08, "text-max-width": 7},
          "paint": {"text-color": p["label_water"], "text-halo-color": p["label_halo"], "text-halo-width": 1}},
         {"id": "label-road-minor", "type": "symbol", "source": "openmaptiles", "source-layer": "transportation_name",
-         "minzoom": 14.5, "filter": classes("minor", "service"),
-         "layout": {"symbol-placement": "line", "text-field": NAME, "text-font": FONT_REGULAR,
-                    "text-size": ["interpolate", ["linear"], ["zoom"], 14.5, 10, 18, 14],
-                    "text-max-angle": 30, "symbol-spacing": 280, "text-padding": 2},
+         "minzoom": 14, "filter": classes("minor", "service"),
+         "layout": {"symbol-placement": "line", "text-field": short_name(NAME), "text-font": FONT_REGULAR,
+                    "text-size": ["interpolate", ["linear"], ["zoom"], 14, 9.5, 18, 14],
+                    "text-max-angle": 40, "symbol-spacing": 180, "text-padding": 1},
          "paint": {"text-color": p["label_road"], "text-halo-color": p["label_halo"], "text-halo-width": 1.4}},
-        {"id": "label-road-major", "type": "symbol", "source": "openmaptiles", "source-layer": "transportation_name",
-         "minzoom": 12, "filter": classes("primary", "secondary", "tertiary", "trunk", "motorway"),
-         "layout": {"symbol-placement": "line", "text-field": NAME, "text-font": FONT_REGULAR,
-                    "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10.5, 16, 13.5, 18, 16],
-                    "text-max-angle": 28, "symbol-spacing": 320, "text-padding": 2},
-         "paint": {"text-color": p["label_road"], "text-halo-color": p["label_halo"], "text-halo-width": 1.6}},
-        # Road numbers (D-100, O-4 …) on sign-like shields, green for motorways and blue for the rest, as on
-        # Turkish signs; the stretchable shields are drawn by the app (MapEngine/RoadShields.swift).
-        {"id": "label-road-ref", "type": "symbol", "source": "openmaptiles", "source-layer": "transportation_name",
-         "minzoom": 9, "filter": ["all", classes("motorway", "trunk", "primary"), ["has", "ref"]],
-         "layout": {"symbol-placement": "line", "text-field": ["get", "ref"], "text-font": FONT_BOLD,
-                    "text-size": ["interpolate", ["linear"], ["zoom"], 9, 9.5, 14, 11],
-                    "icon-image": ["case", ["==", ["get", "class"], "motorway"], "shield-motorway", "shield-road"],
-                    "icon-text-fit": "both", "icon-text-fit-padding": [2, 4, 2, 4],
-                    "icon-rotation-alignment": "viewport",
-                    "symbol-spacing": 700, "text-rotation-alignment": "viewport", "text-padding": 6},
-         "paint": {"text-color": "#FFFFFF"}},
         {"id": "label-housenumber", "type": "symbol", "source": "openmaptiles", "source-layer": "housenumber",
          "minzoom": 17,
          "layout": {"text-field": ["get", "housenumber"], "text-font": FONT_REGULAR, "text-size": 10,
                     "text-padding": 3},
          "paint": {"text-color": p["label_house"], "text-halo-color": p["label_halo"], "text-halo-width": 1}},
-        # Above road names and house numbers, below place names (higher layers place their labels first).
+        # Above side-street names and house numbers, below main-road names and place names (higher layers place
+        # their labels first).
         *poi_layers(name, p),
+        {"id": "label-road-major", "type": "symbol", "source": "openmaptiles", "source-layer": "transportation_name",
+         "minzoom": 12, "filter": classes("primary", "secondary", "tertiary", "trunk", "motorway"),
+         "layout": {"symbol-placement": "line", "text-field": short_name(NAME), "text-font": FONT_REGULAR,
+                    "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10.5, 16, 13.5, 18, 16],
+                    "text-max-angle": 35, "symbol-spacing": 220, "text-padding": 2},
+         "paint": {"text-color": p["label_road"], "text-halo-color": p["label_halo"], "text-halo-width": 1.6}},
+        # Road numbers (D-100, O-4 …) on sign-like shields, green for motorways and blue for the rest, as on
+        # Turkish signs; the stretchable shields are drawn by the app (MapEngine/RoadShields.swift).
+        {"id": "label-road-ref", "type": "symbol", "source": "openmaptiles", "source-layer": "transportation_name",
+         "minzoom": 9, "filter": ["all", classes("motorway", "trunk", "primary"), ["has", "ref"],
+                                  ["!", ["in", "K", ["get", "ref"]]]],
+         "layout": {"symbol-placement": "line", "text-field": ["get", "ref"], "text-font": FONT_BOLD,
+                    "text-size": ["interpolate", ["linear"], ["zoom"], 9, 9.5, 14, 11],
+                    "icon-image": ["case", ["==", ["get", "class"], "motorway"], "shield-motorway", "shield-road"],
+                    "icon-text-fit": "both", "icon-text-fit-padding": [2, 4, 2, 4],
+                    "icon-rotation-alignment": "viewport",
+                    "symbol-spacing": 220, "text-rotation-alignment": "viewport", "text-padding": 6},
+         "paint": {"text-color": "#FFFFFF"}},
         {"id": "label-neighbourhood", "type": "symbol", "source": "openmaptiles", "source-layer": "place",
          "minzoom": 13, "filter": classes("neighbourhood", "quarter"),
          "layout": {"text-field": NAME, "text-font": FONT_REGULAR,
@@ -346,11 +374,11 @@ def build(name, p):
                     "text-letter-spacing": 0.04, "text-max-width": 8},
          "paint": {"text-color": p["label_secondary"], "text-halo-color": p["label_halo"], "text-halo-width": 1.2}},
         {"id": "label-suburb", "type": "symbol", "source": "openmaptiles", "source-layer": "place",
-         "minzoom": 10.5, "maxzoom": 16, "filter": classes("suburb", "village"),
-         "layout": {"text-field": NAME, "text-font": FONT_BOLD,
-                    "text-size": ["interpolate", ["linear"], ["zoom"], 10.5, 11, 15, 14],
-                    "text-letter-spacing": 0.03, "text-max-width": 8},
-         "paint": {"text-color": p["label_secondary"], "text-halo-color": p["label_halo"], "text-halo-width": 1.4}},
+         "minzoom": 11.5, "maxzoom": 16, "filter": classes("suburb", "village"),
+         "layout": {"text-field": NAME, "text-font": FONT_REGULAR,
+                    "text-size": ["interpolate", ["linear"], ["zoom"], 11.5, 10.5, 15, 13],
+                    "text-letter-spacing": 0.1, "text-max-width": 8, "text-padding": 8},
+         "paint": {"text-color": p["label_area"], "text-halo-color": p["label_halo"], "text-halo-width": 1.2}},
         {"id": "label-town", "type": "symbol", "source": "openmaptiles", "source-layer": "place",
          "minzoom": 7, "maxzoom": 15, "filter": classes("town"),
          "layout": {"text-field": NAME, "text-font": FONT_BOLD,
