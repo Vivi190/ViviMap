@@ -51,6 +51,24 @@ public struct MapIncident: Sendable {
     }
 }
 
+/// A place badge of the base map that was tapped (a shop, a pharmacy, a station), as the tiles describe it.
+public struct MapPlace: Sendable {
+    /// The name its label shows: the Turkish one when the tiles have it.
+    public let name: String
+    public let coordinate: CLLocationCoordinate2D
+
+    init?(_ feature: any MLNFeature) {
+        self.init(attributes: feature.attributes, coordinate: feature.coordinate)
+    }
+
+    /// nil without a name: there is nothing to open a card with.
+    init?(attributes: [String: Any], coordinate: CLLocationCoordinate2D) {
+        guard let name = attributes["name:tr"] as? String ?? attributes["name"] as? String, !name.isEmpty else { return nil }
+        self.name = name
+        self.coordinate = coordinate
+    }
+}
+
 /// Full-screen Atlas map. Holds no state of its own: camera, appearance and 3D mode come from the caller,
 /// and MapLibre's built-in ornaments are hidden because the app draws its own controls.
 public struct AtlasMapView: View {
@@ -75,6 +93,7 @@ public struct AtlasMapView: View {
     private let showsGuidanceCursor: Bool
     private let onFollowingChanged: ((Bool) -> Void)?
     private let onTap: (() -> Void)?
+    private let onPlaceTap: ((MapPlace) -> Void)?
     private let onRouteTap: ((Int) -> Void)?
     private let onLongPress: ((CLLocationCoordinate2D) -> Void)?
     private let onViewport: (MapViewProxy) -> Void
@@ -109,6 +128,7 @@ public struct AtlasMapView: View {
         showsGuidanceCursor: Bool = false,
         onFollowingChanged: ((Bool) -> Void)? = nil,
         onTap: (() -> Void)? = nil,
+        onPlaceTap: ((MapPlace) -> Void)? = nil,
         onRouteTap: ((Int) -> Void)? = nil,
         onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil,
         onViewport: @escaping (MapViewProxy) -> Void = { _ in }
@@ -136,6 +156,7 @@ public struct AtlasMapView: View {
         self.showsGuidanceCursor = showsGuidanceCursor
         self.onFollowingChanged = onFollowingChanged
         self.onTap = onTap
+        self.onPlaceTap = onPlaceTap
         self.onRouteTap = onRouteTap
         self.onLongPress = onLongPress
         self.onViewport = onViewport
@@ -309,11 +330,13 @@ public struct AtlasMapView: View {
                 // Fire once when the press is recognised, not on every movement after it.
                 if context.state == .began { onLongPress?(context.coordinate) }
             }
-            .onTapMapGesture(on: Self.routeLabelLayers) { _, features in
-                // A tapped callout chooses its route; a tap anywhere else is passed on (guidance shows its side
-                // buttons for it).
+            .onTapMapGesture(on: Self.tapLayers) { _, features in
+                // A tapped callout chooses its route and a tapped place badge opens that place; a tap anywhere
+                // else is passed on (guidance shows its side buttons for it).
                 if let route = features.lazy.compactMap({ ($0.attributes["route"] as? NSNumber)?.intValue }).first {
                     onRouteTap?(route)
+                } else if let place = features.lazy.compactMap({ MapPlace($0) }).first {
+                    onPlaceTap?(place)
                 } else {
                     onTap?()
                 }
@@ -438,6 +461,8 @@ public struct AtlasMapView: View {
     }
 
     private static let routeLabelLayers: Set<String> = ["atlas-route-label-0", "atlas-route-label-1", "atlas-route-label-2"]
+    /// What a tap can hit: the route callouts and the base map's place badges.
+    private static let tapLayers: Set<String> = routeLabelLayers.union(MapLayerID.places)
 
     private static func routeLabelLayer(_ slot: Int, _ label: RouteLabel, night: Bool) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-route-label-\(slot)") {

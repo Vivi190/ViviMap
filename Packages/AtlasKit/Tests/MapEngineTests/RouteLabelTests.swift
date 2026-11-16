@@ -83,3 +83,17 @@ struct TrafficOverlayTests {
         }
     }
 }
+
+struct MapPlaceTests {
+    private let here = CLLocationCoordinate2D(latitude: 40.9, longitude: 29.2)
+
+    @Test func aBadgeIsKnownByTheNameItsLabelShows() {
+        let station = MapPlace(attributes: ["name": "Kartal Train Station", "name:tr": "Kartal Tren İstasyonu", "class": "railway"], coordinate: here)
+        #expect(station?.name == "Kartal Tren İstasyonu")
+        #expect(station?.coordinate.latitude == 40.9)
+        #expect(MapPlace(attributes: ["name": "BP", "class": "fuel"], coordinate: here)?.name == "BP")
+        // Without a name there is nothing to open a card with.
+        #expect(MapPlace(attributes: ["class": "shop"], coordinate: here) == nil)
+        #expect(MapPlace(attributes: ["name": ""], coordinate: here) == nil)
+    }
+}

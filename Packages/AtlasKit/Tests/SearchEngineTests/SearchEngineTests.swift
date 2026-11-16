@@ -223,3 +223,39 @@ struct CoordinateQueryTests {
         #expect(CoordinateQuery.place(from: "40.88") == nil)
     }
 }
+
+struct TappedPlaceTests {
+    private let point = GeoPoint(latitude: 40.9, longitude: 29.2)
+    private let pharmacy = Place(
+        id: "N1", name: "Şifa Eczanesi", subtitle: "Ankara Caddesi, Kartal", point: GeoPoint(latitude: 40.90002, longitude: 29.20001),
+        category: "amenity=pharmacy", streetAddress: "Ankara Caddesi 12"
+    )
+
+    /// The nearest place Photon knows at a badge is usually the badge itself, whatever the spelling.
+    @Test func theSameNameTakesPhotonsRecord() {
+        let place = SearchController.place(named: "ŞİFA ECZANESİ", at: point, nearest: pharmacy)
+        #expect(place.id == "N1")
+        #expect(place.category == "amenity=pharmacy")
+        #expect(place.subtitle == "Ankara Caddesi, Kartal")
+        #expect(place.streetAddress == "Ankara Caddesi 12")
+        // The name and the point stay the map's: nothing on screen moves when the answer arrives.
+        #expect(place.name == "ŞİFA ECZANESİ")
+        #expect(place.point == point)
+    }
+
+    @Test func anotherNameGivesOnlyItsAddress() {
+        let place = SearchController.place(named: "Kartal Börek", at: point, nearest: pharmacy)
+        #expect(place.name == "Kartal Börek")
+        #expect(place.subtitle == "Ankara Caddesi, Kartal")
+        #expect(place.category == nil)
+        #expect(place.id == "map:40.90000, 29.20000")
+        #expect(place.point == point)
+    }
+
+    @Test func withoutAnAnswerThePlaceIsItsNameAndCoordinates() {
+        let place = SearchController.place(named: "Kartal Börek", at: point, nearest: nil)
+        #expect(place.name == "Kartal Börek")
+        #expect(place.subtitle == "40.90000, 29.20000")
+        #expect(place.category == nil)
+    }
+}

@@ -16,7 +16,7 @@ Harita ayarları → Test → **Sürüş simülasyonu** açılınca rota kartın
 4. Semt + tür ya da marka yazın ("esentepe eczane", "kurtköy migros"). Sonuçlar o semtin çevresinden gelmeli.
 5. Yazmadan önce "Yakında" altındaki Benzinlik, Otopark, Eczane ve Şarj düğmeleri en yakınları listelemeli; uçak modunda da.
 6. Bir sonuç seçin. Haritada kırmızı iğne, kartta adı, türü ve mesafesi ("Adliye · 3,0 km") ve adresi görünmeli.
-7. Haritada bir noktaya uzun basın: kartta adres çıkmalı. Kartın "…" menüsünden **Ev olarak kaydet** seçilince arama çubuğunun altında "Ev" kapsülü çıkmalı; dokununca doğrudan rota kartı açılmalı.
+7. Haritadaki bir yer rozetine (dükkân, eczane, istasyon…) dokunun: o yerin kartı açılmalı; adı hemen, adresi ve türü bir an sonra gelir. Rozet olmayan bir noktaya uzun basın: kartta adres çıkmalı. Kartın "…" menüsünden **Ev olarak kaydet** seçilince arama çubuğunun altında "Ev" kapsülü çıkmalı; dokununca doğrudan rota kartı açılmalı.
 8. Kartın "…" menüsündeki "Yakındaki otoparklar" o yerin çevresindeki otoparkları, o yere uzaklıklarıyla listelemeli.
 
 ## Rota seçimi

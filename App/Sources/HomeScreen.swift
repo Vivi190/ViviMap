@@ -173,6 +173,14 @@ struct HomeScreen: View {
         }
     }
 
+    /// A place badge of the map was tapped. Not while guiding, and not while routes are on screen: there a
+    /// stray tap beside a route would replace the destination being chosen (a long press still does, on purpose).
+    private var placeTapHandler: (MapPlace) -> Void {
+        { badge in
+            if navigation?.isActive != true, routes.isEmpty, !isPlanning { pick(badge) }
+        }
+    }
+
     private var routeTapHandler: (Int) -> Void {
         { index in
             guard navigation?.isActive != true else { return }
@@ -317,6 +325,7 @@ struct HomeScreen: View {
                 showsGuidanceCursor: isNavigating && navigation?.hasArrived != true,
                 onFollowingChanged: followingHandler,
                 onTap: mapTapHandler,
+                onPlaceTap: placeTapHandler,
                 onRouteTap: routeTapHandler,
                 onLongPress: longPressHandler
             ) { proxy in
@@ -590,6 +599,19 @@ struct HomeScreen: View {
         Task {
             let place = await search.place(at: point)
             if selectedPlace?.point == point { selectedPlace = place }
+        }
+    }
+
+    /// The card opens at once with the name the map shows; address, kind and area follow from the search
+    /// service. An area (a mall, a hospital) changes where the route should end, so its routes are asked again.
+    private func pick(_ badge: MapPlace) {
+        let point = GeoPoint(badge.coordinate)
+        show(Place(id: "map", name: badge.name, subtitle: "Adres aranıyor…", point: point, category: nil))
+        Task {
+            let place = await search.place(named: badge.name, at: point)
+            guard selectedPlace?.point == point else { return }
+            selectedPlace = place
+            if place.areaSpan != nil, routes.isEmpty, !isPlanning { prefetchRoutes(to: place) }
         }
     }
 

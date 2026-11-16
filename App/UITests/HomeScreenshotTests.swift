@@ -23,6 +23,15 @@ final class HomeScreenshotTests: XCTestCase {
         settle(10)
         capture("1-home-day")
 
+        // A place badge of the map opens that place's card. Soft: where a badge sits depends on live map data
+        // (this is the station beside the start position), so a miss costs a screenshot, not the run.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.593, dy: 0.546)).tap()
+        if app.otherElements["place.card"].waitForExistence(timeout: 8) {
+            settle(3) // the address follows the name
+            capture("1a-badge-card")
+            app.buttons["Kapat"].firstMatch.tap()
+        }
+
         // Search (live Photon request) → pick the first result → place card + pin.
         app.buttons["search.open"].tap()
         let field = app.searchFields.firstMatch
