@@ -56,6 +56,12 @@ public struct MapPlace: Sendable {
     /// The name its label shows: the Turkish one when the tiles have it.
     public let name: String
     public let coordinate: CLLocationCoordinate2D
+    /// The tiles' `subclass`, which is the value of the OSM tag ("pharmacy", "station"), and their coarser
+    /// `class` ("railway", "grocery"); nil when the tile has neither.
+    public let kind: String?
+    public let group: String?
+    /// The search index's id when the badge is one of its businesses (BusinessOverlay); nil for the base map's.
+    public let id: String?
 
     init?(_ feature: any MLNFeature) {
         self.init(attributes: feature.attributes, coordinate: feature.coordinate)
@@ -66,6 +72,9 @@ public struct MapPlace: Sendable {
         guard let name = attributes["name:tr"] as? String ?? attributes["name"] as? String, !name.isEmpty else { return nil }
         self.name = name
         self.coordinate = coordinate
+        kind = attributes["subclass"] as? String
+        group = attributes["class"] as? String
+        id = attributes["id"] as? String
     }
 }
 
@@ -90,6 +99,8 @@ public struct AtlasMapView: View {
     private let incidents: [MapIncident]
     private let routeTrimmer: RouteLineTrimmer?
     private let trafficOverlay: TrafficOverlay?
+    private let businesses: [MapBusiness]
+    private let businessOverlay: BusinessOverlay?
     private let showsGuidanceCursor: Bool
     private let onFollowingChanged: ((Bool) -> Void)?
     private let onTap: (() -> Void)?
@@ -121,6 +132,8 @@ public struct AtlasMapView: View {
         incidents: [MapIncident] = [],
         routeTrimmer: RouteLineTrimmer? = nil,
         trafficOverlay: TrafficOverlay? = nil,
+        businesses: [MapBusiness] = [],
+        businessOverlay: BusinessOverlay? = nil,
         puckSource: StaticLocationManager? = nil,
         isGuiding: Bool = false,
         guidanceZoom: Double? = nil,
@@ -149,6 +162,8 @@ public struct AtlasMapView: View {
         self.incidents = incidents
         self.routeTrimmer = routeTrimmer
         self.trafficOverlay = trafficOverlay
+        self.businesses = businesses
+        self.businessOverlay = businessOverlay
         self.puckSource = puckSource
         self.isGuiding = isGuiding
         self.guidanceZoom = guidanceZoom
@@ -187,6 +202,8 @@ public struct AtlasMapView: View {
         let closureStarts = starts[.closure] ?? [], accidentStarts = starts[.accident] ?? [], roadworkStarts = starts[.roadworks] ?? []
         let cityLines = areaTraffic
         let cityTraffic = trafficOverlay
+        let shops = businesses
+        let shopOverlay = businessOverlay
         let cameraMarks = marks.filter(\.isCamera).map(\.coordinate), bumpMarks = marks.filter { !$0.isCamera }.map(\.coordinate)
         // The chosen route's time last, so it sits on top where bubbles meet (Valhalla gives at most three).
         let labels = routeLabels.filter { !$0.isSelected } + routeLabels.filter(\.isSelected)
@@ -357,6 +374,7 @@ public struct AtlasMapView: View {
                 RoadShields.register(in: style)
                 roadSigns.add(to: style)
                 cityTraffic?.add(to: style, night: night)
+                shopOverlay?.add(to: style)
             }
             .unsafeMapViewControllerModifier { controller in
                 let mapView = controller.mapView
@@ -366,13 +384,14 @@ public struct AtlasMapView: View {
                 }
                 RouteLineTrimmer.setPuck(hidden: ownCursor, in: mapView)
                 cityTraffic?.show(cityLines, in: mapView.style)
+                shopOverlay?.show(shops, in: mapView.style)
                 if !mapView.showsUserLocation { mapView.showsUserLocation = true }
                 if !mapView.showsUserHeadingIndicator { mapView.showsUserHeadingIndicator = true }
                 if let layer = mapView.style?.layer(withIdentifier: MapLayerID.buildings3D), layer.isVisible != show3D {
                     layer.isVisible = show3D
                 }
                 // Shops and cafés are noise while driving; street and place names stay.
-                for id in MapLayerID.places {
+                for id in MapLayerID.places + [BusinessOverlay.layerID] {
                     if let layer = mapView.style?.layer(withIdentifier: id), layer.isVisible == guiding {
                         layer.isVisible = !guiding
                     }
@@ -462,7 +481,7 @@ public struct AtlasMapView: View {
 
     private static let routeLabelLayers: Set<String> = ["atlas-route-label-0", "atlas-route-label-1", "atlas-route-label-2"]
     /// What a tap can hit: the route callouts and the base map's place badges.
-    private static let tapLayers: Set<String> = routeLabelLayers.union(MapLayerID.places)
+    private static let tapLayers: Set<String> = routeLabelLayers.union(MapLayerID.places + [BusinessOverlay.layerID])
 
     private static func routeLabelLayer(_ slot: Int, _ label: RouteLabel, night: Bool) -> some StyleLayerDefinition {
         let source = ShapeSource(identifier: "atlas-route-label-\(slot)") {

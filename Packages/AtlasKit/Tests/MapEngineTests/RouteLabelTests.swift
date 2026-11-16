@@ -91,6 +91,13 @@ struct MapPlaceTests {
         let station = MapPlace(attributes: ["name": "Kartal Train Station", "name:tr": "Kartal Tren İstasyonu", "class": "railway"], coordinate: here)
         #expect(station?.name == "Kartal Tren İstasyonu")
         #expect(station?.coordinate.latitude == 40.9)
+        // What kind of place it is: the tiles' own class, and the OSM value when they carry it.
+        #expect(station?.group == "railway")
+        #expect(station?.kind == nil)
+        #expect(station?.id == nil)
+        // A business of the search index carries the id its card is opened with.
+        #expect(MapPlace(attributes: ["name": "Kıyı Pastanesi", "class": "cafe", "id": "poi-7"], coordinate: here)?.id == "poi-7")
+        #expect(MapPlace(attributes: ["name": "Şifa Eczanesi", "class": "pharmacy", "subclass": "pharmacy"], coordinate: here)?.kind == "pharmacy")
         #expect(MapPlace(attributes: ["name": "BP", "class": "fuel"], coordinate: here)?.name == "BP")
         // Without a name there is nothing to open a card with.
         #expect(MapPlace(attributes: ["class": "shop"], coordinate: here) == nil)

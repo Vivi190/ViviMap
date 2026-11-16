@@ -79,23 +79,24 @@ public final class SearchController {
     }
 
     /// A place badge tapped on the map: its name comes from the map, the rest from Photon when it answers.
-    public func place(named name: String, at point: GeoPoint) async -> Place {
-        Self.place(named: name, at: point, nearest: try? await PhotonSearchProvider().reverse(point))
+    public func place(named name: String, category: String?, at point: GeoPoint) async -> Place {
+        Self.place(named: name, category: category, at: point, nearest: try? await PhotonSearchProvider().reverse(point))
     }
 
     /// The nearest place Photon knows at a badge is usually the badge itself: with the same name its record is
     /// used (address, kind, area), otherwise only its address, which the neighbours share. The place keeps the
     /// name and the point of the map either way, so nothing on screen moves when the answer arrives.
-    nonisolated static func place(named name: String, at point: GeoPoint, nearest: Place?) -> Place {
+    /// `category`: the kind the map itself gives the badge, kept unless Photon's record has its own.
+    nonisolated static func place(named name: String, category: String?, at point: GeoPoint, nearest: Place?) -> Place {
         let coordinates = String(format: "%.5f, %.5f", point.latitude, point.longitude)
         guard let nearest else {
-            return Place(id: "map:\(coordinates)", name: name, subtitle: coordinates, point: point, category: nil)
+            return Place(id: "map:\(coordinates)", name: name, subtitle: coordinates, point: point, category: category)
         }
         guard TurkishFold.fold(nearest.name) == TurkishFold.fold(name) else {
-            return Place(id: "map:\(coordinates)", name: name, subtitle: nearest.subtitle, point: point, category: nil)
+            return Place(id: "map:\(coordinates)", name: name, subtitle: nearest.subtitle, point: point, category: category)
         }
         return Place(
-            id: nearest.id, name: name, subtitle: nearest.subtitle, point: point, category: nearest.category,
+            id: nearest.id, name: name, subtitle: nearest.subtitle, point: point, category: nearest.category ?? category,
             areaSpan: nearest.areaSpan, streetAddress: nearest.streetAddress
         )
     }

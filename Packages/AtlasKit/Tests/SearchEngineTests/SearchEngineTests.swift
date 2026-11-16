@@ -233,7 +233,7 @@ struct TappedPlaceTests {
 
     /// The nearest place Photon knows at a badge is usually the badge itself, whatever the spelling.
     @Test func theSameNameTakesPhotonsRecord() {
-        let place = SearchController.place(named: "ŞİFA ECZANESİ", at: point, nearest: pharmacy)
+        let place = SearchController.place(named: "ŞİFA ECZANESİ", category: "shop=chemist", at: point, nearest: pharmacy)
         #expect(place.id == "N1")
         #expect(place.category == "amenity=pharmacy")
         #expect(place.subtitle == "Ankara Caddesi, Kartal")
@@ -244,16 +244,17 @@ struct TappedPlaceTests {
     }
 
     @Test func anotherNameGivesOnlyItsAddress() {
-        let place = SearchController.place(named: "Kartal Börek", at: point, nearest: pharmacy)
+        let place = SearchController.place(named: "Kartal Börek", category: "shop=bakery", at: point, nearest: pharmacy)
         #expect(place.name == "Kartal Börek")
         #expect(place.subtitle == "Ankara Caddesi, Kartal")
-        #expect(place.category == nil)
+        // The kind stays the map's own: the neighbour's says nothing about this place.
+        #expect(place.category == "shop=bakery")
         #expect(place.id == "map:40.90000, 29.20000")
         #expect(place.point == point)
     }
 
     @Test func withoutAnAnswerThePlaceIsItsNameAndCoordinates() {
-        let place = SearchController.place(named: "Kartal Börek", at: point, nearest: nil)
+        let place = SearchController.place(named: "Kartal Börek", category: nil, at: point, nearest: nil)
         #expect(place.name == "Kartal Börek")
         #expect(place.subtitle == "40.90000, 29.20000")
         #expect(place.category == nil)

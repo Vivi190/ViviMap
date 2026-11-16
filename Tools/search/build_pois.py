@@ -121,6 +121,17 @@ def subtitle(address):
     return street or district
 
 
+def contact(properties):
+    """Phone number and website as the card offers them: "+902163066161", "https://example.com"."""
+    phone = clean(((properties.get("phones") or [None])[0]))
+    site = clean(((properties.get("websites") or [None])[0]))
+    if not re.fullmatch(r"[+]?[\d ()-]{7,20}", phone):
+        phone = ""
+    if not site.lower().startswith(("http://", "https://")) or " " in site or len(site) > 200:
+        site = ""
+    return phone, site
+
+
 def wanted(properties):
     """A place worth a row: named, likely to exist, open, and not an advertisement posing as a name."""
     name = clean((properties.get("names") or {}).get("primary"))
@@ -150,7 +161,8 @@ def main(source, target):
             addresses = properties.get("addresses") or [{}]
             taxonomy = properties.get("taxonomy") or {}
             row = (properties.get("confidence") or 0, name, subtitle(addresses[0] or {}),
-                   category(taxonomy.get("primary"), properties.get("basic_category")), round(lat, 6), round(lon, 6))
+                   category(taxonomy.get("primary"), properties.get("basic_category")), round(lat, 6), round(lon, 6),
+                   *contact(properties))
             # The same name within about 100 m is the same place listed twice: the likelier record stays.
             key = (fold(name), round(lat, 3), round(lon, 3))
             if key not in best or best[key][0] < row[0]:
@@ -159,16 +171,24 @@ def main(source, target):
     db = sqlite3.connect(target)
     db.executescript("""
         DROP TABLE IF EXISTS place; DROP TABLE IF EXISTS place_fts;
+        -- weight: Overture's confidence in percent. The map shows the likeliest places of a view first.
         CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL,
-                            category TEXT, lat REAL NOT NULL, lon REAL NOT NULL);
+                            category TEXT, lat REAL NOT NULL, lon REAL NOT NULL, weight INTEGER NOT NULL);
         CREATE VIRTUAL TABLE place_fts USING fts4(folded, tokenize=unicode61);
+        -- Read for one place at a time, when its card opens; a table of its own keeps the searched one small.
+        DROP TABLE IF EXISTS contact;
+        CREATE TABLE contact (id INTEGER PRIMARY KEY, phone TEXT, website TEXT);
     """)
-    for _, name, line, kind, lat, lon in best.values():
-        cursor = db.execute("INSERT INTO place (name, subtitle, category, lat, lon) VALUES (?, ?, ?, ?, ?)",
-                            (name, line, kind, lat, lon))
+    for confidence, name, line, kind, lat, lon, phone, site in best.values():
+        cursor = db.execute("INSERT INTO place (name, subtitle, category, lat, lon, weight) VALUES (?, ?, ?, ?, ?, ?)",
+                            (name, line, kind, lat, lon, round(confidence * 100)))
         db.execute("INSERT INTO place_fts (docid, folded) VALUES (?, ?)", (cursor.lastrowid, fold(name)))
+        if phone or site:
+            db.execute("INSERT INTO contact (id, phone, website) VALUES (?, ?, ?)", (cursor.lastrowid, phone or None, site or None))
     # "Nearest of a kind" filters on the category before it sorts by distance.
     db.execute("CREATE INDEX place_category ON place (category)")
+    # The places of a map view: a band of latitudes, then its longitudes.
+    db.execute("CREATE INDEX place_lat ON place (lat)")
     db.execute("INSERT INTO place_fts (place_fts) VALUES ('optimize')")
     db.commit()
     db.execute("VACUUM")
@@ -195,6 +215,9 @@ if __name__ == "__main__":
         assert wanted({**place, "operating_status": "permanently_closed"}) is None
         assert wanted({"names": {"primary": "Eski Eşya Alanlar 0537 427 48 48"}, "confidence": 0.9}) is None
         assert wanted({"names": {"primary": None}, "confidence": 0.9}) is None
+        assert contact({"phones": ["+902163066161"], "websites": ["https://example.com/"]}) == ("+902163066161", "https://example.com/")
+        assert contact({"phones": ["ara beni"], "websites": ["example.com"]}) == ("", "")
+        assert contact({}) == ("", "")
         print("self-test ok")
     else:
         main(sys.argv[1], sys.argv[2])

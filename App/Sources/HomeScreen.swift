@@ -27,6 +27,9 @@ final class MapViewport {
     var center = Defaults.istanbul
     /// What the screen shows, snapped outward to 0.01° (~1 km) so a small move keeps the same value.
     var area: TrafficArea?
+    /// What the screen shows, as it is. Not observed: it changes with every frame, and its one reader
+    /// (BusinessLoader) asks for it when the map has come to rest.
+    @ObservationIgnored var box: (west: Double, south: Double, east: Double, north: Double)?
 
     func update(from proxy: MapViewProxy) {
         if abs(proxy.direction - bearing) > 0.5 { bearing = proxy.direction }
@@ -34,6 +37,7 @@ final class MapViewport {
         pitch = proxy.pitch
         center = proxy.centerCoordinate
         let box = proxy.visibleBox, step = 0.01
+        self.box = box
         let visible = TrafficArea(
             west: (box.west / step).rounded(.down) * step,
             south: (box.south / step).rounded(.down) * step,
@@ -65,6 +69,8 @@ struct HomeScreen: View {
     @State private var sheet: Sheet?
     @State private var search = SearchController()
     @State private var selectedPlace: Place?
+    /// Phone number and website of the place on the card, looked up in the business index when it changes.
+    @State private var placeContact: OfflinePlaceIndex.Contact?
     @State private var routes: [RouteOption] = []
     @State private var routeSelection = 0
     /// The driver chose a route by hand: traffic times arriving later must not move the selection.
@@ -104,6 +110,10 @@ struct HomeScreen: View {
     @State private var routeTrimmer = RouteLineTrimmer()
     /// Draws the city traffic lines straight on the map style (TrafficOverlay).
     @State private var trafficOverlay = TrafficOverlay()
+    /// Draws the search index's businesses as badges at street zoom (BusinessOverlay).
+    @State private var businessOverlay = BusinessOverlay()
+    /// The businesses in view, loaded where the map comes to rest (BusinessLoader).
+    @State private var mapBusinesses: [MapBusiness] = []
     /// Feeds the user puck during real guidance with the fix snapped to the route (NavigationSession.onPuck).
     @State private var guidedPuck: StaticLocationManager?
     @State private var trafficEstimates: [Int: TrafficEstimate] = [:]
@@ -317,6 +327,8 @@ struct HomeScreen: View {
                 incidents: displayedIncidents,
                 routeTrimmer: routeTrimmer,
                 trafficOverlay: trafficOverlay,
+                businesses: isNavigating ? [] : mapBusinesses,
+                businessOverlay: businessOverlay,
                 puckSource: simulatedPuck ?? guidedPuck,
                 isGuiding: isNavigating,
                 guidanceZoom: isNavigating ? navigation?.guidanceZoom : nil,
@@ -391,6 +403,9 @@ struct HomeScreen: View {
         }
         .onChange(of: camera) { _, _ in scheduleReturn() }
         .onChange(of: mapDetached) { _, _ in scheduleReturn() }
+        .onChange(of: selectedPlace) { _, place in
+            placeContact = place.flatMap { OfflinePlaceIndex.businesses?.contact(of: $0) }
+        }
         .onChange(of: settings.avoidsTolls) { _, _ in
             // The routes (or the "no toll-free route" message) on screen were planned with the old setting.
             if let place = selectedPlace, !isNavigating, !routes.isEmpty || routeError != nil { planRoute(to: place) }
@@ -490,6 +505,9 @@ struct HomeScreen: View {
         .background {
             if showsCityTraffic, let traffic {
                 CityTrafficLoader(viewport: viewport, cityTraffic: cityTraffic, provider: traffic)
+            }
+            if !isNavigating, let index = OfflinePlaceIndex.businesses {
+                BusinessLoader(viewport: viewport, index: index) { mapBusinesses = $0 }
             }
         }
     }
@@ -605,10 +623,16 @@ struct HomeScreen: View {
     /// The card opens at once with the name the map shows; address, kind and area follow from the search
     /// service. An area (a mall, a hospital) changes where the route should end, so its routes are asked again.
     private func pick(_ badge: MapPlace) {
+        // One of the index's own businesses: its record is on the device, address included.
+        if let id = badge.id, let place = OfflinePlaceIndex.businesses?.place(id: id) {
+            show(place)
+            return
+        }
         let point = GeoPoint(badge.coordinate)
-        show(Place(id: "map", name: badge.name, subtitle: "Adres aranıyor…", point: point, category: nil))
+        let category = PlaceSymbol.category(mapKind: badge.kind, mapGroup: badge.group)
+        show(Place(id: "map", name: badge.name, subtitle: "Adres aranıyor…", point: point, category: category))
         Task {
-            let place = await search.place(named: badge.name, at: point)
+            let place = await search.place(named: badge.name, category: category, at: point)
             guard selectedPlace?.point == point else { return }
             selectedPlace = place
             if place.areaSpan != nil, routes.isEmpty, !isPlanning { prefetchRoutes(to: place) }
@@ -642,6 +666,7 @@ struct HomeScreen: View {
     private func placeCard(_ place: Place) -> some View {
         PlaceCard(
             place: place,
+            contact: placeContact,
             isPlanning: isPlanning,
             error: routeError,
             onRoute: { planRoute(to: place) },
@@ -1166,6 +1191,48 @@ struct CompassButton: View {
             }
         }
         .animation(.snappy(duration: 0.2), value: offNorth > 1)
+    }
+}
+
+/// Loads the businesses to show as badges wherever the map comes to rest at street zoom. A view of its own for
+/// the same reason as CityTrafficLoader: it reads the viewport, which changes with every frame.
+private struct BusinessLoader: View {
+    let viewport: MapViewport
+    let index: OfflinePlaceIndex
+    let onLoaded: @MainActor ([MapBusiness]) -> Void
+
+    /// From this zoom on: the base map shows all of its own place badges from 16.5.
+    private static let minimumZoom = 16.0
+
+    /// The view to the nearest 200 m or so and half a zoom level: a new value means new businesses to load.
+    private var key: String {
+        guard viewport.zoom >= Self.minimumZoom else { return "far" }
+        let step = 0.002
+        return "\(Int(viewport.center.latitude / step)):\(Int(viewport.center.longitude / step)):\(Int(viewport.zoom * 2))"
+    }
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .task(id: key) {
+                guard viewport.zoom >= Self.minimumZoom else {
+                    onLoaded([])
+                    return
+                }
+                // Still moving: the next change cancels this before it reads anything.
+                try? await Task.sleep(for: .milliseconds(350))
+                guard !Task.isCancelled, let box = viewport.box else { return }
+                let index = index
+                let found = await Task.detached {
+                    index.places(west: box.west, south: box.south, east: box.east, north: box.north)
+                }.value
+                guard !Task.isCancelled else { return }
+                onLoaded(found.compactMap { place in
+                    PlaceSymbol.badge(for: place.category).map {
+                        MapBusiness(id: place.id, name: place.name, badge: $0, coordinate: place.point.coordinate)
+                    }
+                })
+            }
     }
 }
 

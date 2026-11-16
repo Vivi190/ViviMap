@@ -239,7 +239,10 @@ struct SearchSheet: View {
 /// Bottom card for the selected place: details, route request, home/work shortcut.
 struct PlaceCard: View {
     @Environment(LocationProvider.self) private var location
+    @Environment(\.openURL) private var openURL
     let place: Place
+    /// Phone number and website, when the business index has them for this place.
+    var contact: OfflinePlaceIndex.Contact? = nil
     let isPlanning: Bool
     let error: String?
     let onRoute: () -> Void
@@ -282,6 +285,18 @@ struct PlaceCard: View {
                     }
                     Button("Ev olarak kaydet", systemImage: "house.fill") { onSave(.home) }
                     Button("İş olarak kaydet", systemImage: "briefcase.fill") { onSave(.work) }
+                    // Reviews, photos and opening hours are those services' own: the app can link to them, not show them.
+                    Section("Yorumlar ve fotoğraflar") {
+                        if let website = contact?.website {
+                            Button("Web sitesi", systemImage: "safari") { openURL(website) }
+                        }
+                        if let google = PlaceLinks.google(place) {
+                            Button("Google Haritalar'da aç", systemImage: "star.bubble") { openURL(google) }
+                        }
+                        if let yandex = PlaceLinks.yandex(place) {
+                            Button("Yandex Haritalar'da aç", systemImage: "map") { openURL(yandex) }
+                        }
+                    }
                     Section("Uyarı noktası") {
                         Button("Kamera işaretle", systemImage: "camera.fill") { onMark(.camera) }
                         Button("Kasis işaretle", systemImage: "exclamationmark.triangle.fill") { onMark(.bump) }
@@ -331,6 +346,14 @@ struct PlaceCard: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
+                }
+                if let phone = contact?.phone, let call = PlaceLinks.call(phone) {
+                    Link(destination: call) {
+                        Label(phone, systemImage: "phone.fill")
+                            .font(.subheadline.weight(.medium).monospacedDigit())
+                    }
+                    .padding(.top, 2)
+                    .accessibilityLabel(Text("Ara: \(phone)"))
                 }
             }
             Spacer(minLength: 0)
@@ -695,6 +718,59 @@ enum PlaceSymbol {
         }
     }
 
+    /// The OSM tag behind a badge of the map. The tiles carry the tag's value only ("pharmacy", or their own
+    /// coarser class): its key is the first one the card has a word for, and a shop for the shopping classes.
+    static func category(mapKind: String?, mapGroup: String?) -> String? {
+        for value in [mapKind, mapGroup].compactMap({ $0 }) where !value.isEmpty {
+            for key in ["amenity", "shop", "tourism", "leisure", "railway", "highway", "aeroway"] where kind(for: "\(key)=\(value)") != nil {
+                return "\(key)=\(value)"
+            }
+        }
+        if let mapKind, !mapKind.isEmpty, ["shop", "grocery", "clothing_store", "alcohol_shop"].contains(mapGroup ?? "") {
+            return "shop=\(mapKind)"
+        }
+        return nil
+    }
+
+    /// The base map's place class whose badge a business of this kind wears on the map (MapEngine's POIIcons
+    /// draws one per class); nil for kinds without a badge, which the map leaves to the search.
+    static func badge(for category: String?) -> String? {
+        let parts = (category ?? "").split(separator: "=").map(String.init)
+        guard parts.count == 2 else { return nil }
+        switch (parts[0], parts[1]) {
+        case ("amenity", "restaurant"): return "restaurant"
+        case ("amenity", "fast_food"): return "fast_food"
+        case ("amenity", "cafe"): return "cafe"
+        case ("amenity", "bar"): return "bar"
+        case ("shop", "supermarket"), ("shop", "convenience"), ("shop", "bakery"), ("shop", "butcher"), ("shop", "greengrocer"): return "grocery"
+        case ("shop", "clothes"), ("shop", "shoes"): return "clothing_store"
+        case ("shop", _): return "shop"
+        case ("amenity", "pharmacy"): return "pharmacy"
+        case ("amenity", "hospital"): return "hospital"
+        case ("amenity", "clinic"), ("amenity", "doctors"): return "doctors"
+        case ("amenity", "dentist"): return "dentist"
+        case ("amenity", "school"), ("amenity", "kindergarten"), ("amenity", "university"), ("amenity", "college"): return "school"
+        case ("amenity", "library"): return "library"
+        case ("amenity", "fuel"): return "fuel"
+        case ("amenity", "parking"): return "parking"
+        case ("amenity", "bank"): return "bank"
+        case ("amenity", "atm"): return "atm"
+        case ("amenity", "police"): return "police"
+        case ("amenity", "townhall"): return "town_hall"
+        case ("amenity", "place_of_worship"): return "place_of_worship"
+        case ("amenity", "cinema"): return "cinema"
+        case ("amenity", "theatre"): return "theatre"
+        case ("tourism", "hotel"): return "lodging"
+        case ("tourism", "museum"): return "museum"
+        case ("tourism", "attraction"): return "attraction"
+        case ("leisure", "park"), ("leisure", "playground"): return "park"
+        case ("leisure", "stadium"): return "stadium"
+        case ("leisure", "fitness_centre"), ("leisure", "sports_centre"): return "sports_centre"
+        case ("railway", "station"): return "railway"
+        default: return nil
+        }
+    }
+
     static func tint(for category: String?) -> Color {
         switch category?.split(separator: "=").first.map(String.init) {
         case "highway": .gray
@@ -704,5 +780,38 @@ enum PlaceSymbol {
         case "amenity": category?.hasSuffix("=fuel") == true ? .indigo : .pink
         default: .atlasCritical
         }
+    }
+}
+
+/// Links out of the app for what it cannot show itself.
+enum PlaceLinks {
+    /// The place in Google Maps, where its reviews and photos are: the app when it is installed, else the site.
+    static func google(_ place: Place) -> URL? {
+        var components = URLComponents(string: "https://www.google.com/maps/search/")
+        components?.queryItems = [URLQueryItem(name: "api", value: "1"), URLQueryItem(name: "query", value: query(place))]
+        return components?.url
+    }
+
+    /// The same in Yandex Maps, centred on the place so its search looks there.
+    static func yandex(_ place: Place) -> URL? {
+        var components = URLComponents(string: "https://yandex.com.tr/maps/")
+        components?.queryItems = [
+            URLQueryItem(name: "text", value: query(place)),
+            URLQueryItem(name: "ll", value: "\(place.point.longitude),\(place.point.latitude)"),
+            URLQueryItem(name: "z", value: "17"),
+        ]
+        return components?.url
+    }
+
+    /// "tel:" for a number as the data writes it ("+90 216 306 61 61").
+    static func call(_ phone: String) -> URL? {
+        let digits = phone.filter { $0.isNumber || $0 == "+" }
+        return digits.count >= 7 ? URL(string: "tel:\(digits)") : nil
+    }
+
+    /// What to look for: the name with its address, or the coordinates of a point picked on the map.
+    private static func query(_ place: Place) -> String {
+        if place.id.hasPrefix("picked") { return "\(place.point.latitude),\(place.point.longitude)" }
+        return place.subtitle.isEmpty ? place.name : "\(place.name), \(place.subtitle)"
     }
 }

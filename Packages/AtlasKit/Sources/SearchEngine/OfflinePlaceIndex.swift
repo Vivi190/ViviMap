@@ -164,6 +164,66 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         return try rows(matching: words.map { $0 + "*" }.joined(separator: " "), near: near, limit: limit)
     }
 
+    /// The places with a kind inside a box, the likeliest to exist first: what the map shows as badges. Empty
+    /// for an index without weights (the street index).
+    public func places(west: Double, south: Double, east: Double, north: Double, limit: Int = 200) -> [Place] {
+        let sql = """
+        SELECT id, name, subtitle, category, lat, lon FROM place
+        WHERE lat BETWEEN ?1 AND ?2 AND lon BETWEEN ?3 AND ?4 AND category IS NOT NULL
+        ORDER BY weight DESC LIMIT ?5
+        """
+        let found = try? rows(sql) { statement in
+            sqlite3_bind_double(statement, 1, south)
+            sqlite3_bind_double(statement, 2, north)
+            sqlite3_bind_double(statement, 3, west)
+            sqlite3_bind_double(statement, 4, east)
+            sqlite3_bind_int(statement, 5, Int32(limit))
+        }
+        return found ?? []
+    }
+
+    /// One of this index's places by the id it was listed with.
+    public func place(id: String) -> Place? {
+        guard id.hasPrefix(idPrefix + "-"), let row = Int64(id.dropFirst(idPrefix.count + 1)) else { return nil }
+        let found = try? rows("SELECT id, name, subtitle, category, lat, lon FROM place WHERE id = ?1") { statement in
+            sqlite3_bind_int64(statement, 1, row)
+        }
+        return found?.first
+    }
+
+    /// What a business gave for reaching it, when the data has it.
+    public struct Contact: Sendable, Equatable {
+        public let phone: String?
+        public let website: URL?
+    }
+
+    /// Phone number and website of one of this index's places, or of a place from another source that this
+    /// index knows too (the same name within 100 m): a restaurant found through OpenStreetMap gets its number.
+    /// nil when there is none, and for an index built without contacts.
+    public func contact(of place: Place) -> Contact? {
+        var row: Int64?
+        if place.id.hasPrefix(idPrefix + "-") {
+            row = Int64(place.id.dropFirst(idPrefix.count + 1))
+        } else if let twin = (try? matches(place.name, near: place.point, limit: 5))?.first(where: { BusinessSearchProvider.same($0, place) }) {
+            row = Int64(twin.id.dropFirst(idPrefix.count + 1))
+        }
+        guard let row else { return nil }
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            sqlite3_close(db)
+            return nil
+        }
+        defer { sqlite3_close(db) }
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "SELECT phone, website FROM contact WHERE id = ?1", -1, &statement, nil) == SQLITE_OK else { return nil }
+        defer { sqlite3_finalize(statement) }
+        sqlite3_bind_int64(statement, 1, row)
+        guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
+        let phone = sqlite3_column_text(statement, 0).map { String(cString: $0) }
+        let website = sqlite3_column_text(statement, 1).flatMap { URL(string: String(cString: $0)) }
+        return Contact(phone: phone, website: website)
+    }
+
     /// The nearest matches: a common word is in thousands of names, and any 200 of them would leave out the
     /// ones around the corner.
     private func rows(matching expression: String, near: GeoPoint?, limit: Int = 200) throws -> [Place] {

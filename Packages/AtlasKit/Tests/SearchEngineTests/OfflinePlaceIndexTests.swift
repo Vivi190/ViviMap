@@ -257,17 +257,21 @@ struct BusinessSearchTests {
         var db: OpaquePointer?
         #expect(sqlite3_open(url.path, &db) == SQLITE_OK)
         defer { sqlite3_close(db) }
-        let rows: [(String, String?, Double)] = [
-            ("Kıyı Pastanesi", "amenity=cafe", 40.8910), ("Kıyı Pastanesi", "amenity=cafe", 40.9300),
-            ("Derman Eczanesi", "amenity=pharmacy", 40.8900), ("Ankara Caddesi Büfe", nil, 40.8895),
+        // Name, kind, latitude and weight (how likely the place is to exist, in percent).
+        let rows: [(String, String?, Double, Int)] = [
+            ("Kıyı Pastanesi", "amenity=cafe", 40.8910, 60), ("Kıyı Pastanesi", "amenity=cafe", 40.9300, 90),
+            ("Derman Eczanesi", "amenity=pharmacy", 40.8900, 95), ("Ankara Caddesi Büfe", nil, 40.8895, 99),
         ]
         var sql = """
-        CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL, category TEXT, lat REAL NOT NULL, lon REAL NOT NULL);
+        CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL, category TEXT, lat REAL NOT NULL, lon REAL NOT NULL, weight INTEGER NOT NULL);
         CREATE VIRTUAL TABLE place_fts USING fts4(folded, tokenize=unicode61);
+        CREATE TABLE contact (id INTEGER PRIMARY KEY, phone TEXT, website TEXT);
+        INSERT INTO contact VALUES (1, '+902164830420', 'http://www.kiyipastanesi.com');
+        INSERT INTO contact VALUES (3, '+902163066161', NULL);
         """
         for (id, row) in rows.enumerated() {
             let category = row.1.map { "'\($0)'" } ?? "NULL"
-            sql += "INSERT INTO place VALUES (\(id + 1), '\(row.0)', '', \(category), \(row.2), 29.1905);"
+            sql += "INSERT INTO place VALUES (\(id + 1), '\(row.0)', '', \(category), \(row.2), 29.1905, \(row.3));"
             sql += "INSERT INTO place_fts (docid, folded) VALUES (\(id + 1), '\(TurkishFold.fold(row.0))');"
         }
         #expect(sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK)
@@ -281,6 +285,32 @@ struct BusinessSearchTests {
         #expect(try await provider.search("eczane", near: here).map(\.name) == ["Derman Eczanesi"])
         // Nothing of its own to offer: the failure is reported.
         await #expect(throws: URLError.self) { try await provider.search("migros", near: here) }
+    }
+
+    /// What the map shows of a view: the places with a kind, the likeliest first.
+    @Test func thePlacesOfAMapView() throws {
+        let index = try businesses()
+        let view = index.places(west: 29.18, south: 40.885, east: 29.20, north: 40.895)
+        #expect(view.map(\.name) == ["Derman Eczanesi", "Kıyı Pastanesi"]) // the kiosk has no kind, the other cafe is out of view
+        #expect(index.places(west: 29.18, south: 40.885, east: 29.20, north: 40.895, limit: 1).map(\.id) == ["poi-3"])
+        // A tapped badge hands its id back.
+        #expect(index.place(id: "poi-1")?.name == "Kıyı Pastanesi")
+        #expect(index.place(id: "offline-1") == nil)
+        #expect(index.place(id: "poi-99") == nil)
+    }
+
+    @Test func aBusinessGivesItsPhoneAndWebsite() throws {
+        let index = try businesses()
+        let own = try #require(index.place(id: "poi-1"))
+        #expect(index.contact(of: own) == OfflinePlaceIndex.Contact(phone: "+902164830420", website: URL(string: "http://www.kiyipastanesi.com")))
+        // A place of another source that the index knows too: the same name within 100 m.
+        let osm = Place(id: "N7", name: "Derman Eczanesi", subtitle: "", point: GeoPoint(latitude: 40.89005, longitude: 29.1905), category: "amenity=pharmacy")
+        #expect(index.contact(of: osm)?.phone == "+902163066161")
+        #expect(index.contact(of: osm)?.website == nil)
+        // Nothing on record, and nobody of that name nearby.
+        let kiosk = try #require(index.place(id: "poi-4"))
+        #expect(index.contact(of: kiosk) == nil)
+        #expect(index.contact(of: place("Migros", 100, id: "N8")) == nil)
     }
 
     /// An address with a house number is no business's name.
