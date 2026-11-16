@@ -19,7 +19,7 @@ struct AtlasApp: App {
     private let planner: RoutePlanner?
     /// Shares the planner, so reroutes fall back to the device's Istanbul tiles without a connection too.
     private let navigation: NavigationSession?
-    /// nil without a HERE key in the build: routes then stay labelled "Trafik dahil değil".
+    /// nil without a HERE key in the build: routes then stay labelled "Trafiksiz tahmini süre".
     private let traffic = HERETrafficProvider()
 
     init() {

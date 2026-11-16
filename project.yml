@@ -59,7 +59,7 @@ targets:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        NSLocationWhenInUseUsageDescription: Atlas konumunu haritada göstermek, hızını ölçmek ve seni yönlendirmek için kullanır. Konum geçmişin cihazından çıkmaz.
+        NSLocationWhenInUseUsageDescription: Atlas, konumunuzu haritada göstermek, hızınızı ölçmek ve sizi yönlendirmek için kullanır. Konum geçmişiniz cihazınızdan çıkmaz.
         # Navigation keeps guiding with the screen locked: GPS + spoken prompts.
         UIBackgroundModes:
           - location

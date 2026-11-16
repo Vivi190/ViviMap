@@ -1,6 +1,7 @@
 import AppCore
 import DesignSystem
 import LocationEngine
+import NavigationEngine
 import RoadHazards
 import RoutingEngine
 import SearchEngine
@@ -94,7 +95,7 @@ struct SearchSheet: View {
                             Label("Bugünün nöbetçi eczaneleri: İstanbul Eczacı Odası", systemImage: "cross.case.fill")
                         }
                     } footer: {
-                        Text("Haritada nöbet çizelgesi yok. En yakın eczaneler için \"eczane\" yaz; açık olup olmadığını bu listeden kontrol et.")
+                        Text("Haritada nöbet çizelgesi yok. En yakın eczaneler için \"eczane\" yazın; açık olup olmadığını bu listeden kontrol edin.")
                     }
                 }
                 if let center = search.nearbyCenter {
@@ -205,7 +206,7 @@ struct SearchSheet: View {
             ContentUnavailableView(
                 "Nereye gidiyoruz?",
                 systemImage: "magnifyingglass",
-                description: Text("Adres, mahalle, işletme, koordinat ya da benzinlik gibi bir tür yaz.")
+                description: Text("Adres, mahalle, işletme, koordinat ya da benzinlik gibi bir tür yazın.")
             )
         }
     }
@@ -437,6 +438,7 @@ struct RouteCard: View {
     /// Test drive; nil unless enabled in the map settings.
     let onSimulate: (() -> Void)?
     let onClose: () -> Void
+    @State private var showsDirections = false
 
     /// Tolls and ferries before the driver commits to a route, and whether the setting shaped it.
     static func notes(_ notes: RouteNotes, avoidsTolls: Bool) -> String? {
@@ -517,6 +519,17 @@ struct RouteCard: View {
                     .buttonStyle(.borderedProminent)
                     .buttonBorderShape(.roundedRectangle(radius: 16))
                     .accessibilityIdentifier("route.start")
+                    Button {
+                        showsDirections = true
+                    } label: {
+                        Image(systemName: "list.bullet")
+                            .font(.headline)
+                            .frame(width: 36, height: 36)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.roundedRectangle(radius: 16))
+                    .accessibilityLabel(Text("Yol tarifi"))
+                    .accessibilityIdentifier("route.directions")
                     if let onSimulate {
                         Button(action: onSimulate) {
                             Image(systemName: "play.fill")
@@ -539,6 +552,9 @@ struct RouteCard: View {
         .accessibilityIdentifier("route.card")
         .animation(.snappy(duration: 0.25), value: selection)
         .animation(.snappy(duration: 0.25), value: trafficStatus)
+        .sheet(isPresented: $showsDirections) {
+            RouteDirectionsView(directions: RouteDirections.list(for: route.route), destination: place.name)
+        }
     }
 
     /// One candidate as a tile, as Yandex lays them out: what it is ("En hızlı", "+2 dk"), its time and its
@@ -625,7 +641,7 @@ struct RouteCard: View {
     @ViewBuilder private var trafficSource: some View {
         switch trafficStatus {
         case .unavailable:
-            Label("Trafik dahil değil — trafiksiz tahmini süre", systemImage: "info.circle")
+            Label("Trafiksiz tahmini süre", systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         case .loading:
@@ -636,14 +652,57 @@ struct RouteCard: View {
             .font(.footnote)
             .foregroundStyle(.secondary)
         case .failed:
-            Label("Trafik alınamadı — trafiksiz tahmini süre", systemImage: "exclamationmark.triangle")
+            Label("Trafik alınamadı · trafiksiz tahmini süre", systemImage: "exclamationmark.triangle")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         case .ready:
-            Label("Canlı trafikle · © HERE", systemImage: "dot.radiowaves.up.forward")
+            Label("Canlı trafik · © HERE", systemImage: "dot.radiowaves.up.forward")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// The turns of the chosen route as a list, in the words and arrows guidance will use: what the drive asks
+/// for, read before it starts.
+struct RouteDirectionsView: View {
+    let directions: [RouteDirection]
+    let destination: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List(directions) { step in
+                HStack(spacing: Spacing.m) {
+                    Image(systemName: step.symbol)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Color.atlasAccent)
+                        .frame(width: 32)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(Formatting.distance(meters: step.distance)) sonra")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                        Text(step.action)
+                            .font(.body.weight(.medium))
+                        if let road = step.road {
+                            Text(road)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+            .listStyle(.plain)
+            .navigationTitle(destination)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Bitti") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 
@@ -670,21 +729,33 @@ enum PlaceSymbol {
             return value == "bus_stop" ? "bus" : "road.lanes"
         case "railway", "public_transport": return "tram.fill"
         case "aeroway": return "airplane"
-        case "leisure": return value == "park" ? "leaf.fill" : "figure.run"
-        case "shop": return "bag.fill"
-        case "building", "place": return "building.2.fill"
+        case "leisure", "club": return value == "park" ? "leaf.fill" : "figure.run"
+        case "shop":
+            switch value {
+            case "hairdresser", "beauty": return "scissors"
+            case "car_repair", "tyres", "car_parts", "car", "motorcycle": return "car.fill"
+            case "pet": return "pawprint.fill"
+            default: return "bag.fill"
+            }
+        case "office": return value == "courier" ? "shippingbox.fill" : "briefcase.fill"
+        case "healthcare": return "cross.case.fill"
+        case "building", "place", "landuse": return "building.2.fill"
         case "amenity":
             switch value {
             case "hospital", "clinic", "doctors", "dentist", "pharmacy": return "cross.case.fill"
             case "restaurant", "cafe", "fast_food", "bar": return "fork.knife"
             case "fuel": return "fuelpump.fill"
+            case "charging_station": return "bolt.car.fill"
             case "parking": return "parkingsign"
-            case "bank", "atm": return "banknote.fill"
-            case "car_wash", "car_rental", "taxi": return "car.fill"
+            case "bank", "atm", "bureau_de_change": return "banknote.fill"
+            case "car_wash", "car_rental", "taxi", "vehicle_inspection", "driving_school": return "car.fill"
             case "veterinary": return "pawprint.fill"
             case "cinema", "theatre": return "theatermasks.fill"
-            case "school", "university", "college", "kindergarten": return "graduationcap.fill"
-            case "townhall", "courthouse": return "building.columns.fill"
+            case "school", "university", "college", "kindergarten", "prep_school", "language_school", "music_school":
+                return "graduationcap.fill"
+            case "townhall", "courthouse", "place_of_worship": return "building.columns.fill"
+            case "post_office": return "envelope.fill"
+            case "police": return "shield.fill"
             default: return "mappin"
             }
         default: return "mappin"
@@ -698,7 +769,7 @@ enum PlaceSymbol {
         case "amenity=hospital": "Hastane"
         case "amenity=clinic", "amenity=doctors": "Sağlık merkezi"
         case "amenity=pharmacy": "Eczane"
-        case "amenity=fuel": "Benzin istasyonu"
+        case "amenity=fuel": "Benzinlik"
         case "amenity=charging_station": "Şarj istasyonu"
         case "amenity=parking": "Otopark"
         case "amenity=school": "Okul"
@@ -731,7 +802,7 @@ enum PlaceSymbol {
         case "shop=florist": "Çiçekçi"
         case "shop=books": "Kitabevi"
         case "shop=stationery": "Kırtasiye"
-        case "shop=pet": "Pet shop"
+        case "shop=pet": "Evcil hayvan mağazası"
         case "shop=cosmetics": "Kozmetik"
         case "shop=hairdresser": "Kuaför"
         case "shop=beauty": "Güzellik salonu"
@@ -751,7 +822,52 @@ enum PlaceSymbol {
         case "amenity=bus_station": "Otogar"
         case "amenity=bureau_de_change": "Döviz bürosu"
         case "amenity=vehicle_inspection": "Araç muayene"
+        case "amenity=college": "Yüksekokul"
+        case "amenity=prep_school": "Kurs"
+        case "amenity=language_school": "Dil kursu"
+        case "amenity=music_school": "Müzik kursu"
+        case "amenity=driving_school": "Sürücü kursu"
+        case "amenity=events_venue": "Düğün salonu"
+        case "amenity=grave_yard", "landuse=cemetery": "Mezarlık"
         case "office=notary": "Noter"
+        case "office=courier": "Kargo"
+        case "office=estate_agent": "Emlak ofisi"
+        case "office=insurance": "Sigorta acentesi"
+        case "office=lawyer": "Hukuk bürosu"
+        case "office=accountant": "Mali müşavir"
+        case "office=moving_company": "Nakliyat"
+        case "office=association", "office=ngo": "Dernek"
+        case "office=foundation": "Vakıf"
+        case "office=government": "Kamu kurumu"
+        case "office=diplomatic": "Konsolosluk"
+        case "office=political_party": "Parti binası"
+        case "office=company": "Şirket"
+        case "office=architect": "Mimarlık ofisi"
+        case "healthcare=dietitian": "Diyetisyen"
+        case "club=sport": "Spor kulübü"
+        case "landuse=industrial": "Sanayi sitesi"
+        case "landuse=residential": "Site"
+        case "building=office": "İş merkezi"
+        case "shop=yes", "shop=department_store": "Mağaza"
+        case "shop=tailor": "Terzi"
+        case "shop=dry_cleaning": "Kuru temizleme"
+        case "shop=laundry": "Çamaşırhane"
+        case "shop=locksmith": "Çilingir"
+        case "shop=tattoo": "Dövme stüdyosu"
+        case "shop=carpet_cleaning": "Halı yıkama"
+        case "shop=travel_agency": "Seyahat acentesi"
+        case "shop=houseware": "Züccaciye"
+        case "shop=sports": "Spor mağazası"
+        case "shop=motorcycle": "Motosiklet"
+        case "shop=appliance": "Beyaz eşya"
+        case "shop=carpet": "Halı"
+        case "shop=toys": "Oyuncak"
+        case "shop=alcohol": "Tekel bayii"
+        case "shop=tobacco": "Tütün ürünleri"
+        case "shop=second_hand": "İkinci el"
+        case "leisure=sports_centre": "Spor tesisi"
+        case "leisure=stadium": "Stadyum"
+        case "leisure=playground": "Oyun parkı"
         case "leisure=fitness_centre": "Spor salonu"
         case "tourism=attraction": "Gezi yeri"
         case "railway=station", "public_transport=station": "İstasyon"
@@ -768,7 +884,7 @@ enum PlaceSymbol {
     /// coarser class): its key is the first one the card has a word for, and a shop for the shopping classes.
     static func category(mapKind: String?, mapGroup: String?) -> String? {
         for value in [mapKind, mapGroup].compactMap({ $0 }) where !value.isEmpty {
-            for key in ["amenity", "shop", "tourism", "leisure", "railway", "highway", "aeroway"] where kind(for: "\(key)=\(value)") != nil {
+            for key in ["amenity", "shop", "office", "tourism", "leisure", "railway", "highway", "aeroway"] where kind(for: "\(key)=\(value)") != nil {
                 return "\(key)=\(value)"
             }
         }
@@ -778,11 +894,12 @@ enum PlaceSymbol {
         return nil
     }
 
-    /// The base map's place class whose badge a business of this kind wears on the map (MapEngine's POIIcons
-    /// draws one per class); nil for kinds without a badge, which the map leaves to the search.
+    /// The place class whose badge a business of this kind wears on the map (MapEngine's POIIcons draws one per
+    /// class): the base map's own classes, "charging" for chargers, and "place", a plain dot, for the kinds
+    /// without a badge and the places without a kind.
     static func badge(for category: String?) -> String? {
         let parts = (category ?? "").split(separator: "=").map(String.init)
-        guard parts.count == 2 else { return nil }
+        guard parts.count == 2 else { return "place" }
         switch (parts[0], parts[1]) {
         case ("amenity", "restaurant"): return "restaurant"
         case ("amenity", "fast_food"): return "fast_food"
@@ -790,12 +907,28 @@ enum PlaceSymbol {
         case ("amenity", "bar"): return "bar"
         case ("shop", "supermarket"), ("shop", "convenience"), ("shop", "bakery"), ("shop", "butcher"), ("shop", "greengrocer"): return "grocery"
         case ("shop", "clothes"), ("shop", "shoes"): return "clothing_store"
+        case ("shop", "hairdresser"), ("shop", "beauty"): return "hairdresser"
+        case ("shop", "dry_cleaning"), ("shop", "laundry"), ("shop", "carpet_cleaning"): return "laundry"
+        case ("shop", "car_repair"), ("shop", "tyres"), ("shop", "car_parts"), ("shop", "car"), ("shop", "motorcycle"): return "car"
+        case ("shop", "alcohol"): return "alcohol_shop"
         case ("shop", _): return "shop"
+        case ("amenity", "car_wash"), ("amenity", "car_rental"), ("amenity", "taxi"), ("amenity", "vehicle_inspection"),
+             ("amenity", "driving_school"): return "car"
+        case ("amenity", "charging_station"): return "charging"
+        case ("amenity", "veterinary"): return "veterinary"
+        case ("amenity", "post_office"), ("office", "courier"): return "post"
+        case ("amenity", "courthouse"), ("office", "government"): return "town_hall"
+        case ("amenity", "bureau_de_change"): return "bank"
+        case ("office", _): return "office"
+        case ("healthcare", _): return "doctors"
+        case ("club", "sport"): return "sports_centre"
         case ("amenity", "pharmacy"): return "pharmacy"
         case ("amenity", "hospital"): return "hospital"
         case ("amenity", "clinic"), ("amenity", "doctors"): return "doctors"
         case ("amenity", "dentist"): return "dentist"
-        case ("amenity", "school"), ("amenity", "kindergarten"), ("amenity", "university"), ("amenity", "college"): return "school"
+        case ("amenity", "school"), ("amenity", "kindergarten"), ("amenity", "prep_school"), ("amenity", "language_school"),
+             ("amenity", "music_school"): return "school"
+        case ("amenity", "university"), ("amenity", "college"): return "college"
         case ("amenity", "library"): return "library"
         case ("amenity", "fuel"): return "fuel"
         case ("amenity", "parking"): return "parking"
@@ -813,7 +946,7 @@ enum PlaceSymbol {
         case ("leisure", "stadium"): return "stadium"
         case ("leisure", "fitness_centre"), ("leisure", "sports_centre"): return "sports_centre"
         case ("railway", "station"): return "railway"
-        default: return nil
+        default: return "place"
         }
     }
 
@@ -821,8 +954,9 @@ enum PlaceSymbol {
         switch category?.split(separator: "=").first.map(String.init) {
         case "highway": .gray
         case "railway", "public_transport", "aeroway": .blue
-        case "leisure": .green
+        case "leisure", "club": .green
         case "shop": .orange
+        case "office", "building", "landuse": .gray
         case "amenity": category?.hasSuffix("=fuel") == true ? .indigo : .pink
         default: .atlasCritical
         }

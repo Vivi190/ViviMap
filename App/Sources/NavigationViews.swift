@@ -106,7 +106,7 @@ struct NavigationBottomBar: View {
                     }
                     .accessibilityElement(children: .combine)
                 } else {
-                    Text(navigation.hasArrived ? "Vardınız" : "Rota hazırlanıyor")
+                    Text(navigation.hasArrived ? "Vardınız" : "Rota hesaplanıyor")
                         .font(.title3.weight(.semibold))
                     Spacer(minLength: 0)
                 }
@@ -132,7 +132,7 @@ struct NavigationBottomBar: View {
                     })
                 }
                 // Always says where the time comes from; HERE's terms ask for the attribution where its data shows.
-                Text(trafficArrival == nil ? "Trafik hariç" : "Canlı trafik · © HERE")
+                Text(trafficArrival == nil ? "Trafiksiz tahmini süre" : "Canlı trafik · © HERE")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -301,10 +301,10 @@ struct RouteSuggestionBanner: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            Button("Kalsın", action: onDismiss)
+            Button("Hayır", action: onDismiss)
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
-            Button("Geç", action: onAccept)
+            Button("Değiştir", action: onAccept)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.capsule)
                 .accessibilityIdentifier("nav.suggestion.accept")

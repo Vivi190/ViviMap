@@ -66,6 +66,18 @@ final class HomeScreenshotTests: XCTestCase {
         XCTAssertTrue(app.otherElements["route.card"].waitForExistence(timeout: 30), "route card missing")
         settle(6)
         capture("3b-route")
+        // The list of turns. Soft: reviewed from the screenshot, a miss must not cost the run.
+        let directions = app.buttons["route.directions"]
+        if directions.exists {
+            directions.tap()
+            let done = app.buttons["Bitti"]
+            if done.waitForExistence(timeout: 5) {
+                settle(1)
+                capture("3b2-directions")
+                done.tap()
+                settle(2)
+            }
+        }
 
         // Guidance: banner with the first Turkish instruction, then end it.
         app.buttons["route.start"].tap()

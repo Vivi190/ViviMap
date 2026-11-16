@@ -53,7 +53,7 @@ struct TripsView: View {
                 ContentUnavailableView(
                     "Henüz sürüş yok",
                     systemImage: "car",
-                    description: Text("Navigasyonla yaptığın her sürüşte, başta söylenen süre ile gerçekleşen süre burada karşılaştırılır. Simülasyonlar kaydedilmez.")
+                    description: Text("Navigasyonla yaptığınız her sürüşte, başta söylenen süre ile gerçekleşen süre burada karşılaştırılır. Simülasyonlar kaydedilmez.")
                 )
             }
         }
@@ -66,8 +66,8 @@ struct TripsView: View {
             let percent = Int((abs(result.ratio - 1) * 100).rounded())
             Section {
                 Text(percent == 0
-                    ? "\(title) senin sürüşlerinde tuttu."
-                    : "\(title) senin sürüşlerinde ortalama %\(percent) \(result.ratio > 1 ? "daha uzun" : "daha kısa") sürdü.")
+                    ? "\(title) sürüşlerinizde tuttu."
+                    : "\(title) sürüşlerinizde ortalama %\(percent) \(result.ratio > 1 ? "daha uzun" : "daha kısa") sürdü.")
             } footer: {
                 Text("\(result.drives) tamamlanmış sürüşün ortancası; 5 dakikadan kısa sürüşler sayılmaz.")
             }
@@ -108,7 +108,7 @@ struct MarkedHazardsView: View {
                 ContentUnavailableView(
                     "İşaret yok",
                     systemImage: "mappin.slash",
-                    description: Text("Haritada bir noktaya uzun bas, kartın menüsünden \"Kamera işaretle\" ya da \"Kasis işaretle\" seç.")
+                    description: Text("Haritada bir noktaya uzun basın, kartın menüsünden \"Kamera işaretle\" ya da \"Kasis işaretle\" seçin.")
                 )
             }
         }
@@ -145,7 +145,7 @@ struct MapSettingsView: View {
             Text("Sesli yönlendirme")
         } footer: {
             if voice?.quality != .enhanced, voice?.quality != .premium {
-                Text("Daha doğal bir ses için: Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe'den bir sesin \"Geliştirilmiş\" sürümünü indir. Atlas indirileni kendiliğinden kullanır.")
+                Text("Daha doğal bir ses için: Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe'den bir sesin \"Geliştirilmiş\" sürümünü indirin. Atlas indirileni kendiliğinden kullanır.")
             }
         }
     }
@@ -163,7 +163,7 @@ struct MapSettingsView: View {
             } header: {
                 Text("Görünüm")
             } footer: {
-                Text("Otomatik: bulunduğun yerde gün batımından gün doğumuna kadar gece haritası.")
+                Text("Otomatik: bulunduğunuz yerde gün batımından gün doğumuna kadar gece haritası.")
             }
 
             Section {
@@ -188,7 +188,7 @@ struct MapSettingsView: View {
             } header: {
                 Text("Uyarılar")
             } footer: {
-                Text("Veri: OpenStreetMap, \(HazardData.fetched). Her kamera ve kasis haritada işli değil; Pendik, Kartal ve Tuzla'da kamera verisi çok az.")
+                Text("Veri: OpenStreetMap, \(HazardData.fetched). Her kamera ve kasis haritada yer almıyor; Pendik, Kartal ve Tuzla'da kamera verisi çok az.")
             }
 
             Section {
@@ -198,7 +198,7 @@ struct MapSettingsView: View {
                     LabeledContent("Sürüşlerim", value: "\(trips.trips.count)")
                 }
             } footer: {
-                Text("Varış tahminlerinin senin sürüşlerinde ne kadar tuttuğu.")
+                Text("Varış tahminlerinin sürüşlerinizde ne kadar tuttuğu.")
             }
 
             if let date = OfflineMap.dataDate {
@@ -215,9 +215,9 @@ struct MapSettingsView: View {
                 Button("GPS tanılama", systemImage: "antenna.radiowaves.left.and.right", action: showDiagnostics)
                 Toggle("Sürüş simülasyonu", isOn: $settings.showsDriveSimulation)
             } header: {
-                Text("Test")
+                Text("Tanılama")
             } footer: {
-                Text("Rota kartına \"Simüle et\" ekler: konum, GPS yerine rota boyunca ilerler. Sesli yönlendirmeyi araç kullanmadan denemek için.")
+                Text("Rota kartına simülasyon düğmesi ekler: konum, GPS yerine rota boyunca ilerler. Sesli yönlendirmeyi araç kullanmadan denemek için.")
             }
         }
         .navigationTitle("Harita")
