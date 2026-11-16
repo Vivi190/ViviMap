@@ -53,9 +53,13 @@ def main(source, target):
         CREATE TABLE place (id INTEGER PRIMARY KEY, name TEXT NOT NULL, subtitle TEXT NOT NULL,
                             category TEXT, lat REAL NOT NULL, lon REAL NOT NULL);
         CREATE VIRTUAL TABLE place_fts USING fts4(folded, tokenize=unicode61);
+        -- OpenStreetMap's opening_hours as mapped, read for one place at a time when its card opens.
+        DROP TABLE IF EXISTS hours;
+        CREATE TABLE hours (id INTEGER PRIMARY KEY, opening_hours TEXT NOT NULL);
     """)
     seen_streets = set()
     rows = 0
+    with_hours = 0
     with open(source, encoding="utf-8") as lines:
         for line in lines:
             line = line.strip().lstrip("\x1e")
@@ -82,12 +86,16 @@ def main(source, target):
             cursor = db.execute("INSERT INTO place (name, subtitle, category, lat, lon) VALUES (?, ?, ?, ?, ?)",
                                 (name, subtitle, cat, round(lat, 6), round(lon, 6)))
             db.execute("INSERT INTO place_fts (docid, folded) VALUES (?, ?)", (cursor.lastrowid, fold(name)))
+            hours = (tags.get("opening_hours") or "").strip()
+            if hours and len(hours) <= 255:
+                db.execute("INSERT INTO hours (id, opening_hours) VALUES (?, ?)", (cursor.lastrowid, hours))
+                with_hours += 1
             rows += 1
     db.execute("INSERT INTO place_fts (place_fts) VALUES ('optimize')")
     db.commit()
     db.execute("VACUUM")
     db.close()
-    print(f"{rows} places -> {target}")
+    print(f"{rows} places, {with_hours} with opening hours -> {target}")
 
 
 if __name__ == "__main__":

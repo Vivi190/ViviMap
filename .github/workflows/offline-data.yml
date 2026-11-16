@@ -60,6 +60,17 @@ jobs:
           osmium export named.osm.pbf -f geojsonseq -o named.geojsonseq --overwrite
           python3 Tools/search/build_index.py --self-test
           python3 Tools/search/build_index.py named.geojsonseq places.sqlite
+          # How much of the city has opening hours mapped, and in which forms: what a parser in the app must read.
+          python3 - <<'PY'
+          import collections, sqlite3
+          db = sqlite3.connect("places.sqlite")
+          kinds = collections.Counter(c for (c,) in db.execute("SELECT p.category FROM place p JOIN hours h ON h.id = p.id"))
+          print("opening_hours by kind:", kinds.most_common(20))
+          forms = collections.Counter(v for (v,) in db.execute("SELECT opening_hours FROM hours"))
+          print("distinct forms:", len(forms))
+          for form, count in forms.most_common(40):
+              print(f"{count:6} {form}")
+          PY
 
       - name: Business search index
         run: |
