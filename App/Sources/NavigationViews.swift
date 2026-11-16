@@ -40,6 +40,7 @@ struct NavigationBanner: View {
             Text(road ?? action)
                 .font(.system(size: 17, weight: .medium))
                 .lineLimit(2)
+                .frame(maxWidth: 192, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
             if !navigation.lanes.isEmpty {
                 HStack(spacing: Spacing.xs) {
@@ -60,7 +61,10 @@ struct NavigationBanner: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .frame(minWidth: 118, maxWidth: 220, alignment: .leading)
+        // As wide as its content, between 118 and 220 pt: a frame with both limits would take whatever share
+        // of the row it is offered instead.
+        .frame(minWidth: 118, alignment: .leading)
+        .fixedSize(horizontal: true, vertical: false)
         .background(Color.atlasGuidance, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: .black.opacity(0.22), radius: 12, x: 0, y: 4)
         .accessibilityElement(children: .ignore)
