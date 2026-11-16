@@ -37,6 +37,7 @@
 
 **Arama**, İstanbul'a göre ayarlı (Photon, OpenStreetMap, Overture Maps)
 - İşletmeler adıyla, en yakından başlayarak ve bağlantı olmadan da bulunur: Overture Maps'in açık yer verisinden üretilmiş, cihazdaki 390 000 dükkân, restoran, iş yeri ve hizmet noktasından oluşan dizin. Sokak yakınlığında haritada rozet olarak (türü bilinmeyenler sade bir nokta olarak) görünürler; kartlarında, veride varsa, telefon numarası ve web sitesi yer alır.
+- Sonuç listesi haritaya iğne olarak konabilir, hepsi ekrana sığar; bir iğneye dokununca o yerin kartı açılır.
 - Adresler insanların yazdığı gibi: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
 - Yakındaki yer türleri (*"benzinlik"*, *"en yakın eczane"*), bir semtte (*"esentepe eczane"*) ve hedefin çevresindeki otoparklar; İSPARK otoparkları o andaki boş yer sayısıyla.
 - Şarj istasyonları EPDK kayıtlarından: İstanbul'daki 1 800 halka açık istasyon, en hızlı akım türü ve soket sayısıyla (*"şarj"*, *"zes"*).

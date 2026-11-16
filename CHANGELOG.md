@@ -2,6 +2,11 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
+## Build 34 (not yet uploaded)
+
+- **Search results on the map:** "12 sonucu haritada göster" above a list of results puts them on the map as blue pins with their names, all in view, as Yandex and Apple Maps show a search. A tap on a pin opens its card; a chip under the search bar opens the list again or takes the pins off.
+- The settings sheets are opaque at half height.
+
 ## Build 33 — 2026-11-16
 
 - **Route settings:** "Feribotlardan kaçın" beside "Ücretli yollardan kaçın". With both on there is no way across the Bosphorus, and the card says so instead of offering the router's way round the Black Sea.
