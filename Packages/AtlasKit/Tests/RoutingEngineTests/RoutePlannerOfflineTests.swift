@@ -234,6 +234,28 @@ struct RoutePlannerOfflineTests {
         return try #require(locations.last)
     }
 
+    /// A stop on the way goes to the router as a break of its own, between the car and the destination.
+    @Test func aStopIsABreakBeforeTheDestination() async throws {
+        let answer = try recordedAnswer()
+        let sent = SentBody()
+        let planner = try RoutePlanner(session: session(NoConnection.self)) { body in
+            await sent.store(body)
+            return answer
+        }
+        let stop = GeoPoint(latitude: 40.8951, longitude: 29.1962)
+        _ = try await planner.routes(from: kartal, via: [stop], to: destination, areaSpan: 4_000)
+        let body = try #require(await sent.body)
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let locations = try #require(json["locations"] as? [[String: Any]])
+        try #require(locations.count == 3)
+        #expect(abs((locations[1]["lat"] as? Double ?? 0) - stop.latitude) < 1e-9)
+        #expect(abs((locations[1]["lon"] as? Double ?? 0) - stop.longitude) < 1e-9)
+        #expect(locations[1]["type"] as? String == "break")
+        // The destination's area keeps its road filter; the stop gets none.
+        #expect(locations[1]["search_filter"] == nil)
+        #expect((locations[2]["search_filter"] as? [String: Any])?["min_road_class"] as? String == "tertiary")
+    }
+
     @Test func bigAreasEndOnAPublicRoad() async throws {
         let airport = try await destinationSent(areaSpan: 4_000)
         #expect((airport["search_filter"] as? [String: Any])?["min_road_class"] as? String == "tertiary")

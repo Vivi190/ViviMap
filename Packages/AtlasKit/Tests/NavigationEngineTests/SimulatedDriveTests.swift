@@ -86,6 +86,49 @@ struct SimulatedDriveTests {
         #expect(session.currentRoad == nil, "arrival must clear the current road")
     }
 
+    /// A stop on the way (RoutePlanner's `via`, a break of its own): approached as the stop, never called the
+    /// destination, passed without a reroute, and guidance goes on to the destination by itself.
+    @Test(.timeLimit(.minutes(2)))
+    func aStopOnTheWayIsAnnouncedAsAStop() async throws {
+        let origin = CLLocation(latitude: 40.8890, longitude: 29.1905)
+        let destination = GeoPoint(latitude: 40.9050, longitude: 29.2100)
+        let planner = try RoutePlanner()
+        // Halfway along the direct route, so the way through the stop is the same road.
+        let direct = try #require(try await planner.routes(from: origin, to: destination).first)
+        let line = RoutePath(direct.coordinates)
+        let stop = GeoPoint(line.point(at: line.length / 2).coordinate)
+        let route = try #require(try await planner.routes(from: origin, via: [stop], to: destination).first)
+        let path = RoutePath(route.coordinates)
+        let log = PromptLog()
+        let session = try makeSession(logging: log)
+        var bannerNamedTheStop = false
+        session.onUpdate = { session in
+            if session.actionText?.hasPrefix("Ara durak") == true { bannerNamedTheStop = true }
+        }
+        let startTime = Date.now
+        try session.start(route, from: path.fix(at: 0, speed: speed, timestamp: startTime))
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(session.stops.count == 1, "the stop is not among the waypoints ahead")
+        try await drive(session, along: path, from: 0, to: path.length + 30, start: startTime)
+        try await Task.sleep(for: .milliseconds(200))
+
+        let prompts = log.lines
+        #expect(session.hasArrived, "never arrived; last prompts: \(prompts.suffix(5))")
+        #expect(session.stops.isEmpty, "the stop is still ahead after the drive")
+        #expect(bannerNamedTheStop, "the turn panel never named the stop")
+        #expect(prompts.contains { $0.hasPrefix("Ara durağa ") }, "the stop was not approached as one: \(prompts)")
+        // Arrived once, at the end, not at the stop; the destination's approach comes after the stop's.
+        let arrivals = prompts.filter { $0 == "Hedefinize ulaştınız." }
+        #expect(arrivals.count == 1, "\(prompts)")
+        #expect(prompts.last == "Hedefinize ulaştınız.")
+        let lastAboutTheStop = prompts.lastIndex { $0.hasPrefix("Ara durağa ") || $0.hasPrefix("Ara durak ") }
+        let firstAboutTheDestination = prompts.firstIndex { $0.hasPrefix("Hedefe ") || $0.hasPrefix("Hedefiniz ") }
+        if let lastAboutTheStop, let firstAboutTheDestination {
+            #expect(lastAboutTheStop < firstAboutTheDestination, "\(prompts)")
+        }
+        #expect(!prompts.contains("Rota yeniden oluşturuldu."), "rerouted at the stop: \(prompts)")
+    }
+
     @Test(.timeLimit(.minutes(2)))
     func reroutesFromWhereTheDriverLeftTheRoute() async throws {
         let (route, path) = try await kartalRoute()

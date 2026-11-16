@@ -170,8 +170,11 @@ final class TrafficWatch {
         }
 
         // Alternatives cost up to two more imports: only when traffic is costing real time, every second round.
+        // Through the stop still ahead, if there is one: the router then answers with a single route.
         guard current.delay >= Self.delayWorthAlternatives, round.isMultiple(of: 2), navigation.isActive, !Task.isCancelled,
-              let options = try? await planner.routes(from: position, to: destination.point, areaSpan: destination.areaSpan)
+              let options = try? await planner.routes(
+                  from: position, via: navigation.stops, to: destination.point, areaSpan: destination.areaSpan
+              )
         else { return nil }
         // One running along the current road (≥ 85 %) is the same route.
         let shapes = options.map(\.coordinates)
@@ -221,9 +224,9 @@ final class TrafficWatch {
         // With the earlier ones, which the router may have let go of since (RoutePlanner.fetch).
         planner.markClosed(asked + fresh)
         let excluded = planner.closedRoads
-        // No answer: not remembered as asked, so the next round asks once more.
+        // No answer: not remembered as asked, so the next round asks once more. Through the stop still ahead.
         guard let option = try? await planner.routes(
-            from: position, to: destination.point, areaSpan: destination.areaSpan, deviceFirst: true
+            from: position, via: navigation.stops, to: destination.point, areaSpan: destination.areaSpan, deviceFirst: true
         ).first, navigation.isActive, !Task.isCancelled else { return nil }
         asked += fresh
         // Only onto a route that keeps off every stretch known closed, the earlier ones too. When no such way

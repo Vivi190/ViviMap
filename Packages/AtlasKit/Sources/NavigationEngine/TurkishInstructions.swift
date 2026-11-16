@@ -12,19 +12,21 @@ public enum TurkishInstructions {
     /// - Parameters:
     ///   - roundaboutExitNumber: the exit to take, counted from the entry, when the route gives it.
     ///   - leavingFerry: a `notification` is a change of travel mode; true for the one that ends a ferry leg.
+    ///   - isStop: an `arrive` at a stop on the way, not at the destination.
     public static func action(
         type: ManeuverType?, modifier: ManeuverModifier?, roundaboutExitDegrees: UInt16? = nil,
-        roundaboutExitNumber: UInt8? = nil, leavingFerry: Bool = false
+        roundaboutExitNumber: UInt8? = nil, leavingFerry: Bool = false, isStop: Bool = false
     ) -> String? {
         guard let type else { return nil }
         switch type {
         case .depart:
             return "Rotaya başlayın"
         case .arrive:
+            let place = isStop ? "Ara durak" : "Hedefiniz"
             switch modifier {
-            case .left, .slightLeft, .sharpLeft: return "Hedefiniz solda"
-            case .right, .slightRight, .sharpRight: return "Hedefiniz sağda"
-            default: return "Hedef"
+            case .left, .slightLeft, .sharpLeft: return "\(place) solda"
+            case .right, .slightRight, .sharpRight: return "\(place) sağda"
+            default: return isStop ? "Ara durak" : "Hedef"
             }
         case .turn, .endOfRoad:
             let turn = turnPhrase(modifier)
@@ -61,12 +63,13 @@ public enum TurkishInstructions {
     }
 
     /// Approaching the destination: "Hedefe 400 metre kaldı.", with its side when the route knows it
-    /// ("Hedefe 120 metre kaldı, solda."). Distance nil is the sentence at the destination itself
-    /// ("Hedefiniz solda."); "… sonra hedef" would not be a sentence, so arriving has its own form.
-    public static func arrival(distance: Double?, modifier: ManeuverModifier?) -> String {
-        guard let distance else { return (action(type: .arrive, modifier: modifier) ?? "Hedef") + "." }
+    /// ("Hedefe 120 metre kaldı, solda."), and a stop on the way in the same form ("Ara durağa 400 metre kaldı.").
+    /// Distance nil is the sentence at the place itself ("Hedefiniz solda.", "Ara durak solda."); "… sonra
+    /// hedef" would not be a sentence, so arriving has its own form.
+    public static func arrival(distance: Double?, modifier: ManeuverModifier?, isStop: Bool = false) -> String {
+        guard let distance else { return (action(type: .arrive, modifier: modifier, isStop: isStop) ?? "Hedef") + "." }
         let place = side(modifier).map { $0 == "Sol" ? ", solda" : ", sağda" } ?? ""
-        return "Hedefe \(distancePhrase(distance)) kaldı\(place)."
+        return "\(isStop ? "Ara durağa" : "Hedefe") \(distancePhrase(distance)) kaldı\(place)."
     }
 
     /// A road event ahead, from its kind: "2 kilometre sonra yol çalışması.", "800 metre sonra kaza.",
@@ -87,7 +90,7 @@ public enum TurkishInstructions {
     /// çıkın" already says which exit to take.
     public static func followUp(
         type: ManeuverType?, modifier: ManeuverModifier?, roundaboutExitDegrees: UInt16?,
-        roundaboutExitNumber: UInt8? = nil, after distance: Double, window: Double = 150
+        roundaboutExitNumber: UInt8? = nil, after distance: Double, window: Double = 150, isStop: Bool = false
     ) -> String? {
         guard distance <= window, let type else { return nil }
         switch type {
@@ -95,11 +98,11 @@ public enum TurkishInstructions {
         case .continue where !changesDirection(modifier): return nil
         case .turn where modifier == .straight || modifier == nil: return nil
         // "Hedef" alone is no clause after "ardından": the future form says what follows the maneuver.
-        case .arrive where side(modifier) == nil: return "Hedefinize ulaşacaksınız"
+        case .arrive where side(modifier) == nil: return isStop ? "Ara durağa ulaşacaksınız" : "Hedefinize ulaşacaksınız"
         default:
             return action(
                 type: type, modifier: modifier, roundaboutExitDegrees: roundaboutExitDegrees,
-                roundaboutExitNumber: roundaboutExitNumber
+                roundaboutExitNumber: roundaboutExitNumber, isStop: isStop
             )
         }
     }

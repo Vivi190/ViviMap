@@ -50,7 +50,7 @@ final class MapViewport {
 
 struct HomeScreen: View {
     enum Sheet: String, Identifiable {
-        case search, mapSettings, diagnostics, attribution
+        case search, mapSettings, diagnostics, attribution, stops
         var id: String { rawValue }
     }
 
@@ -336,6 +336,7 @@ struct HomeScreen: View {
                 // lines against them whatever the layer order); the tilted camera stays.
                 showsBuildings3D: is3D && !isNavigating,
                 destination: selectedPlace?.point.coordinate,
+                stops: isNavigating ? navigation?.stops.map(\.coordinate) ?? [] : [],
                 route: displayedRoute,
                 alternatives: alternativeRoutes,
                 routeIsMeasured: routeIsMeasured,
@@ -777,9 +778,9 @@ struct HomeScreen: View {
     /// iPhone on its side (car mounts): panels move into a left column and the map gets the rest.
     private var isLandscape: Bool { verticalSizeClass == .compact }
 
-    /// Sound and sharing, out of the way while driving: shown for a few seconds after a tap on the map and
-    /// while the map is not following the car. The overview button is in the bottom strip; the way back to the
-    /// car ("Rotaya devam et") appears above it.
+    /// Sound, places on the way and sharing, out of the way while driving: shown for a few seconds after a tap on
+    /// the map and while the map is not following the car. The overview button is in the bottom strip; the way
+    /// back to the car ("Rotaya devam et") appears above it.
     private func navigationControls(_ navigation: NavigationSession) -> some View {
         MapControlGroup {
             MapControlButton(
@@ -789,6 +790,11 @@ struct HomeScreen: View {
             ) {
                 isMuted.toggle()
                 navigation.voice.isMuted = isMuted
+            }
+            // The shipped indexes answer it; builds without them have nothing to search.
+            if search.canShowNearby, !navigation.hasArrived {
+                MapControlDivider()
+                MapControlButton(systemImage: "magnifyingglass", label: "Yol üstünde ara") { sheet = .stops }
             }
             ArrivalShareButton(navigation: navigation, place: selectedPlace, trafficArrival: trafficWatch.arrival)
         }
@@ -913,6 +919,26 @@ struct HomeScreen: View {
               let option = trafficWatch.accept(navigation: navigation, from: position) else { return }
         // A simulated drive continues along the new route from here.
         if simulatedPuck != nil { simulate(option, from: position) }
+    }
+
+    /// "Yol üstünde ara": guidance moves, without ending, onto a route from the car through `stop` to the
+    /// destination; nil drops the stop and leads straight there again.
+    private func routeVia(_ stop: Place?) {
+        sheet = nil
+        guard let navigation, let planner, let destination = selectedPlace, let position = location.lastLocation else { return }
+        Task {
+            do {
+                // The device first, as for any new route while driving: the car moves on while the server answers.
+                guard let option = try await planner.routes(
+                    from: position, via: stop.map { [$0.point] } ?? [], to: destination.point,
+                    areaSpan: destination.areaSpan, deviceFirst: true
+                ).first, navigation.isActive else { return }
+                try navigation.switchRoute(to: option, from: position, announcing: stop == nil ? "Ara durak kaldırıldı." : "Ara durak eklendi.")
+                if simulatedPuck != nil { simulate(option, from: position) }
+            } catch {
+                if navigation.isActive { navigation.voice.speak(stop == nil ? "Ara durak kaldırılamadı." : "Ara durağa rota bulunamadı.") }
+            }
+        }
     }
 
     private func startNavigation(simulated: Bool) {
@@ -1343,6 +1369,10 @@ struct HomeScreen: View {
             case .mapSettings: MapSettingsView(showDiagnostics: { self.sheet = .diagnostics })
             case .diagnostics: LocationDiagnosticsView()
             case .attribution: MapAttributionView()
+            case .stops:
+                if let navigation {
+                    StopsSheet(navigation: navigation, onAdd: { routeVia($0) }, onRemove: { routeVia(nil) })
+                }
             }
         }
         .presentationDetents(sheet == .search ? [.large] : [.medium, .large])

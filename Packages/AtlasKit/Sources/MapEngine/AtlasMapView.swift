@@ -100,6 +100,7 @@ public struct AtlasMapView: View {
     private let appearance: MapAppearance
     private let showsBuildings3D: Bool
     private let destination: CLLocationCoordinate2D?
+    private let stops: [CLLocationCoordinate2D]
     private let route: [CLLocationCoordinate2D]
     private let alternatives: [[CLLocationCoordinate2D]]
     private let routeIsMeasured: Bool
@@ -129,11 +130,13 @@ public struct AtlasMapView: View {
 
     /// `puckSource` replaces CoreLocation for the user puck (simulated drive); nil = real GPS.
     /// `isGuiding` moves the puck low on screen so the road ahead gets the room.
+    /// `stops`: the stops on the way to `destination`, each with a pin of its own.
     public init(
         camera: Binding<MapViewCamera>,
         appearance: MapAppearance,
         showsBuildings3D: Bool,
         destination: CLLocationCoordinate2D? = nil,
+        stops: [CLLocationCoordinate2D] = [],
         route: [CLLocationCoordinate2D] = [],
         alternatives: [[CLLocationCoordinate2D]] = [],
         routeIsMeasured: Bool = false,
@@ -165,6 +168,7 @@ public struct AtlasMapView: View {
         self.appearance = appearance
         self.showsBuildings3D = showsBuildings3D
         self.destination = destination
+        self.stops = stops
         self.route = route
         self.alternatives = alternatives
         self.routeIsMeasured = routeIsMeasured
@@ -358,6 +362,15 @@ public struct AtlasMapView: View {
                     .iconAnchor("bottom")
                     .iconAllowsOverlap(true)
             }
+            if !stops.isEmpty {
+                let source = ShapeSource(identifier: "atlas-stops") {
+                    stops.map { MLNPointFeature(coordinate: $0) as MLNShape }
+                }
+                SymbolStyleLayer(identifier: "atlas-stops", source: source)
+                    .iconImage(Self.stopPin)
+                    .iconAnchor("bottom")
+                    .iconAllowsOverlap(true)
+            }
             if let destination {
                 let pin = ShapeSource(identifier: "atlas-destination") {
                     MLNPointFeature(coordinate: destination)
@@ -542,6 +555,8 @@ public struct AtlasMapView: View {
     private static let destinationPin = drop(destinationColor, radius: 14, dot: 11)
     /// A search result: the same drop, smaller and in the app's blue, so the chosen place stands out in red.
     private static let resultPin = drop(POIIcons.rgb(0x1F6FEB), radius: 10, dot: 7)
+    /// A stop on the way: the drop in orange, a little smaller than the destination's.
+    private static let stopPin = drop(POIIcons.rgb(0xFF9500), radius: 12, dot: 9)
     private static let resultTextDay = POIIcons.rgb(0x2C2C2E)
     private static let resultTextNight = POIIcons.rgb(0xEEF1F6)
 

@@ -114,6 +114,24 @@ struct TurkishInstructionsTests {
         #expect(TurkishInstructions.arrival(distance: nil, modifier: .right) == "Hedefiniz sağda.")
     }
 
+    /// A stop on the way is never called the destination: the trip goes on from there.
+    @Test func approachingAStopOnTheWay() {
+        #expect(TurkishInstructions.action(type: .arrive, modifier: .left, isStop: true) == "Ara durak solda")
+        #expect(TurkishInstructions.action(type: .arrive, modifier: .sharpRight, isStop: true) == "Ara durak sağda")
+        #expect(TurkishInstructions.action(type: .arrive, modifier: nil, isStop: true) == "Ara durak")
+        #expect(TurkishInstructions.arrival(distance: 395, modifier: nil, isStop: true) == "Ara durağa 400 metre kaldı.")
+        #expect(TurkishInstructions.arrival(distance: 119, modifier: .left, isStop: true) == "Ara durağa 120 metre kaldı, solda.")
+        #expect(TurkishInstructions.arrival(distance: nil, modifier: .slightRight, isStop: true) == "Ara durak sağda.")
+        #expect(TurkishInstructions.followUp(type: .arrive, modifier: nil, roundaboutExitDegrees: nil, after: 40, isStop: true)
+            == "Ara durağa ulaşacaksınız")
+        let then = TurkishInstructions.followUp(type: .arrive, modifier: .left, roundaboutExitDegrees: nil, after: 40, isStop: true)
+        #expect(then == "Ara durak solda")
+        #expect(TurkishInstructions.spoken(action: "Sağa dönün", distance: 120, road: nil, then: then)
+            == "120 metre sonra sağa dönün, ardından ara durak solda.")
+        // The flag means nothing to any other maneuver.
+        #expect(TurkishInstructions.action(type: .turn, modifier: .left, isStop: true) == "Sola dönün")
+    }
+
     @Test func followUpOnlyForCloseRealManeuvers() {
         #expect(TurkishInstructions.followUp(type: .turn, modifier: .left, roundaboutExitDegrees: nil, after: 80) == "Sola dönün")
         #expect(TurkishInstructions.followUp(type: .arrive, modifier: .right, roundaboutExitDegrees: nil, after: 40) == "Hedefiniz sağda")

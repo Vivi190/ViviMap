@@ -47,6 +47,9 @@ public final class NavigationSession {
     /// Symbol of the maneuver right after the next one when it follows within 150 m ("Sonra ↰").
     public private(set) var thenSymbol: String?
     public private(set) var routeCoordinates: [CLLocationCoordinate2D] = []
+    /// Stops on the way still ahead (RoutePlanner's `via`), where the router met the road. Ferrostar counts one as
+    /// reached within 100 m (`waypointAdvance`) and asks its reroutes through it until then.
+    public private(set) var stops: [GeoPoint] = []
     /// What is left of the route from the car, so the line starts under it and the driven part goes, as Apple Maps
     /// and Yandex draw it. Not observed: it changes on every fix, and the map takes it through `onRouteAhead`
     /// rather than a SwiftUI update (swiftui-dsl rebuilds every layer on each one).
@@ -273,6 +276,18 @@ public final class NavigationSession {
         return path.remainder(after: max(0, path.length - remaining))
     }
 
+    /// Places of `kind` along the rest of the route, the cheapest to turn into first (StopsAlongRoute), from the
+    /// indexes on the device in their order of trust. Read and ranked off the main actor; empty without a route.
+    public func placesAhead(_ kind: NearbyKind, in indexes: [OfflinePlaceIndex]) async -> [PlaceAhead] {
+        guard let path = routePath else { return [] }
+        let car = aheadOffset ?? distanceRemaining.map { max(0, path.length - $0) } ?? 0
+        return await Task.detached(priority: .userInitiated) {
+            let points = StopsAlongRoute.points(on: path, from: car).map { GeoPoint($0) }
+            let answers = indexes.map { index in points.flatMap { (try? index.nearby(kind, near: $0)) ?? [] } }
+            return StopsAlongRoute.ranked(StopsAlongRoute.merged(answers), on: path, from: car)
+        }.value
+    }
+
     public func stop() {
         core.stopNavigation()
         subscription = nil
@@ -292,6 +307,7 @@ public final class NavigationSession {
         lanes = []
         thenSymbol = nil
         routeCoordinates = []
+        stops = []
         routeAhead = []
         aheadOffset = nil
         routePath = nil
@@ -377,6 +393,11 @@ public final class NavigationSession {
         if let puck = state.preferredUserLocation?.clLocation { onPuck?(puck) }
         let wasRerouting = isRerouting
         isRerouting = state.isCalculatingNewRoute
+        // The last waypoint Ferrostar still has ahead is the destination; any before it is a stop.
+        let waypointsAhead: [GeoPoint] = (state.remainingWaypoints ?? []).dropLast().map {
+            GeoPoint(latitude: $0.coordinate.lat, longitude: $0.coordinate.lng)
+        }
+        if waypointsAhead != stops { stops = waypointsAhead }
         // Assign only when the geometry changed (reroute): observers re-render on every set.
         if state.routeGeometry.count != routeCoordinates.count
             || state.routeGeometry.last?.lat != routeCoordinates.last?.latitude
@@ -498,12 +519,15 @@ public final class NavigationSession {
             maneuverAtLight = Self.nearLight(path.point(at: travelled + progress.distanceToNextManeuver).coordinate)
         }
         let onFerry = Self.isOnFerry(remaining.map { $0.visualInstructions.first?.primaryContent.maneuverType })
+        // Valhalla ends a leg with an arrival at every stop on the way; only the last step is the destination's.
+        let atStop = remaining.count > 2
         let action = TurkishInstructions.action(
             type: content?.maneuverType,
             modifier: content?.maneuverModifier,
             roundaboutExitDegrees: content?.roundaboutExitDegrees,
             roundaboutExitNumber: following?.roundaboutExitNumber,
-            leavingFerry: onFerry
+            leavingFerry: onFerry,
+            isStop: atStop
         )
         let atLight = maneuverAtLight && TurkishInstructions.isTurn(type: content?.maneuverType, modifier: content?.maneuverModifier)
         let shown: String? = (atLight ? action.map(TurkishInstructions.atLights) : action) ?? content?.text
@@ -524,7 +548,8 @@ public final class NavigationSession {
                 modifier: followingContent?.maneuverModifier,
                 roundaboutExitDegrees: followingContent?.roundaboutExitDegrees,
                 roundaboutExitNumber: afterFollowing?.roundaboutExitNumber,
-                after: step.distance
+                after: step.distance,
+                isStop: remaining.count > 3
             )
         }
         var symbol: String?
@@ -557,26 +582,28 @@ public final class NavigationSession {
         if let current = remaining.first, current.duration > 0 { expected = current.distance / current.duration }
         announce(
             banner, phrase: phrase, step: remaining.count, distance: progress.distanceToNextManeuver,
-            speed: max(lastSpeed, expected), followUp: followUp
+            speed: max(lastSpeed, expected), followUp: followUp, atStop: atStop
         )
     }
 
     /// Speaks for the maneuver ahead when the planner says it is time.
     private func announce(
-        _ content: VisualInstructionContent, phrase: String, step: Int, distance: Double, speed: Double, followUp: String?
+        _ content: VisualInstructionContent, phrase: String, step: Int, distance: Double, speed: Double, followUp: String?,
+        atStop: Bool
     ) {
         let type = content.maneuverType
         let modifier = content.maneuverModifier
         guard !TurkishInstructions.isSilent(type: type, modifier: modifier) else { return }
         let arriving = type == .arrive
-        // At the destination itself only its side is worth a sentence; "Hedefinize ulaştınız." follows on arrival.
+        // At the destination or a stop itself only its side is worth a sentence; at the destination "Hedefinize
+        // ulaştınız." follows on arrival.
         let hasNow = !arriving || TurkishInstructions.side(modifier) != nil
         guard let stage = planner.stage(
             step: step, distance: distance, speed: speed, hasNow: hasNow, holdsDistance: voice.isSpeaking
         ) else { return }
         let ahead: Double? = stage == .now ? nil : distance
         let sentence = arriving
-            ? TurkishInstructions.arrival(distance: ahead, modifier: modifier)
+            ? TurkishInstructions.arrival(distance: ahead, modifier: modifier, isStop: atStop)
             : TurkishInstructions.spoken(action: phrase, distance: ahead, road: nextRoad, then: followUp)
         if stage == .now {
             // Never queued behind a hazard, speed or status sentence: three seconds late is past the turn.

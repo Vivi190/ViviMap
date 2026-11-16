@@ -124,6 +124,10 @@ public final class RoutePlanner {
     static let offered = 3
 
     /// - Parameters:
+    ///   - stops: places to stop at on the way, in order. Each is a break of its own: Valhalla ends a leg there with
+    ///     an arrival, and Ferrostar keeps it among the waypoints its reroutes ask for until the car reaches it.
+    ///     Valhalla answers a request with more than two locations without alternatives (it sets `alternates`
+    ///     to 0 for them).
     ///   - areaSpan: size of the destination when it is an area (Place.areaSpan); see `waypoint`.
     ///   - deviceFirst: for a new route while driving; see `fetch`.
     ///   - choose: nil asks the router once and offers what it answers. Otherwise a second request, sent at
@@ -131,18 +135,19 @@ public final class RoutePlanner {
     ///     offer: it is given their lines, the router's own first (`own` of them) and the extra one last, and
     ///     returns the places of those to keep. It runs off the main actor (lines are compared point by point).
     public func routes(
-        from location: CLLocation, to destination: GeoPoint, areaSpan: Double? = nil, deviceFirst: Bool = false,
+        from location: CLLocation, via stops: [GeoPoint] = [], to destination: GeoPoint, areaSpan: Double? = nil,
+        deviceFirst: Bool = false,
         choosing choose: (@Sendable (_ shapes: [[CLLocationCoordinate2D]], _ own: Int) -> [Int])? = nil
     ) async throws -> [RouteOption] {
-        let waypoint = Self.waypoint(destination, areaSpan: areaSpan)
+        let waypoints = stops.map { Self.waypoint($0, areaSpan: nil) } + [Self.waypoint(destination, areaSpan: areaSpan)]
         let start = UserLocation(clLocation: location)
         guard let choose else {
-            let found = try await fetch(userLocation: start, waypoints: [waypoint], deviceFirst: deviceFirst)
+            let found = try await fetch(userLocation: start, waypoints: waypoints, deviceFirst: deviceFirst)
             return Self.options(found.routes, notes: found.notes, isOffline: found.offline)
         }
         // Not after the first answer: the card waits for both, so they go out together.
-        async let extra = self.fetch(userLocation: start, waypoints: [waypoint], deviceFirst: deviceFirst, localStreets: true)
-        let found = try await fetch(userLocation: start, waypoints: [waypoint], deviceFirst: deviceFirst)
+        async let extra = self.fetch(userLocation: start, waypoints: waypoints, deviceFirst: deviceFirst, localStreets: true)
+        let found = try await fetch(userLocation: start, waypoints: waypoints, deviceFirst: deviceFirst)
         var routes: [Route] = found.routes
         var notes: [RouteNotes] = routes.indices.map { found.notes.indices.contains($0) ? found.notes[$0] : RouteNotes() }
         // Only from the same source as the router's own routes: a card must not mix the server's with ones
