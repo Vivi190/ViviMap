@@ -10,6 +10,7 @@ TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 - **İSPARK fees:** an İSPARK car park's card shows what it costs and its free minutes ("1 sa 110 TL · 2 sa 140 TL · Tam gün 370 TL · İlk 15 dk ücretsiz"), from the municipality's open data.
 - **Warnings without a route:** with the map open, speed bumps and cameras ahead on the road are said without a destination too, as Yandex's navigator mode does ("80 metre sonra kasis."). The road ahead is judged by the course, so a bend or a road alongside can mislead; a switch in the settings turns it off.
 - **Guidance settings:** "Dönüşleri seslendir" off leaves only the warnings spoken (cameras, bumps, speed, road events), for a driver who knows the way; the speed warning's threshold ("Otomatik", +5, +10 or +20 km/h); and "Navigasyonda kuzey yukarıda" for a flat map with north up instead of one turning with the car.
+- **Tunnels:** when the GPS goes silent for 3 seconds while the car was moving on its route, guidance moves it along the route at its last speed, as the other map apps do, so the turn after a tunnel is announced in time; it stops 40 m before the next maneuver and waits for the real position there. Up to two minutes.
 - The settings sheets are opaque at half height.
 
 ## Build 33 — 2026-11-16

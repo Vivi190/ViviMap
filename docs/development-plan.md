@@ -39,6 +39,6 @@ Each phase starts once the previous one is verified. A phase counts as done when
 - Lanes and house numbers appear only where OpenStreetMap has them; nothing is invented. Speed limits come from HERE where OpenStreetMap has none (it has them on 9–16 % of roads around Pendik, Kartal and Tuzla), and only while online: offline they are OpenStreetMap's alone.
 - Offline mode covers the Istanbul area only, without traffic. Offline search finds places and streets, not house numbers.
 - Voice quality depends on the Turkish voice installed on the device; an "Enhanced" voice reads more naturally.
-- In a tunnel the position stops until the signal returns; there is no dead reckoning.
+- In a tunnel the car is moved along the route at its last speed for up to two minutes, stopping 40 m before the next maneuver until the signal returns; a car that slows down in the tunnel is ahead of itself on the map until then.
 - Businesses come from open data (Overture Maps): far more of them than OpenStreetMap has, but a position can be a building off and a closed shop can still be listed. Reviews, photos and opening hours are not in open data; a place's card opens it in Google Maps or Yandex Maps.
 - Charging stations are the energy regulator's register as published in May 2025: stations opened since are missing.
