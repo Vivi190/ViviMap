@@ -35,7 +35,8 @@
 - Route times with live traffic, slow stretches coloured on the route, and a "faster route" offer while driving that does not flip back and forth.
 - A monthly request budget per device keeps usage inside the provider's free tier.
 
-**Search**, tuned for Istanbul (Photon, OpenStreetMap)
+**Search**, tuned for Istanbul (Photon, OpenStreetMap, Overture Maps)
+- Businesses by name, nearest first, also without a connection: an on-device index of 389 000 shops, restaurants and offices from the open places data of Overture Maps.
 - Addresses as people write them: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
 - Kinds of places near you (*"benzinlik"*, *"en yakın eczane"*), in a district (*"esentepe eczane"*), and car parks around a destination.
 - Measured against OpenStreetMap: the first result is the intended place for 64 of 64 benchmark queries ([report](docs/research/2026-11-14-arama-olcumu.md), in Turkish).
@@ -88,7 +89,7 @@ No Mac is needed: GitHub Actions builds, tests and ships to TestFlight.
 
 - `ci.yml` runs on every push: build, unit tests and UI screenshots (kept as artifacts).
 - `testflight.yml` is started by hand: it signs and uploads a build with the offline Istanbul data embedded.
-- `offline-data.yml` builds the offline tiles, routing graph and search index from OpenStreetMap.
+- `offline-data.yml` builds the offline tiles, routing graph and search index from OpenStreetMap, and the business index from Overture Maps.
 
 On a Mac: `brew install xcodegen`, run `xcodegen`, then open `Atlas.xcodeproj`. Without a HERE key the app runs with traffic hidden. Signing certificates and API keys live only in GitHub Secrets; see [docs/setup-testflight.md](docs/setup-testflight.md).
 
@@ -101,6 +102,7 @@ No accounts, analytics or tracking. Saved places and trip history stay on the ph
 - Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Tiles by [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema); offline tiles built with [Planetiler](https://github.com/onthegomap/planetiler).
 - Search by [Photon](https://github.com/komoot/photon) (komoot). Routing by [Valhalla](https://github.com/valhalla/valhalla), on the FOSSGIS public server and on the device through [valhalla-mobile](https://github.com/Rallista/valhalla-mobile).
 - Traffic © HERE.
+- Businesses from the places theme of the [Overture Maps Foundation](https://docs.overturemaps.org/attribution/): records from Meta, Microsoft and others (CDLA-Permissive-2.0), Foursquare (Apache-2.0) and AllThePlaces (CC0-1.0).
 - The OpenStreetMap extracts in this repository (speed cameras, speed bumps, traffic lights, test fixtures) are © OpenStreetMap contributors, ODbL.
 - Built with MapLibre Native (BSD-2-Clause), MapLibre SwiftUI DSL (BSD-3-Clause), Ferrostar (BSD-3-Clause) and valhalla-mobile (MIT).
 

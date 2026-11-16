@@ -105,8 +105,12 @@ Full rationale and sources: [research/2026-11-13-faz0-arastirma.md](research/202
   - Rail lines and planned or under-construction roads sink to the bottom.
   - Reverse geocoding (picking on the map) also uses Photon, not Nominatim.
   - Offline: a SQLite FTS4 index built in CI (Istanbul, Turkish folding: "çanakkale" = "canakkale"). Takes over when Photon is unreachable or returns an error (5xx, 429).
+  - Businesses: a second on-device index (`pois.sqlite`, same schema) built in CI from the places theme of Overture Maps. Measured 2026-11-16 on release 2026-10-21 for the Istanbul box: 458 000 places, 389 000 of them kept (confidence 0.4 and above, open, named), 63 MB. OpenStreetMap, which Photon searches, has about a tenth of the city's businesses.
+    - It is searched on the device while Photon's request is on its way, and without a connection. The answers are one list: districts and streets first, and the kind of place the query asks for (courthouse, station, hospital) as OpenStreetMap has it; then the names with the query's words from either source, nearest first, an exact or leading match counting as nearer; then what else Photon found.
+    - A file of its own, never merged into the OpenStreetMap index: its records are under CDLA-Permissive-2.0 (Meta, Microsoft and others), Apache-2.0 (Foursquare) or CC0-1.0 (AllThePlaces), and none of it is OpenStreetMap data.
 - **Why no Apple search:** DPLA Attachment 6 §2.4.
-- **Known limit:** house-number coverage in OSM is low. A missing number falls back to the street, marked "approximate".
+- **Rejected for businesses:** Google Places (results only on a Google map); HERE Discover (5 000 free requests a month, then paid); Foursquare's full dataset (needs an account).
+- **Known limits:** house-number coverage in OSM is low; a missing number falls back to the street, marked "approximate". A business record is a page its owner made: the position can be a building off, and a shop that closed can linger.
 
 ## ADR-7 — Privacy and security
 

@@ -14,10 +14,11 @@ Harita ayarları → Test → **Sürüş simülasyonu** açılınca rota kartın
 2. Mesajda yazıldığı gibi adres yapıştırın ("Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"). İlk sonuç o adresteki yer, kapı numarası OSM'de yoksa o sokak olmalı.
 3. Yalnızca tür yazın ("benzinlik", "eczane", "otopark", "en yakın ATM"). En yakınlar mesafeleriyle listelenmeli.
 4. Semt + tür ya da marka yazın ("esentepe eczane", "kurtköy migros"). Sonuçlar o semtin çevresinden gelmeli.
-5. Yazmadan önce "Yakında" altındaki Benzinlik, Otopark, Eczane ve Şarj düğmeleri en yakınları listelemeli; uçak modunda da.
-6. Bir sonuç seçin. Haritada kırmızı iğne, kartta adı, türü ve mesafesi ("Adliye · 3,0 km") ve adresi görünmeli.
-7. Haritadaki bir yer rozetine (dükkân, eczane, istasyon…) dokunun: o yerin kartı açılmalı; adı hemen, adresi ve türü bir an sonra gelir. Rozet olmayan bir noktaya uzun basın: kartta adres çıkmalı. Kartın "…" menüsünden **Ev olarak kaydet** seçilince arama çubuğunun altında "Ev" kapsülü çıkmalı; dokununca doğrudan rota kartı açılmalı.
-8. Kartın "…" menüsündeki "Yakındaki otoparklar" o yerin çevresindeki otoparkları, o yere uzaklıklarıyla listelemeli.
+5. İşletme adı yazın ("mediamarkt", "kıyı pastanesi", bildiğiniz bir restoran, kuaför ya da dükkân): en yakın şubeler adresleri ve mesafeleriyle listelenmeli; uçak modunda da. "kuaför", "veteriner", "oto servis", "çiçekçi" gibi tür sözcükleri en yakınları listelemeli. Bulunamayan ya da yeri yanlış çıkan işletmeleri not edin.
+6. Yazmadan önce "Yakında" altındaki Benzinlik, Otopark, Eczane ve Şarj düğmeleri en yakınları listelemeli; uçak modunda da.
+7. Bir sonuç seçin. Haritada kırmızı iğne, kartta adı, türü ve mesafesi ("Adliye · 3,0 km") ve adresi görünmeli.
+8. Haritadaki bir yer rozetine (dükkân, eczane, istasyon…) dokunun: o yerin kartı açılmalı; adı hemen, adresi ve türü bir an sonra gelir. Rozet olmayan bir noktaya uzun basın: kartta adres çıkmalı. Kartın "…" menüsünden **Ev olarak kaydet** seçilince arama çubuğunun altında "Ev" kapsülü çıkmalı; dokununca doğrudan rota kartı açılmalı.
+9. Kartın "…" menüsündeki "Yakındaki otoparklar" o yerin çevresindeki otoparkları, o yere uzaklıklarıyla listelemeli.
 
 ## Rota seçimi
 

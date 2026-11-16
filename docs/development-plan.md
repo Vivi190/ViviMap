@@ -40,3 +40,4 @@ Each phase starts once the previous one is verified. A phase counts as done when
 - Offline mode covers the Istanbul area only, without traffic. Offline search finds places and streets, not house numbers.
 - Voice quality depends on the Turkish voice installed on the device; an "Enhanced" voice reads more naturally.
 - In a tunnel the position stops until the signal returns; there is no dead reckoning.
+- Businesses come from open data (Overture Maps): far more of them than OpenStreetMap has, but a position can be a building off and a closed shop can still be listed.

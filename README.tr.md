@@ -35,7 +35,8 @@
 - Canlı trafikle rota süreleri, rota üzerinde renklenen yavaş kesimler ve sürüşte gidip gelmeyen "daha hızlı rota" önerisi.
 - Cihaz başına aylık istek bütçesi, kullanımı sağlayıcının ücretsiz kotasında tutar.
 
-**Arama**, İstanbul'a göre ayarlı (Photon, OpenStreetMap)
+**Arama**, İstanbul'a göre ayarlı (Photon, OpenStreetMap, Overture Maps)
+- İşletmeler adıyla, en yakından başlayarak ve bağlantı olmadan da bulunur: Overture Maps'in açık yer verisinden üretilmiş, cihazdaki 389 000 dükkân, restoran ve iş yerinden oluşan dizin.
 - Adresler insanların yazdığı gibi: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
 - Yakındaki yer türleri (*"benzinlik"*, *"en yakın eczane"*), bir semtte (*"esentepe eczane"*) ve hedefin çevresindeki otoparklar.
 - OpenStreetMap'e karşı ölçüldü: ölçüm sorgularının 64'ünde 64'ünde ilk sonuç kastedilen yer ([rapor](docs/research/2026-11-14-arama-olcumu.md)).
@@ -88,7 +89,7 @@ Mac gerekmez: derlemeyi, testleri ve TestFlight'a yüklemeyi GitHub Actions yapa
 
 - `ci.yml` her push'ta çalışır: derleme, birim testleri ve ekran görüntüleri (artifact olarak saklanır).
 - `testflight.yml` elle başlatılır: imzalar ve çevrimdışı İstanbul verisini gömerek yükler.
-- `offline-data.yml` çevrimdışı karoları, rota grafiğini ve arama dizinini OpenStreetMap'ten üretir.
+- `offline-data.yml` çevrimdışı karoları, rota grafiğini ve arama dizinini OpenStreetMap'ten, işletme dizinini Overture Maps'ten üretir.
 
 Mac'te: `brew install xcodegen`, `xcodegen`, sonra `Atlas.xcodeproj`'u aç. HERE anahtarı yoksa uygulama trafik gizli çalışır. İmza sertifikaları ve API anahtarları yalnızca GitHub Secrets'ta; bkz. [docs/setup-testflight.md](docs/setup-testflight.md).
 
@@ -101,6 +102,7 @@ Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda
 - Harita verisi © [OpenStreetMap](https://www.openstreetmap.org/copyright) katkıcıları, ODbL. Karolar [OpenFreeMap](https://openfreemap.org) (OpenMapTiles şeması); çevrimdışı karolar [Planetiler](https://github.com/onthegomap/planetiler) ile üretilir.
 - Arama [Photon](https://github.com/komoot/photon) (komoot). Rota [Valhalla](https://github.com/valhalla/valhalla); FOSSGIS'in ortak sunucusunda ve cihazda [valhalla-mobile](https://github.com/Rallista/valhalla-mobile) ile.
 - Trafik © HERE.
+- İşletmeler [Overture Maps Foundation](https://docs.overturemaps.org/attribution/) yer verisinden: Meta, Microsoft ve diğerleri (CDLA-Permissive-2.0), Foursquare (Apache-2.0) ve AllThePlaces (CC0-1.0) kayıtları.
 - Bu depodaki OpenStreetMap kesitleri (hız kameraları, kasisler, trafik ışıkları, test verileri) © OpenStreetMap katkıcıları, ODbL.
 - Kullanılan kütüphaneler: MapLibre Native (BSD-2-Clause), MapLibre SwiftUI DSL (BSD-3-Clause), Ferrostar (BSD-3-Clause), valhalla-mobile (MIT).
 
