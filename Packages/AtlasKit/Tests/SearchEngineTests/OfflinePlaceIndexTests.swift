@@ -405,6 +405,21 @@ struct BusinessSearchTests {
         #expect(live[0].subtitle == "83 boş yer · 100 araçlık · 08:00-19:00 · İSPARK")
         // Zero free spaces: uncounted as likely as full, so not called full.
         #expect(live[1].subtitle == "50 araçlık · 24 Saat · İSPARK")
+        // A car park's fees, from its detail record (made-up values in the service's shape).
+        let detail = """
+        [{"parkID":1,"parkName":"Örnek Otoparkı","freeTime":15,"monthlyFee":3000.0,
+          "tariff":"0-1 Saat : 110,00;1-2 Saat : 140,00;2-4 Saat : 170,00;4-8 Saat : 220,00;Tam Gün : 370,00"}]
+        """
+        #expect(ISPARKCarParks.fees(from: Data(detail.utf8)) == "1 sa 110 TL · 2 sa 140 TL · Tam gün 370 TL · İlk 15 dk ücretsiz")
+        let dayOnly = """
+        [{"parkID":2,"parkName":"Sahil","freeTime":0,"tariff":"Tam Gün : 182,50"}]
+        """
+        #expect(ISPARKCarParks.fees(from: Data(dayOnly.utf8)) == "Tam gün 182,50 TL")
+        // An id the service does not know comes back as an empty record.
+        let unknown = """
+        [{"parkID":0,"parkName":"","freeTime":0,"tariff":""}]
+        """
+        #expect(ISPARKCarParks.fees(from: Data(unknown.utf8)) == nil)
         #expect(ISPARKCarParks.isForBuses("Alibeyköy Cep Otogarı Otobüs Otoparkı"))
         #expect(ISPARKCarParks.isForBuses("4.Levent Servis ve Turizm Araçları Açık Otoparkı"))
         #expect(!ISPARKCarParks.isForBuses("Kabataş Transfer Merkezi Binek Araç ve Turizm Otobüsleri Zemin Altı Otoparkı"))

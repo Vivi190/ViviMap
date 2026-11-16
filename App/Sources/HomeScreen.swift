@@ -71,6 +71,8 @@ struct HomeScreen: View {
     @State private var selectedPlace: Place?
     /// Phone number and website of the place on the card, looked up in the business index when it changes.
     @State private var placeContact: OfflinePlaceIndex.Contact?
+    /// The fees of an İSPARK car park on the card, asked for when it opens.
+    @State private var placeFees: String?
     @State private var routes: [RouteOption] = []
     @State private var routeSelection = 0
     /// The driver chose a route by hand: traffic times arriving later must not move the selection.
@@ -119,6 +121,8 @@ struct HomeScreen: View {
     @State private var resultPins: [Place] = []
     /// What they are, for the chip under the search bar: the query, with the place a list is around.
     @State private var resultsTitle = ""
+    /// The drive to Home and Work from here with live traffic, for their chips (ShortcutTimesLoader).
+    @State private var shortcutTimes: [SearchController.Slot: TimeInterval] = [:]
     /// Feeds the user puck during real guidance with the fix snapped to the route (NavigationSession.onPuck).
     @State private var guidedPuck: StaticLocationManager?
     @State private var trafficEstimates: [Int: TrafficEstimate] = [:]
@@ -423,6 +427,13 @@ struct HomeScreen: View {
         .onChange(of: mapDetached) { _, _ in scheduleReturn() }
         .onChange(of: selectedPlace) { _, place in
             placeContact = place.flatMap { OfflinePlaceIndex.businesses?.contact(of: $0) }
+            placeFees = nil
+            if let place, place.id.hasPrefix("ispark-") {
+                Task {
+                    let fees = await ISPARKCarParks().fees(of: place)
+                    if selectedPlace?.id == place.id { placeFees = fees }
+                }
+            }
         }
         .onChange(of: [settings.avoidsTolls, settings.avoidsFerries]) { _, _ in
             // The routes (or the "no such route" message) on screen were planned with the old settings.
@@ -458,7 +469,7 @@ struct HomeScreen: View {
                     SearchBarButton { sheet = .search }
                         .frame(maxWidth: isLandscape ? 420 : .infinity)
                     if selectedPlace == nil, search.home != nil || search.work != nil {
-                        ShortcutChips(hasHome: search.home != nil, hasWork: search.work != nil) { slot in
+                        ShortcutChips(hasHome: search.home != nil, hasWork: search.work != nil, times: shortcutTimes) { slot in
                             if !openShortcut(slot), let place = slot == .home ? search.home : search.work {
                                 select(place)
                                 routeError = "Konumunuz henüz bilinmiyor."
@@ -529,6 +540,10 @@ struct HomeScreen: View {
             }
             if !isNavigating, let index = OfflinePlaceIndex.businesses {
                 BusinessLoader(viewport: viewport, index: index) { mapBusinesses = $0 }
+            }
+            if selectedPlace == nil, !isNavigating, connectivity.isOnline, let planner, let traffic,
+               search.home != nil || search.work != nil {
+                ShortcutTimesLoader(home: search.home, work: search.work, planner: planner, traffic: traffic) { shortcutTimes = $0 }
             }
         }
     }
@@ -702,6 +717,7 @@ struct HomeScreen: View {
         PlaceCard(
             place: place,
             contact: placeContact,
+            fees: placeFees,
             // The fastest of the routes asked for when the card opened, once they are in.
             drivingTime: prefetch.flatMap { $0.point == place.point ? $0.routes?.map(\.duration).min() : nil },
             // Not while its address is still being looked up: the place has no identity of its own yet.
@@ -1407,6 +1423,64 @@ private struct BusinessLoader: View {
                     }
                 })
             }
+    }
+}
+
+/// Measures the drive to Home and Work from here with live traffic, for their chips ("Ev · 24 dk"), as Yandex
+/// shows them on its start screen: a route from the router and its time from the traffic provider, one request
+/// each per place, again every ten minutes while the chips show and the app is in front, and whenever the
+/// car has moved about a kilometre. A view of its own because it reads the position, which changes with
+/// every fix; HomeScreen itself does not.
+private struct ShortcutTimesLoader: View {
+    let home: Place?
+    let work: Place?
+    let planner: RoutePlanner
+    let traffic: any TrafficProvider
+    let onTimes: @MainActor ([SearchController.Slot: TimeInterval]) -> Void
+    @Environment(LocationProvider.self) private var location
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// The position to about a kilometre, and the places: a new value is a new measurement. Nothing in the
+    /// background: the phone can keep the app running there, and a request there is one nobody sees.
+    private var key: String {
+        guard scenePhase == .active, let here = location.lastLocation?.coordinate else { return "idle" }
+        let places = [home, work].map { $0.map { "\($0.point.latitude),\($0.point.longitude)" } ?? "-" }
+        return "\(Int(here.latitude * 100)):\(Int(here.longitude * 100)):\(places.joined(separator: ":"))"
+    }
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .task(id: key) {
+                guard key != "idle" else { return }
+                while !Task.isCancelled {
+                    await measure()
+                    try? await Task.sleep(for: .seconds(600))
+                }
+            }
+    }
+
+    private func measure() async {
+        guard let here = location.lastLocation else { return }
+        var times: [SearchController.Slot: TimeInterval] = [:]
+        let slots: [(SearchController.Slot, Place?)] = [(.home, home), (.work, work)]
+        for (slot, place) in slots {
+            // Next door there is nothing to drive.
+            guard let place, here.distance(from: CLLocation(latitude: place.point.latitude, longitude: place.point.longitude)) > 1000
+            else { continue }
+            planner.avoidsTolls = settings.avoidsTolls
+            planner.avoidsFerries = settings.avoidsFerries
+            // A route from the device's tiles gets no traffic time, and a time without traffic is not what the
+            // chip says: no time then.
+            guard let route = try? await planner.routes(from: here, to: place.point, areaSpan: place.areaSpan).first,
+                  !route.isOffline, !Task.isCancelled,
+                  let estimate = try? await traffic.estimate(route.coordinates), !Task.isCancelled
+            else { continue }
+            times[slot] = estimate.duration
+        }
+        guard !Task.isCancelled else { return }
+        onTimes(times)
     }
 }
 

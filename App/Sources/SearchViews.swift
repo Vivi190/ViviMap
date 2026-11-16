@@ -39,6 +39,8 @@ struct SearchBarButton: View {
 struct ShortcutChips: View {
     let hasHome: Bool
     let hasWork: Bool
+    /// The drive there now with live traffic, when it has been measured ("Ev · 24 dk").
+    var times: [SearchController.Slot: TimeInterval] = [:]
     let onTap: (SearchController.Slot) -> Void
 
     var body: some View {
@@ -49,11 +51,13 @@ struct ShortcutChips: View {
     }
 
     private func chip(_ title: String, _ symbol: String, _ slot: SearchController.Slot) -> some View {
-        Button { onTap(slot) } label: {
+        let time = times[slot].map { Formatting.duration(seconds: $0) }
+        return Button { onTap(slot) } label: {
             HStack(spacing: Spacing.xs) {
                 Image(systemName: symbol)
                     .foregroundStyle(Color.atlasAccent)
-                Text(title)
+                Text(time.map { "\(title) · \($0)" } ?? title)
+                    .monospacedDigit()
             }
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, Spacing.m)
@@ -62,7 +66,7 @@ struct ShortcutChips: View {
         }
         .buttonStyle(.plain)
         .atlasFloatingSurface(in: Capsule())
-        .accessibilityLabel(Text("\(title): rota"))
+        .accessibilityLabel(Text(time.map { "\(title), trafikle \($0): rota" } ?? "\(title): rota"))
         .accessibilityIdentifier("shortcut.\(slot.rawValue)")
     }
 }
@@ -310,6 +314,8 @@ struct PlaceCard: View {
     let place: Place
     /// Phone number and website, when the business index has them for this place.
     var contact: OfflinePlaceIndex.Contact? = nil
+    /// An İSPARK car park's fees ("1 sa 110 TL · … · İlk 15 dk ücretsiz"), once they are in.
+    var fees: String? = nil
     /// Driving time of the route asked for in advance, once it is in; without traffic, so "about".
     var drivingTime: TimeInterval? = nil
     /// Starred by the driver; nil hides the item (a place still being looked up has no identity to save).
@@ -445,6 +451,12 @@ struct PlaceCard: View {
                 }
                 if !place.subtitle.isEmpty {
                     Text(place.subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if let fees {
+                    Label(fees, systemImage: "turkishlirasign.circle")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)

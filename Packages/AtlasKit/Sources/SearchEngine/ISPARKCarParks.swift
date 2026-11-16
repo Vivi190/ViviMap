@@ -68,6 +68,51 @@ public struct ISPARKCarParks: Sendable {
         return (parts + ["İSPARK"]).joined(separator: " · ")
     }
 
+    /// What a car park costs, for its card: "1 sa 110 TL · 2 sa 140 TL · Tam gün 370 TL · İlk 15 dk ücretsiz".
+    /// One request for the one car park (its id, nothing about the user); nil without an answer or a tariff.
+    public func fees(of place: Place) async -> String? {
+        guard place.id.hasPrefix("ispark-"), let id = Int(place.id.dropFirst("ispark-".count)),
+              var components = URLComponents(string: "https://api.ibb.gov.tr/ispark/ParkDetay")
+        else { return nil }
+        components.queryItems = [URLQueryItem(name: "id", value: String(id))]
+        guard let url = components.url else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 6
+        guard let (data, response) = try? await session.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200
+        else { return nil }
+        return Self.fees(from: data)
+    }
+
+    private struct Detail: Decodable {
+        let tariff: String?
+        let freeTime: Int?
+    }
+
+    /// The service writes a tariff as "0-1 Saat : 110,00;1-2 Saat : 140,00;…;Tam Gün : 370,00". The first two
+    /// steps and the whole day are what a driver weighs; the rest would not fit a line.
+    static func fees(from data: Data) -> String? {
+        guard let detail = (try? JSONDecoder().decode([Detail].self, from: data))?.first else { return nil }
+        var steps: [(label: String, price: String)] = []
+        for entry in (detail.tariff ?? "").split(separator: ";") {
+            let parts = entry.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 2, !parts[1].isEmpty else { continue }
+            // "110,00" is 110 TL; "112,50" stays as written.
+            let price = parts[1].hasSuffix(",00") ? String(parts[1].dropLast(3)) : parts[1]
+            // "0-1 Saat": up to an hour.
+            if let range = parts[0].range(of: #"^\d+\s*-\s*(\d+)\s*Saat$"#, options: .regularExpression) {
+                let hours = parts[0][range].split(separator: "-").last.map { $0.replacingOccurrences(of: "Saat", with: "").trimmingCharacters(in: .whitespaces) } ?? ""
+                steps.append((label: "\(hours) sa", price: price))
+            } else if TurkishFold.fold(parts[0]) == "tam gun" {
+                steps.append((label: "Tam gün", price: price))
+            }
+        }
+        let shown = steps.filter { $0.label != "Tam gün" }.prefix(2) + steps.filter { $0.label == "Tam gün" }
+        var pieces = shown.map { "\($0.label) \($0.price) TL" }
+        if let free = detail.freeTime, free > 0 { pieces.append("İlk \(free) dk ücretsiz") }
+        return pieces.isEmpty ? nil : pieces.joined(separator: " · ")
+    }
+
     /// One list of car parks, nearest first: the live ones, and those of the indexes that are not one of them
     /// (within 80 m of a live car park it is the same one under another name, and the live record says more).
     static func merged(_ live: [Place], with others: [Place], near: GeoPoint, limit: Int = 20) -> [Place] {
