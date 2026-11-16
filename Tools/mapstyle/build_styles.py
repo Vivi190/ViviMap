@@ -133,19 +133,22 @@ def colour(value):
 # Places shown as Apple Maps-style badges: OpenMapTiles poi classes by group, with the label colour for day and
 # night. The badges themselves (a white SF Symbol on a circle in the group colour) are drawn by the app and
 # registered as "poi-<class>" (MapEngine/POIIcons.swift); keep the two lists in step. Bus stops stay off: Istanbul
-# has so many that they buried everything else.
+# has so many that they buried everything else. Two classes are not the tiles' own: "charging" (the tiles file
+# chargers under fuel) and "place", the plain dot of a business without a kind (MapEngine/BusinessOverlay.swift).
 POI_GROUPS = [
     (["restaurant", "fast_food", "cafe", "bar", "beer", "ice_cream"], "#B85B00", "#FFB25E"),  # food
-    (["shop", "grocery", "clothing_store"], "#946C00", "#F2C94C"),  # shopping
-    (["hospital", "pharmacy", "doctors", "dentist"], "#C62F2F", "#FF8A80"),  # health
+    (["shop", "grocery", "clothing_store", "bakery", "butcher", "alcohol_shop"], "#946C00", "#F2C94C"),  # shopping
+    (["hairdresser", "laundry"], "#B8306B", "#FF8FB3"),  # personal care
+    (["hospital", "pharmacy", "doctors", "dentist", "veterinary"], "#C62F2F", "#FF8A80"),  # health
     (["school", "college", "library"], "#7E5C36", "#D9B98C"),  # education
-    (["railway", "harbor", "ferry_terminal", "fuel", "parking", "aerialway"], "#1E66C4", "#82B6FF"),  # transport
+    (["railway", "harbor", "ferry_terminal", "fuel", "charging", "parking", "aerialway", "car"], "#1E66C4", "#82B6FF"),  # transport
     (["park", "zoo", "campsite", "golf", "playground"], "#277A40", "#7FD49A"),  # nature
     (["place_of_worship"], "#5E5E64", "#B8B8BE"),  # worship
     (["attraction", "art_gallery", "castle", "museum", "theatre", "cinema"], "#93398E", "#E39BE0"),  # culture
     (["lodging"], "#4B49C2", "#A5A4FF"),  # lodging
-    (["town_hall", "post", "police", "fire_station", "bank", "atm"], "#4E5D75", "#A9B6CC"),  # services
+    (["town_hall", "post", "police", "fire_station", "bank", "atm", "office"], "#4E5D75", "#A9B6CC"),  # services
     (["stadium", "swimming", "sports_centre"], "#17808F", "#7FD3E0"),  # sports
+    (["place"], "#6C6C71", "#AAB4C8"),  # no kind
 ]
 POI_CLASSES = [c for classes, _, _ in POI_GROUPS for c in classes]
 
@@ -158,7 +161,8 @@ def poi_layers(name, p):
         color += [group[0], group[column]]
     color.append(p["label_secondary"])
     layout = {
-        "icon-image": ["concat", "poi-", ["get", "class"]],
+        "icon-image": ["case", ["==", ["get", "subclass"], "charging_station"], "poi-charging",
+                       ["concat", "poi-", ["get", "class"]]],
         "text-field": NAME, "text-font": FONT_REGULAR,
         "text-size": ["interpolate", ["linear"], ["zoom"], 14, 10.5, 18, 12.5],
         "text-anchor": "top", "text-offset": [0, 1.0], "text-max-width": 8,
@@ -167,8 +171,9 @@ def poi_layers(name, p):
     }
     paint = {"text-color": color, "text-halo-color": p["label_halo"], "text-halo-width": 1.3}
     known = ["match", ["get", "class"], POI_CLASSES, True, False]
-    # Shops and clothing only from z16.5: there are too many; supermarkets stay, they are landmarks here.
-    major = ["match", ["get", "class"], [c for c in POI_CLASSES if c not in ("shop", "clothing_store")], True, False]
+    # Shops, services and offices only from z16.5: there are too many; supermarkets stay, they are landmarks here.
+    minor = ("shop", "clothing_store", "bakery", "butcher", "alcohol_shop", "hairdresser", "laundry", "car", "office", "place")
+    major = ["match", ["get", "class"], [c for c in POI_CLASSES if c not in minor], True, False]
     return [
         {"id": "poi-major", "type": "symbol", "source": "openmaptiles", "source-layer": "poi",
          "minzoom": 14, "maxzoom": 16.5, "filter": ["all", major, ["has", "name"],
@@ -329,6 +334,18 @@ def build(name, p):
              "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 15, 0, 16,
                                      ["coalesce", ["get", "render_min_height"], 0]],
          }},
+        # One-way streets: an arrow along the road at street zoom (the app draws it, MapEngine/RoadShields.swift).
+        # The tiles write a direction of travel against the line's own as -1. The lowest of the labels, so every
+        # other one is placed first, and placed without claiming room: the marks the app adds below it (bumps,
+        # lights) must not lose theirs to an arrow. Main roads are left out: their carriageways are drawn apart.
+        *[{"id": f"road-oneway{suffix}", "type": "symbol", "source": "openmaptiles", "source-layer": "transportation",
+           "minzoom": 16, "filter": ["all", ["==", ["get", "oneway"], direction], not_brunnel("tunnel"),
+                                     classes("minor", "tertiary", "secondary")],
+           "layout": {"symbol-placement": "line", "symbol-spacing": 110, "icon-image": "oneway", "icon-rotate": turn,
+                      "icon-size": ["interpolate", ["linear"], ["zoom"], 16, 0.8, 18, 1.15],
+                      "icon-padding": 4, "icon-ignore-placement": True},
+           "paint": {"icon-opacity": 0.75}}
+          for suffix, direction, turn in (("", 1, 0), ("-reverse", -1, 180))],
         {"id": "label-water", "type": "symbol", "source": "openmaptiles", "source-layer": "water_name",
          "filter": ["==", ["geometry-type"], "Point"],
          "layout": {"text-field": NAME, "text-font": FONT_ITALIC,

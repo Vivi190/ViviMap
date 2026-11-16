@@ -6753,6 +6753,156 @@
    }
   },
   {
+   "id": "road-oneway",
+   "type": "symbol",
+   "source": "openmaptiles",
+   "source-layer": "transportation",
+   "minzoom": 16,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "oneway"
+     ],
+     1
+    ],
+    [
+     "!",
+     [
+      "match",
+      [
+       "coalesce",
+       [
+        "get",
+        "brunnel"
+       ],
+       ""
+      ],
+      [
+       "tunnel"
+      ],
+      true,
+      false
+     ]
+    ],
+    [
+     "match",
+     [
+      "get",
+      "class"
+     ],
+     [
+      "minor",
+      "tertiary",
+      "secondary"
+     ],
+     true,
+     false
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": 110,
+    "icon-image": "oneway",
+    "icon-rotate": 0,
+    "icon-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     16,
+     0.8,
+     18,
+     1.15
+    ],
+    "icon-padding": 4,
+    "icon-ignore-placement": true
+   },
+   "paint": {
+    "icon-opacity": 0.75
+   }
+  },
+  {
+   "id": "road-oneway-reverse",
+   "type": "symbol",
+   "source": "openmaptiles",
+   "source-layer": "transportation",
+   "minzoom": 16,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "oneway"
+     ],
+     -1
+    ],
+    [
+     "!",
+     [
+      "match",
+      [
+       "coalesce",
+       [
+        "get",
+        "brunnel"
+       ],
+       ""
+      ],
+      [
+       "tunnel"
+      ],
+      true,
+      false
+     ]
+    ],
+    [
+     "match",
+     [
+      "get",
+      "class"
+     ],
+     [
+      "minor",
+      "tertiary",
+      "secondary"
+     ],
+     true,
+     false
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": 110,
+    "icon-image": "oneway",
+    "icon-rotate": 180,
+    "icon-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     16,
+     0.8,
+     18,
+     1.15
+    ],
+    "icon-padding": 4,
+    "icon-ignore-placement": true
+   },
+   "paint": {
+    "icon-opacity": 0.75
+   }
+  },
+  {
    "id": "label-water",
    "type": "symbol",
    "source": "openmaptiles",
@@ -7136,6 +7286,7 @@
       "pharmacy",
       "doctors",
       "dentist",
+      "veterinary",
       "school",
       "college",
       "library",
@@ -7143,6 +7294,7 @@
       "harbor",
       "ferry_terminal",
       "fuel",
+      "charging",
       "parking",
       "aerialway",
       "park",
@@ -7198,11 +7350,23 @@
    ],
    "layout": {
     "icon-image": [
-     "concat",
-     "poi-",
+     "case",
      [
-      "get",
-      "class"
+      "==",
+      [
+       "get",
+       "subclass"
+      ],
+      "charging_station"
+     ],
+     "poi-charging",
+     [
+      "concat",
+      "poi-",
+      [
+       "get",
+       "class"
+      ]
      ]
     ],
     "text-field": [
@@ -7266,14 +7430,23 @@
      [
       "shop",
       "grocery",
-      "clothing_store"
+      "clothing_store",
+      "bakery",
+      "butcher",
+      "alcohol_shop"
      ],
      "#946C00",
+     [
+      "hairdresser",
+      "laundry"
+     ],
+     "#B8306B",
      [
       "hospital",
       "pharmacy",
       "doctors",
-      "dentist"
+      "dentist",
+      "veterinary"
      ],
      "#C62F2F",
      [
@@ -7287,8 +7460,10 @@
       "harbor",
       "ferry_terminal",
       "fuel",
+      "charging",
       "parking",
-      "aerialway"
+      "aerialway",
+      "car"
      ],
      "#1E66C4",
      [
@@ -7322,7 +7497,8 @@
       "police",
       "fire_station",
       "bank",
-      "atm"
+      "atm",
+      "office"
      ],
      "#4E5D75",
      [
@@ -7331,6 +7507,10 @@
       "sports_centre"
      ],
      "#17808F",
+     [
+      "place"
+     ],
+     "#6C6C71",
      "#6C6C71"
     ],
     "text-halo-color": "#FFFFFF",
@@ -7361,10 +7541,16 @@
       "shop",
       "grocery",
       "clothing_store",
+      "bakery",
+      "butcher",
+      "alcohol_shop",
+      "hairdresser",
+      "laundry",
       "hospital",
       "pharmacy",
       "doctors",
       "dentist",
+      "veterinary",
       "school",
       "college",
       "library",
@@ -7372,8 +7558,10 @@
       "harbor",
       "ferry_terminal",
       "fuel",
+      "charging",
       "parking",
       "aerialway",
+      "car",
       "park",
       "zoo",
       "campsite",
@@ -7393,9 +7581,11 @@
       "fire_station",
       "bank",
       "atm",
+      "office",
       "stadium",
       "swimming",
-      "sports_centre"
+      "sports_centre",
+      "place"
      ],
      true,
      false
@@ -7407,11 +7597,23 @@
    ],
    "layout": {
     "icon-image": [
-     "concat",
-     "poi-",
+     "case",
      [
-      "get",
-      "class"
+      "==",
+      [
+       "get",
+       "subclass"
+      ],
+      "charging_station"
+     ],
+     "poi-charging",
+     [
+      "concat",
+      "poi-",
+      [
+       "get",
+       "class"
+      ]
      ]
     ],
     "text-field": [
@@ -7475,14 +7677,23 @@
      [
       "shop",
       "grocery",
-      "clothing_store"
+      "clothing_store",
+      "bakery",
+      "butcher",
+      "alcohol_shop"
      ],
      "#946C00",
+     [
+      "hairdresser",
+      "laundry"
+     ],
+     "#B8306B",
      [
       "hospital",
       "pharmacy",
       "doctors",
-      "dentist"
+      "dentist",
+      "veterinary"
      ],
      "#C62F2F",
      [
@@ -7496,8 +7707,10 @@
       "harbor",
       "ferry_terminal",
       "fuel",
+      "charging",
       "parking",
-      "aerialway"
+      "aerialway",
+      "car"
      ],
      "#1E66C4",
      [
@@ -7531,7 +7744,8 @@
       "police",
       "fire_station",
       "bank",
-      "atm"
+      "atm",
+      "office"
      ],
      "#4E5D75",
      [
@@ -7540,6 +7754,10 @@
       "sports_centre"
      ],
      "#17808F",
+     [
+      "place"
+     ],
+     "#6C6C71",
      "#6C6C71"
     ],
     "text-halo-color": "#FFFFFF",
