@@ -18,7 +18,8 @@ Harita ayarları → Test → **Sürüş simülasyonu** açılınca rota kartın
 6. Yazmadan önce "Yakında" altındaki sekiz düğme (Benzinlik, Otopark, Eczane, Şarj, Market, ATM, Restoran, Kafe) en yakınları listelemeli; uçak modunda da.
 7. Bir sonuç seçin. Haritada kırmızı iğne, kartta adı, türü ve mesafesi ("Adliye · 3,0 km") ve adresi görünmeli.
 8. Haritayı sokak düzeyine yaklaştırın: çevredeki işletmeler (restoran, market, banka, kuaför…) rozet olarak görünmeli. Bir rozete dokunun: o yerin kartı açılmalı; işletmelerde adres hemen, haritanın kendi rozetlerinde (istasyon, park…) bir an sonra gelir. Kartta, veride varsa, telefon numarası görünmeli ve dokununca arama başlamalı; **Rota** düğmesi birkaç saniye içinde yaklaşık sürüş süresini göstermeli ("Rota · 12 dk"); "…" menüsündeki "Yeri paylaş" bir harita bağlantısı göndermeli; "…" menüsünde "Web sitesi", "Google Haritalar'da aç" ve "Yandex Haritalar'da aç" yorumlar için o uygulamayı açmalı. Rozet olmayan bir noktaya uzun basın: kartta adres çıkmalı. Kartın "…" menüsünden **Ev olarak kaydet** seçilince arama çubuğunun altında "Ev" kapsülü çıkmalı; dokununca doğrudan rota kartı açılmalı.
-9. Kartın "…" menüsündeki "Yakındaki otoparklar" o yerin çevresindeki otoparkları, o yere uzaklıklarıyla listelemeli.
+9. Kartın "…" menüsündeki "Yakındaki otoparklar" o yerin çevresindeki otoparkları, o yere uzaklıklarıyla listelemeli. İSPARK otoparkları bir iki saniye içinde o anki boş yer sayısıyla görünmeli ("Otopark · 83 boş yer · 100 araçlık · 08:00-19:00 · İSPARK"; yer kalmadıysa "Dolu").
+10. Kartın "…" menüsünden bir yeri **Kaydet**: arama ekranında "Kaydedilenler" altında görünmeli; aynı menüden çıkarılabilmeli.
 
 ## Rota seçimi
 

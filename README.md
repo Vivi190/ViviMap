@@ -38,7 +38,7 @@
 **Search**, tuned for Istanbul (Photon, OpenStreetMap, Overture Maps)
 - Businesses by name, nearest first, also without a connection: an on-device index of 389 000 shops, restaurants and offices from the open places data of Overture Maps. They show as badges on the map at street zoom, and their cards carry phone number and website where the data has them.
 - Addresses as people write them: *"Yakacık Mah. Atatürk Cad. No:12 D:5 Kartal/İstanbul"*.
-- Kinds of places near you (*"benzinlik"*, *"en yakın eczane"*), in a district (*"esentepe eczane"*), and car parks around a destination.
+- Kinds of places near you (*"benzinlik"*, *"en yakın eczane"*), in a district (*"esentepe eczane"*), and car parks around a destination, İSPARK's with their free spaces right now.
 - Measured against OpenStreetMap: the first result is the intended place for 64 of 64 benchmark queries ([report](docs/research/2026-11-14-arama-olcumu.md), in Turkish).
 
 **Offline**
@@ -95,13 +95,14 @@ On a Mac: `brew install xcodegen`, run `xcodegen`, then open `Atlas.xcodeproj`. 
 
 ## Privacy
 
-No accounts, analytics or tracking. Saved places and trip history stay on the phone. To do its job the app sends search text and your location to Photon (to rank nearby results), start and destination to Valhalla, route shapes and map areas to HERE for traffic, and requests map tiles for the area on screen from OpenFreeMap. No identifiers are sent. Businesses are searched on the phone. A place card can open the place in Google Maps or Yandex Maps for its reviews; only then, and only when asked, does the place's name and position go to that service.
+No accounts, analytics or tracking. Saved places and trip history stay on the phone. To do its job the app sends search text and your location to Photon (to rank nearby results), start and destination to Valhalla, route shapes and map areas to HERE for traffic, and requests map tiles for the area on screen from OpenFreeMap. No identifiers are sent. Businesses are searched on the phone. A list of car parks asks Istanbul's open data service for İSPARK's free spaces: one request for the whole city, with no position in it. A place card can open the place in Google Maps or Yandex Maps for its reviews; only then, and only when asked, does the place's name and position go to that service.
 
 ## Data and acknowledgements
 
 - Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, ODbL. Tiles by [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema); offline tiles built with [Planetiler](https://github.com/onthegomap/planetiler).
 - Search by [Photon](https://github.com/komoot/photon) (komoot). Routing by [Valhalla](https://github.com/valhalla/valhalla), on the FOSSGIS public server and on the device through [valhalla-mobile](https://github.com/Rallista/valhalla-mobile).
 - Traffic © HERE.
+- Free spaces in İSPARK car parks from the [İBB Open Data Portal](https://data.ibb.gov.tr/license) (İBB Açık Veri Lisansı).
 - Businesses from the places theme of the [Overture Maps Foundation](https://docs.overturemaps.org/attribution/): records from Meta, Microsoft and others (CDLA-Permissive-2.0), Foursquare (Apache-2.0) and AllThePlaces (CC0-1.0).
 - The OpenStreetMap extracts in this repository (speed cameras, speed bumps, traffic lights, test fixtures) are © OpenStreetMap contributors, ODbL.
 - Built with MapLibre Native (BSD-2-Clause), MapLibre SwiftUI DSL (BSD-3-Clause), Ferrostar (BSD-3-Clause) and valhalla-mobile (MIT).

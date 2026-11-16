@@ -95,13 +95,14 @@ Mac'te: `brew install xcodegen`, `xcodegen`, sonra `Atlas.xcodeproj`'u aç. HERE
 
 ## Gizlilik
 
-Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda kalır. Uygulama işini yapmak için arama metnini ve konumunu Photon'a (yakındaki sonuçları öne almak için), başlangıç ve hedefi Valhalla'ya, trafik için rota şeklini ve harita bölgesini HERE'ye gönderir; ekrandaki bölgenin harita karolarını OpenFreeMap'ten ister. Kimlik bilgisi gönderilmez. İşletmeler telefonda aranır. Yer kartı, yorumları için yeri Google Haritalar'da ya da Yandex Haritalar'da açabilir; yerin adı ve konumu yalnızca o zaman ve istendiğinde o servise gider.
+Hesap, analiz ya da izleme yok. Kayıtlı yerler ve sürüş geçmişi telefonda kalır. Uygulama işini yapmak için arama metnini ve konumunu Photon'a (yakındaki sonuçları öne almak için), başlangıç ve hedefi Valhalla'ya, trafik için rota şeklini ve harita bölgesini HERE'ye gönderir; ekrandaki bölgenin harita karolarını OpenFreeMap'ten ister. Kimlik bilgisi gönderilmez. İşletmeler telefonda aranır. Otopark listesi, İSPARK'ın boş yer sayıları için İstanbul'un açık veri servisine sorar: tüm şehir için tek istek, içinde konum yok. Yer kartı, yorumları için yeri Google Haritalar'da ya da Yandex Haritalar'da açabilir; yerin adı ve konumu yalnızca o zaman ve istendiğinde o servise gider.
 
 ## Veri ve teşekkür
 
 - Harita verisi © [OpenStreetMap](https://www.openstreetmap.org/copyright) katkıcıları, ODbL. Karolar [OpenFreeMap](https://openfreemap.org) (OpenMapTiles şeması); çevrimdışı karolar [Planetiler](https://github.com/onthegomap/planetiler) ile üretilir.
 - Arama [Photon](https://github.com/komoot/photon) (komoot). Rota [Valhalla](https://github.com/valhalla/valhalla); FOSSGIS'in ortak sunucusunda ve cihazda [valhalla-mobile](https://github.com/Rallista/valhalla-mobile) ile.
 - Trafik © HERE.
+- İSPARK otoparklarındaki boş yer sayıları [İBB Açık Veri Portalı](https://data.ibb.gov.tr/license)'ndan (İBB Açık Veri Lisansı).
 - İşletmeler [Overture Maps Foundation](https://docs.overturemaps.org/attribution/) yer verisinden: Meta, Microsoft ve diğerleri (CDLA-Permissive-2.0), Foursquare (Apache-2.0) ve AllThePlaces (CC0-1.0) kayıtları.
 - Bu depodaki OpenStreetMap kesitleri (hız kameraları, kasisler, trafik ışıkları, test verileri) © OpenStreetMap katkıcıları, ODbL.
 - Kullanılan kütüphaneler: MapLibre Native (BSD-2-Clause), MapLibre SwiftUI DSL (BSD-3-Clause), Ferrostar (BSD-3-Clause), valhalla-mobile (MIT).
