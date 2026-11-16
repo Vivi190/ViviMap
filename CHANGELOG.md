@@ -2,9 +2,14 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
+## Build 30 — 2026-11-16
+
+- A tap on a place badge of the map (a shop, a pharmacy, a station) opens that place's card: its name at once, its address a moment later.
+- In landscape, speed and limit sit top right, as upright, instead of over the road ahead.
+
 ## Build 29 — 2026-11-16
 
-Based on a side-by-side study of Yandex Navigator and Yandex Maps (same roads, same minute) and three code audits. Build 28 was not uploaded: its CI run never started.
+Based on a side-by-side study of Yandex Navigator and Yandex Maps (same roads, same minute) and three code audits. Build 28 is the same code: a delayed CI run uploaded it after 29.
 
 **Traffic**
 - Roads are coloured per HERE sub-segment, so a colour changes where the traffic does: a 12 km stretch was one colour end to end.
