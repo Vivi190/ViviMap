@@ -68,8 +68,9 @@ Harita ayarları → Tanılama → **Sürüş simülasyonu** açılınca rota ka
 2. Navigasyonda "Kasis · 80 m" ya da "Hız kamerası · 300 m" etiketi çıkmalı ve uyarı bir kez seslendirilmeli. Ayarlar → Uyarılar'dan açılıp kapanır.
 3. Bölgede OSM'de neredeyse kamera yok; bilinen kameralar ve kasisler uzun basıp "…" menüsünden işaretlenebilir. İşaretler Ayarlar → Uyarılar → İşaretlerim'den silinir.
 4. Canlı trafikli bir rotada hız sınırı neredeyse her yolda görünmeli (OpenStreetMap'te sınır olmayan yollarda HERE'nin sınırı kullanılır). Tabeladaki sınırla karşılaştırın; yanlış ya da eksik gördüğünüz yolları not edin. Uçak modunda sınır yalnızca OpenStreetMap'te olan yollarda görünür. Sınırın belirgin üstünde (50'lik yolda 57 ve üstü) 3 saniye kalınca "Hız sınırı 50." denmeli.
-5. Sağ üstteki hız göstergesi araçla tutarlı olmalı; tünelde "–" ve sol üstte "GPS sinyali yok" görünmeli.
-6. Gün batımından sonra harita kendiliğinden gece moduna geçmeli.
+5. Rota başlatmadan, harita açıkken bildiğiniz bir kasise ya da kameraya doğru sürün: yaklaşık 80 m (kasis) ya da 300 m (kamera) kala bir kez "80 metre sonra kasis." denmeli. Paralel yoldaki ya da arkada kalan kasis için uyarı gelmemeli; virajda geç gelirse not edin. Ayarlar → Uyarılar → "Rota yokken de uyar" kapatılınca susmalı.
+6. Sağ üstteki hız göstergesi araçla tutarlı olmalı; tünelde "–" ve sol üstte "GPS sinyali yok" görünmeli.
+7. Gün batımından sonra harita kendiliğinden gece moduna geçmeli.
 
 ## Çevrimdışı
 
