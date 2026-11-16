@@ -87,6 +87,10 @@ public final class NavigationSession {
     @ObservationIgnored private var lastFixTime = Date.distantPast
     /// Spoken warning when clearly over the posted limit (map settings → Uyarılar); set before a route starts.
     @ObservationIgnored public var warnsSpeeding = true
+    /// km/h over the limit before the spoken warning; 0 is SpeedingWatch's own rule. Read at `start`.
+    @ObservationIgnored public var speedingMargin = 0
+    /// Off: the turns, the arrival and the route's own news go unsaid; the warnings are still spoken.
+    @ObservationIgnored public var speaksTurns = true
     @ObservationIgnored private var speedingWatch = SpeedingWatch()
     /// The traffic provider's limits as handed over, kept so they can be placed again when the route changes.
     @ObservationIgnored private var limitStretches: [RouteSpeedLimit] = []
@@ -166,6 +170,7 @@ public final class NavigationSession {
         planner = AnnouncementPlanner()
         speedingWatch = SpeedingWatch()
         speedingWatch.isEnabled = warnsSpeeding
+        speedingWatch.margin = speedingMargin
         // Those of the drive before belong to another route.
         limitStretches = []
         routeLimits = RouteLimits()
@@ -187,7 +192,7 @@ public final class NavigationSession {
             }
         try core.startNavigation(route: option.route, userLocation: UserLocation(clLocation: location))
         isActive = true
-        voice.speak("Rota oluşturuldu. \(Formatted.duration(expectedDuration ?? option.duration)) sürecek.")
+        if speaksTurns { voice.speak("Rota oluşturuldu. \(Formatted.duration(expectedDuration ?? option.duration)) sürecek.") }
     }
 
     /// Moves guidance to another route without ending the session: an accepted traffic suggestion, or a way
@@ -437,7 +442,7 @@ public final class NavigationSession {
 
         if case .complete = state.tripState {
             guard !hasArrived else { return }
-            voice.speak("Hedefinize ulaştınız.")
+            if speaksTurns { voice.speak("Hedefinize ulaştınız.") }
             hasArrived = true
             arrivedAt = .now
             // Cleared so the bottom bar says "Vardınız" instead of a stale arrival time.
@@ -593,7 +598,7 @@ public final class NavigationSession {
     ) {
         let type = content.maneuverType
         let modifier = content.maneuverModifier
-        guard !TurkishInstructions.isSilent(type: type, modifier: modifier) else { return }
+        guard speaksTurns, !TurkishInstructions.isSilent(type: type, modifier: modifier) else { return }
         let arriving = type == .arrive
         // At the destination or a stop itself only its side is worth a sentence; at the destination "Hedefinize
         // ulaştınız." follows on arrival.
@@ -615,7 +620,7 @@ public final class NavigationSession {
 
     /// Sentences about the route itself (left it, rebuilt, could not be rebuilt), each at most once in 30 s.
     private func status(_ sentence: String) {
-        if statusThrottle.allows(sentence, at: lastFixTime) { voice.speak(sentence) }
+        if speaksTurns, statusThrottle.allows(sentence, at: lastFixTime) { voice.speak(sentence) }
     }
 }
 

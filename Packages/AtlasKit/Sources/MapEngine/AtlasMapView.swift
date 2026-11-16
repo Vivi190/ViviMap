@@ -461,7 +461,7 @@ public struct AtlasMapView: View {
                 // Closer before a turn, farther on fast roads: eased here, because swiftui-dsl's course
                 // tracking sets the zoom without animation and the map jumped. Only while it follows the car;
                 // a driver who moved the map keeps their view.
-                if guiding, let zoom, mapView.userTrackingMode == .followWithCourse, abs(mapView.zoomLevel - zoom) > 0.05 {
+                if guiding, let zoom, mapView.userTrackingMode != .none, abs(mapView.zoomLevel - zoom) > 0.05 {
                     mapView.setZoomLevel(zoom, animated: true)
                 }
             }

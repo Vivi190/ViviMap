@@ -54,6 +54,23 @@ public final class AppSettings {
         didSet { defaults.set(warnsSpeeding, forKey: Keys.speeding) }
     }
 
+    /// How far over the limit the spoken warning waits, km/h; 0 is the default rule (more than 10 % and at
+    /// least 6 km/h over).
+    public var speedingMargin: Int {
+        didSet { defaults.set(speedingMargin, forKey: Keys.speedingMargin) }
+    }
+
+    /// Guidance says the turns; off, only the warnings are spoken (cameras, bumps, speed, road events), as
+    /// Yandex's "important only" for a driver who knows the way. On by default.
+    public var speaksTurns: Bool {
+        didSet { defaults.set(speaksTurns, forKey: Keys.speaksTurns) }
+    }
+
+    /// The guidance map with north up, flat, instead of turning with the car. Off by default.
+    public var guidesNorthUp: Bool {
+        didSet { defaults.set(guidesNorthUp, forKey: Keys.northUp) }
+    }
+
     /// The camera and bump warnings on a drive without a destination too (on by default).
     public var warnsWithoutRoute: Bool {
         didSet { defaults.set(warnsWithoutRoute, forKey: Keys.withoutRoute) }
@@ -85,6 +102,9 @@ public final class AppSettings {
         warnsBumps = defaults.object(forKey: Keys.bumps) as? Bool ?? true
         warnsSpeeding = defaults.object(forKey: Keys.speeding) as? Bool ?? true
         warnsWithoutRoute = defaults.object(forKey: Keys.withoutRoute) as? Bool ?? true
+        speedingMargin = defaults.integer(forKey: Keys.speedingMargin)
+        speaksTurns = defaults.object(forKey: Keys.speaksTurns) as? Bool ?? true
+        guidesNorthUp = defaults.bool(forKey: Keys.northUp)
         // On unless the driver switched it off: green-to-red roads are what a traffic app is opened for.
         showsTrafficLayer = defaults.object(forKey: Keys.trafficLayer) as? Bool ?? true
         avoidsTolls = defaults.bool(forKey: Keys.avoidsTolls)
@@ -98,6 +118,9 @@ public final class AppSettings {
         static let bumps = "atlas.warn.bumps"
         static let speeding = "atlas.warn.speeding"
         static let withoutRoute = "atlas.warn.withoutRoute"
+        static let speedingMargin = "atlas.warn.speedingMargin"
+        static let speaksTurns = "atlas.voice.turns"
+        static let northUp = "atlas.guidance.northUp"
         static let trafficLayer = "atlas.trafficLayer"
         static let avoidsTolls = "atlas.route.avoidsTolls"
         static let avoidsFerries = "atlas.route.avoidsFerries"

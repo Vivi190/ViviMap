@@ -3,9 +3,12 @@ import Foundation
 
 /// "Hız sınırı 50." when the driver stays clearly over the posted limit (NavigationSession.speedLimit).
 /// Clearly over: more than 10 % and at least 6 km/h above, so GPS speed jitter and the speedometer's own offset
-/// stay quiet; held for 3 s, so a moment of overtaking is not worth a word. Again at most once a minute.
+/// stay quiet, or more than `margin` km/h when the driver set one; held for 3 s, so a moment of overtaking is
+/// not worth a word. Again at most once a minute.
 struct SpeedingWatch {
     var isEnabled = true
+    /// km/h over the limit the driver tolerates; 0 is the rule above.
+    var margin = 0
     private var overSince: Date?
     private var lastWarning: Date?
 
@@ -14,7 +17,7 @@ struct SpeedingWatch {
     ///   - limit: posted limit in km/h; nil where none is known (no warning without a sign).
     ///   - time: the fix's timestamp, so the rhythm follows the drive rather than the wall clock.
     mutating func update(speedKmh: Double, limit: Int?, at time: Date) -> String? {
-        guard isEnabled, let limit, speedKmh > Double(limit) + max(6, Double(limit) * 0.1) else {
+        guard isEnabled, let limit, speedKmh > Double(limit) + (margin > 0 ? Double(margin) : max(6, Double(limit) * 0.1)) else {
             overSince = nil
             return nil
         }

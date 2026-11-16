@@ -14,6 +14,15 @@ struct SpeedingWatchTests {
         for second in 0 ... 10 { #expect(watch.update(speedKmh: 55, limit: 50, at: at(Double(second))) == nil) }
     }
 
+    /// A margin of the driver's own replaces the rule: 10 km/h over a 50 is 60, so 59 stays quiet.
+    @Test func theDriversMarginIsTheLine() {
+        var watch = SpeedingWatch()
+        watch.margin = 10
+        for second in 0 ... 5 { #expect(watch.update(speedKmh: 59, limit: 50, at: at(Double(second))) == nil) }
+        #expect(watch.update(speedKmh: 61, limit: 50, at: at(10)) == nil)
+        #expect(watch.update(speedKmh: 61, limit: 50, at: at(13)) == "Hız sınırı 50.")
+    }
+
     @Test func clearlyOverForThreeSecondsWarnsOnce() {
         var watch = SpeedingWatch()
         #expect(watch.update(speedKmh: 62, limit: 50, at: at(0)) == nil)

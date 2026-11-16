@@ -128,6 +128,7 @@ struct MapSettingsView: View {
 
     /// Which Turkish voice guidance uses, and how to get a better one when only the compact voice is there.
     private var voiceSection: some View {
+        @Bindable var settings = settings
         let voice = VoiceGuide.bestTurkishVoice()
         let quality = switch voice?.quality {
         case .premium: "Premium"
@@ -136,6 +137,7 @@ struct MapSettingsView: View {
         }
         return Section {
             LabeledContent("Ses", value: voice.map { "\($0.name) · \(quality)" } ?? "Türkçe ses yok")
+            Toggle("Dönüşleri seslendir", isOn: $settings.speaksTurns)
             if voice != nil {
                 Button("Örnek dinle", systemImage: "play.circle") {
                     sampleVoice.speak("300 metre sonra sağa dönün, Ankara Caddesi.")
@@ -167,6 +169,14 @@ struct MapSettingsView: View {
             }
 
             Section {
+                Toggle("Navigasyonda kuzey yukarıda", isOn: $settings.guidesNorthUp)
+            } header: {
+                Text("Navigasyon")
+            } footer: {
+                Text("Kapalıyken harita aracın gittiği yöne döner, eğik görünür.")
+            }
+
+            Section {
                 Toggle("Ücretli yollardan kaçın", isOn: $settings.avoidsTolls)
                 Toggle("Feribotlardan kaçın", isOn: $settings.avoidsFerries)
             } header: {
@@ -181,6 +191,14 @@ struct MapSettingsView: View {
                 Toggle("Hız kamerası uyarıları", isOn: $settings.warnsCameras)
                 Toggle("Kasis uyarıları", isOn: $settings.warnsBumps)
                 Toggle("Hız sınırı uyarısı", isOn: $settings.warnsSpeeding)
+                if settings.warnsSpeeding {
+                    Picker("Uyarı eşiği", selection: $settings.speedingMargin) {
+                        Text("Otomatik").tag(0)
+                        Text("+5 km/sa").tag(5)
+                        Text("+10 km/sa").tag(10)
+                        Text("+20 km/sa").tag(20)
+                    }
+                }
                 Toggle("Rota yokken de uyar", isOn: $settings.warnsWithoutRoute)
                 NavigationLink {
                     MarkedHazardsView()

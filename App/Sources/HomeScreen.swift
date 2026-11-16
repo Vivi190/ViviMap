@@ -958,6 +958,8 @@ struct HomeScreen: View {
             navigation.hazardKinds = hazardKinds
             navigation.userHazards = userHazards.hazards
             navigation.warnsSpeeding = settings.warnsSpeeding
+            navigation.speedingMargin = settings.speedingMargin
+            navigation.speaksTurns = settings.speaksTurns
             navigation.voice.isMuted = isMuted
             try navigation.start(route, from: start, expectedDuration: estimate?.duration)
             // The drive has its destination: the other results are done with.
@@ -1011,9 +1013,9 @@ struct HomeScreen: View {
         // Set here as well as by the map's own report (followingHandler): the button must not wait for it.
         mapDetached = false
         guard let here = (simulatedPuck ?? guidedPuck)?.lastLocation ?? location.lastLocation else { return followCourse(zoom: zoom) }
-        let direction = here.course >= 0 ? here.course : viewport.bearing
+        let direction = settings.guidesNorthUp ? 0 : here.course >= 0 ? here.course : viewport.bearing
         isRecentering = true
-        camera = .center(here.coordinate, zoom: zoom, pitch: Self.pitch3D, direction: direction)
+        camera = .center(here.coordinate, zoom: zoom, pitch: settings.guidesNorthUp ? 0 : Self.pitch3D, direction: direction)
         // After MapLibre's 0.3 s centre and pitch animations; following earlier would cut them short too.
         Task {
             try? await Task.sleep(for: .milliseconds(600))
@@ -1023,7 +1025,10 @@ struct HomeScreen: View {
     }
 
     private func followCourse(zoom: Double) {
-        camera = .trackUserLocationWithCourse(zoom: zoom, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
+        // North up: flat and following the car without turning, as the driver chose in the settings.
+        camera = settings.guidesNorthUp
+            ? .trackUserLocation(zoom: zoom, pitch: 0, pitchRange: .fixed(0))
+            : .trackUserLocationWithCourse(zoom: zoom, pitch: Self.pitch3D, pitchRange: .fixed(Self.pitch3D))
     }
 
     /// The whole rest of the route, framed between the banner and the bottom bar; "Konumumu göster" returns.
