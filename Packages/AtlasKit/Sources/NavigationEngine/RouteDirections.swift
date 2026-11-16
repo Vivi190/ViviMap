@@ -21,7 +21,8 @@ public enum RouteDirections {
     }
 
     /// A step that ends in nothing to do (the road only changes its name, or goes straight on) gives no line:
-    /// its length is added to the next one's. A ferry does get a line, also when it lies straight ahead.
+    /// its length is added to the next one's. Nor does leaving a roundabout: the line of entering it has said
+    /// which exit. A ferry does get a line, also when it lies straight ahead.
     static func list(for steps: [RouteStep]) -> [RouteDirection] {
         var lines: [RouteDirection] = []
         var driven = 0.0
@@ -31,6 +32,7 @@ public enum RouteDirections {
             driven += step.distance
             let following = steps[index + 1]
             guard let content = step.visualInstructions.first?.primaryContent,
+                  content.maneuverType != .exitRoundabout, content.maneuverType != .exitRotary,
                   content.maneuverType == .notification
                   || !TurkishInstructions.isSilent(type: content.maneuverType, modifier: content.maneuverModifier),
                   let action = TurkishInstructions.action(

@@ -31,6 +31,14 @@ final class HomeScreenshotTests: XCTestCase {
             capture("1a-badge-card")
             app.buttons["Kapat"].firstMatch.tap()
         }
+        // Street zoom, reviewed from the screenshot: one-way arrows and the place classes drawn from zoom 16.5.
+        // No assertion: what shows depends on live tiles.
+        let street = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.33))
+        street.doubleTap()
+        settle(2)
+        street.doubleTap()
+        settle(8)
+        capture("1b-street")
 
         // Search (live Photon request) → pick the first result → place card + pin.
         app.buttons["search.open"].tap()

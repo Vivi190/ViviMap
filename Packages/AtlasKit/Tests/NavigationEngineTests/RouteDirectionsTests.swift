@@ -53,11 +53,13 @@ struct RouteDirectionsTests {
         #expect(lines.first?.road == nil)
     }
 
-    /// The exit to take is written on the step the roundabout begins; a ferry is boarded, then left.
+    /// The exit to take is written on the step the roundabout begins, and leaving it is no line of its own; a
+    /// ferry is boarded, then left.
     @Test func roundaboutsAndFerries() {
         let lines = RouteDirections.list(for: [
             step(300, .roundabout, onto: "Sahil Yolu"),
-            step(40, .notification, onto: "Eskihisar - Topçular", exit: 2),
+            step(30, .exitRoundabout, onto: "Sahil Yolu", exit: 2),
+            step(40, .notification, onto: "Eskihisar - Topçular"),
             step(4_000, .notification, .straight, onto: "İskele Caddesi"),
             step(500, .arrive, onto: "Hedef"),
             step(0, nil),
@@ -66,7 +68,7 @@ struct RouteDirectionsTests {
             TurkishInstructions.action(type: .roundabout, modifier: nil, roundaboutExitNumber: 2) ?? "",
             "Feribota binin", "Feribottan inin", TurkishInstructions.action(type: .arrive, modifier: nil) ?? "",
         ])
-        #expect(lines.map(\.distance) == [300, 40, 4_000, 500])
+        #expect(lines.map(\.distance) == [300, 70, 4_000, 500])
     }
 
     @Test func aRouteOfOneStepHasNoTurns() {
