@@ -2,6 +2,10 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
+## Build 35 (not yet uploaded)
+
+- **Leave later:** the route card has a start time ("Çıkış"): a later one measures the routes with the traffic HERE expects then, and the arrival follows from it ("Beklenen trafik · © HERE"). "Şimdi" goes back to the live traffic. Guidance itself always starts now.
+
 ## Build 34 — 2026-11-17
 
 - **Stops on the way:** while guiding, a tap on the map shows "Yol üstünde ara". It lists fuel stations, chargers, markets, pharmacies, ATMs, cafés and restaurants ahead on the route, from the indexes on the device, the cheapest to turn into first, with how far ahead each is and on which side. A tap makes one a stop without ending guidance ("Ara durak eklendi."): an orange pin, its own prompts ("Ara durağa 400 metre kaldı.", "Ara durak sağda"), then guidance goes on to the destination. Reroutes and traffic rounds keep the stop; "Ara durağı kaldır" drops it. One stop at a time.
