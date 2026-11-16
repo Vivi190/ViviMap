@@ -270,13 +270,15 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
         return min(previous[second.count], limit + 1)
     }
 
-    /// The places with a kind inside a box, the likeliest to exist first: what the map shows as badges. Empty
-    /// for an index without weights (the street index).
+    /// The places inside a box as the map shows them: those with a kind, the likeliest to exist first, then
+    /// those without one for as far as `limit` goes. A street of shops fills it with its shops; where there is
+    /// room, the offices and services show too (three places in ten have no kind). Empty for an index without
+    /// weights (the street index).
     public func places(west: Double, south: Double, east: Double, north: Double, limit: Int = 200) -> [Place] {
         let sql = """
         SELECT id, name, subtitle, category, lat, lon FROM place
-        WHERE lat BETWEEN ?1 AND ?2 AND lon BETWEEN ?3 AND ?4 AND category IS NOT NULL
-        ORDER BY weight DESC LIMIT ?5
+        WHERE lat BETWEEN ?1 AND ?2 AND lon BETWEEN ?3 AND ?4
+        ORDER BY category IS NULL, weight DESC LIMIT ?5
         """
         let found = try? rows(sql) { statement in
             sqlite3_bind_double(statement, 1, south)
@@ -308,7 +310,9 @@ public struct OfflinePlaceIndex: PlaceSearchProvider {
     /// nil when there is none, and for an index built without contacts.
     public func contact(of place: Place) -> Contact? {
         var row: Int64?
-        if place.id.hasPrefix(idPrefix + "-") {
+        // Its own id counts only while that row still has its name: a starred place keeps the number of the
+        // build it was starred in, and every build numbers the places anew.
+        if place.id.hasPrefix(idPrefix + "-"), self.place(id: place.id)?.name == place.name {
             row = Int64(place.id.dropFirst(idPrefix.count + 1))
         } else if let twin = (try? matches(place.name, near: place.point, limit: 5))?.first(where: { BusinessSearchProvider.same($0, place) }) {
             row = Int64(twin.id.dropFirst(idPrefix.count + 1))

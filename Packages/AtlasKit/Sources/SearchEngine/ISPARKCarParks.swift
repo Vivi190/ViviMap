@@ -34,13 +34,14 @@ public struct ISPARKCarParks: Sendable {
 
     static func places(from data: Data) throws -> [Place] {
         try JSONDecoder().decode([CarPark].self, from: data).compactMap { park in
+            let name = park.parkName.trimmingCharacters(in: .whitespaces)
             // Closed for the day: its count of free spaces would send a driver to a shut gate.
-            guard park.isOpen == 1, let latitude = Double(park.lat), let longitude = Double(park.lng),
+            guard park.isOpen == 1, !isForBuses(name), let latitude = Double(park.lat), let longitude = Double(park.lng),
                   (40.5 ... 41.7).contains(latitude), (27.9 ... 30.0).contains(longitude)
             else { return nil }
             return Place(
                 id: "ispark-\(park.parkID)",
-                name: park.parkName.trimmingCharacters(in: .whitespaces),
+                name: name,
                 subtitle: subtitle(free: park.emptyCapacity, capacity: park.capacity, hours: park.workHours),
                 point: GeoPoint(latitude: latitude, longitude: longitude),
                 category: "amenity=parking"
@@ -48,11 +49,20 @@ public struct ISPARKCarParks: Sendable {
         }
     }
 
-    /// "83 boş yer · 100 araçlık · 08:00-19:00 · İSPARK", "Dolu" when no space is left. What a driver decides
-    /// on comes first: a list row shows one line of it.
+    /// A car park for coaches and service buses, by its name ("… Otobüs Otoparkı", "… Servis ve Turizm
+    /// Araçları Açık Otoparkı"): the list has them among the others. One that also takes cars says "binek".
+    static func isForBuses(_ name: String) -> Bool {
+        let folded = TurkishFold.fold(name)
+        return !folded.contains("binek") && (folded.contains("otobus") || folded.contains("turizm arac"))
+    }
+
+    /// "83 boş yer · 100 araçlık · 08:00-19:00 · İSPARK". What a driver decides on comes first: a list row
+    /// shows one line of it. No free space is left unsaid, not called full: the service reports zero for car
+    /// parks it does not count too (46 of the 184 open ones on the evening of 2026-11-16, the largest among
+    /// them), and a "full" that is wrong sends a driver past a car park with room.
     static func subtitle(free: Int?, capacity: Int?, hours: String?) -> String {
         var parts: [String] = []
-        if let free { parts.append(free > 0 ? "\(free) boş yer" : "Dolu") }
+        if let free, free > 0 { parts.append("\(free) boş yer") }
         if let capacity, capacity > 0 { parts.append("\(capacity) araçlık") }
         if let hours = hours?.trimmingCharacters(in: .whitespaces), !hours.isEmpty { parts.append(hours) }
         return (parts + ["İSPARK"]).joined(separator: " · ")

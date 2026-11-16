@@ -202,8 +202,9 @@ struct BusinessSearchTests {
         let businesses = [place("Veteriner Durağı", 2_300, id: "poi-1"), place("Roza Veteriner Kliniği", 230, id: "poi-2")]
         #expect(BusinessSearchProvider.merge([], businesses, query: "veteriner", near: here).map(\.id) == ["poi-2", "poi-1"])
         // An exact name still leads one four times nearer that only contains it.
-        let exact = [place("Noter", 2_000, id: "poi-3"), place("Kartal 3. Noterliği", 600, id: "poi-4")]
-        #expect(BusinessSearchProvider.merge([], exact, query: "noter", near: here).map(\.id) == ["poi-3", "poi-4"])
+        // (A name, not a kind of place: "noter" asks for the nearest notaries, whatever they are called.)
+        let exact = [place("Migros", 2_000, id: "poi-3"), place("Kartal Migros Jet", 600, id: "poi-4")]
+        #expect(BusinessSearchProvider.merge([], exact, query: "migros", near: here).map(\.id) == ["poi-3", "poi-4"])
         // Without a position: by how well the name matches.
         #expect(BusinessSearchProvider.merge([], businesses, query: "veteriner", near: nil).map(\.id) == ["poi-1", "poi-2"])
     }
@@ -288,11 +289,12 @@ struct BusinessSearchTests {
         await #expect(throws: URLError.self) { try await provider.search("migros", near: here) }
     }
 
-    /// What the map shows of a view: the places with a kind, the likeliest first.
+    /// What the map shows of a view: the places with a kind, the likeliest first, then those without one.
     @Test func thePlacesOfAMapView() throws {
         let index = try businesses()
         let view = index.places(west: 29.18, south: 40.885, east: 29.20, north: 40.895)
-        #expect(view.map(\.name) == ["Derman Eczanesi", "Kıyı Pastanesi"]) // the kiosk has no kind, the other cafe is out of view
+        // The kiosk has no kind: last, though it is the likeliest of the three. The other cafe is out of view.
+        #expect(view.map(\.name) == ["Derman Eczanesi", "Kıyı Pastanesi", "Ankara Caddesi Büfe"])
         #expect(index.places(west: 29.18, south: 40.885, east: 29.20, north: 40.895, limit: 1).map(\.id) == ["poi-3"])
         // A tapped badge hands its id back.
         #expect(index.place(id: "poi-1")?.name == "Kıyı Pastanesi")
@@ -308,6 +310,9 @@ struct BusinessSearchTests {
         let osm = Place(id: "N7", name: "Derman Eczanesi", subtitle: "", point: GeoPoint(latitude: 40.89005, longitude: 29.1905), category: "amenity=pharmacy")
         #expect(index.contact(of: osm)?.phone == "+902163066161")
         #expect(index.contact(of: osm)?.website == nil)
+        // An id from an older build of the index, by now another business's row: found by its name instead.
+        let renumbered = Place(id: "poi-1", name: "Derman Eczanesi", subtitle: "", point: GeoPoint(latitude: 40.8900, longitude: 29.1905), category: "amenity=pharmacy")
+        #expect(index.contact(of: renumbered)?.phone == "+902163066161")
         // Nothing on record, and nobody of that name nearby.
         let kiosk = try #require(index.place(id: "poi-4"))
         #expect(index.contact(of: kiosk) == nil)
@@ -398,7 +403,12 @@ struct BusinessSearchTests {
         #expect(live.map(\.id) == ["ispark-1", "ispark-2"]) // the closed one and the one without a position are left out
         #expect(live[0].name == "Cevizli Açık Otoparkı")
         #expect(live[0].subtitle == "83 boş yer · 100 araçlık · 08:00-19:00 · İSPARK")
-        #expect(live[1].subtitle == "Dolu · 50 araçlık · 24 Saat · İSPARK")
+        // Zero free spaces: uncounted as likely as full, so not called full.
+        #expect(live[1].subtitle == "50 araçlık · 24 Saat · İSPARK")
+        #expect(ISPARKCarParks.isForBuses("Alibeyköy Cep Otogarı Otobüs Otoparkı"))
+        #expect(ISPARKCarParks.isForBuses("4.Levent Servis ve Turizm Araçları Açık Otoparkı"))
+        #expect(!ISPARKCarParks.isForBuses("Kabataş Transfer Merkezi Binek Araç ve Turizm Otobüsleri Zemin Altı Otoparkı"))
+        #expect(!ISPARKCarParks.isForBuses("Pendik Meydan Zemin Altı Otoparkı"))
         #expect(live[0].category == "amenity=parking")
         // With the indexes' car parks: the same car park under another name is listed once, as the live record.
         let others = [place("İSPARK Sahil Katlı Otoparkı", -50, id: "N1", category: "amenity=parking"),
@@ -417,6 +427,9 @@ struct BusinessSearchTests {
         // The next launch reads it back.
         let relaunched = SearchController(provider: Fixed(places: []), nearbyIndex: nil, businessIndex: nil, carParks: nil, defaults: defaults)
         #expect(relaunched.isSaved(cafe))
+        // A rebuilt index numbers its places anew: the star goes by the name at the spot, not by the id.
+        #expect(relaunched.isSaved(place("Kıyı Pastanesi", 200, id: "poi-77", category: "amenity=cafe")))
+        #expect(!relaunched.isSaved(place("Derman Eczanesi", 900, id: "N1")))
         controller.toggleSaved(cafe)
         #expect(controller.saved.isEmpty)
     }

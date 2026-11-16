@@ -69,7 +69,10 @@ jobs:
           overture-env/bin/overturemaps releases latest | tee overture-release.txt
           overture-env/bin/overturemaps download --bbox="$BBOX" -f geojsonseq --type=place -o overture-places.geojsonseq
           python3 Tools/search/build_pois.py --self-test
-          python3 Tools/search/build_pois.py overture-places.geojsonseq pois.sqlite
+          python3 Tools/search/fetch_chargers.py --self-test
+          # With the public charging stations of the energy regulator's register (a file of the repository,
+          # Tools/search/fetch_chargers.py): Overture knows a twentieth of them.
+          python3 Tools/search/build_pois.py overture-places.geojsonseq pois.sqlite Tools/search/chargers-istanbul.json
           rm overture-places.geojsonseq
 
       - name: Map fonts (offline labels)
@@ -107,4 +110,4 @@ jobs:
 
           valhalla_tiles.tar, istanbul.pmtiles and places.sqlite: © OpenStreetMap contributors, Open Database License 1.0 (https://www.openstreetmap.org/copyright).
 
-          pois.sqlite: the places theme of the Overture Maps Foundation (https://docs.overturemaps.org/attribution/). Its records come from Meta, Microsoft and others under CDLA-Permissive-2.0 (https://cdla.dev/permissive-2-0/), from Foursquare under Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0) and from AllThePlaces under CC0-1.0. It holds no OpenStreetMap data."
+          pois.sqlite: the places theme of the Overture Maps Foundation (https://docs.overturemaps.org/attribution/). Its records come from Meta, Microsoft and others under CDLA-Permissive-2.0 (https://cdla.dev/permissive-2-0/), from Foursquare under Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0) and from AllThePlaces under CC0-1.0. Its charging stations are the energy regulator's register as published by İstanbul Büyükşehir Belediyesi (İBB Açık Veri Lisansı, https://data.ibb.gov.tr/license). It holds no OpenStreetMap data."

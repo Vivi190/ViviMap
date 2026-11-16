@@ -222,6 +222,48 @@ struct CoordinateQueryTests {
         #expect(CoordinateQuery.place(from: "95.0, 29.0") == nil)
         #expect(CoordinateQuery.place(from: "40.88") == nil)
     }
+
+    /// A location someone sent: the links the map apps and WhatsApp share, read without asking anyone.
+    @Test func readsThePointOutOfASharedLink() {
+        let kartal = GeoPoint(latitude: 40.889, longitude: 29.1905)
+        for link in [
+            "https://maps.google.com/?q=40.889,29.1905",
+            "https://www.google.com/maps/search/?api=1&query=40.889%2C29.1905",
+            "https://www.google.com/maps/@40.889,29.1905,17z",
+            "https://maps.google.com/maps?q=loc:40.889,29.1905",
+            "https://maps.apple.com/?ll=40.889,29.1905&q=K%C4%B1y%C4%B1%20Pastanesi",
+            "https://maps.apple.com/place?coordinate=40.889,29.1905&name=Kartal",
+            "https://yandex.com.tr/maps/?pt=29.1905,40.889&z=17",
+            "https://yandex.com.tr/maps/?ll=29.1905%2C40.889&z=17",
+            "geo:40.889,29.1905",
+            "geo:0,0?q=40.889,29.1905(Kartal)",
+            "Buradayım: https://maps.google.com/?q=40.889,29.1905",
+        ] {
+            #expect(CoordinateQuery.place(from: link)?.point == kartal, "\(link)")
+        }
+    }
+
+    /// A place link of Google's: the place's own point, not where the map was looking, and its name.
+    @Test func readsThePlaceOfAGoogleLink() throws {
+        let link = "https://www.google.com/maps/place/K%C4%B1y%C4%B1+Pastanesi/@40.8901,29.1899,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x0!8m2!3d40.889!4d29.1905"
+        let place = try #require(CoordinateQuery.place(from: link))
+        #expect(place.point == GeoPoint(latitude: 40.889, longitude: 29.1905))
+        #expect(place.name == "Kıyı Pastanesi")
+        #expect(place.subtitle == "Paylaşılan konum")
+        // Apple Maps names the place beside its point; a label in a "geo:" address stands in brackets.
+        #expect(CoordinateQuery.place(from: "https://maps.apple.com/?ll=40.889,29.1905&q=K%C4%B1y%C4%B1%20Pastanesi")?.name == "Kıyı Pastanesi")
+        #expect(CoordinateQuery.place(from: "geo:0,0?q=40.889,29.1905(Kartal)")?.name == "Kartal")
+        // Without a name the coordinates are the name.
+        #expect(CoordinateQuery.place(from: "https://maps.google.com/?q=40.889,29.1905")?.name == "40.88900, 29.19050")
+    }
+
+    /// Links without a point in them are left to the text search: a short link, any other page.
+    @Test func leavesOtherLinksAlone() {
+        #expect(CoordinateQuery.place(from: "https://maps.app.goo.gl/AbCdEf123456") == nil)
+        #expect(CoordinateQuery.place(from: "https://example.com/?q=kartal") == nil)
+        #expect(CoordinateQuery.place(from: "geo:0,0") == nil)
+        #expect(CoordinateQuery.place(from: "https://yandex.com.tr/maps/-/CDxyzABC") == nil)
+    }
 }
 
 struct TappedPlaceTests {

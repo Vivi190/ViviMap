@@ -114,13 +114,19 @@ public final class SearchController {
     }
 
     public func isSaved(_ place: Place) -> Bool {
-        saved.contains { $0.id == place.id }
+        saved.contains { Self.isSame($0, place) }
+    }
+
+    /// A starred place met again: the same name at the same spot. Not the same id: the shipped indexes number
+    /// their places anew with every build, so a place's number changes and another place gets its old one.
+    private static func isSame(_ a: Place, _ b: Place) -> Bool {
+        a.name == b.name && a.point.distance(to: b.point) <= 50
     }
 
     /// Stars a place, or takes its star away.
     public func toggleSaved(_ place: Place) {
         if isSaved(place) {
-            saved.removeAll { $0.id == place.id }
+            saved.removeAll { Self.isSame($0, place) }
         } else {
             saved.insert(place, at: 0)
         }
@@ -154,7 +160,7 @@ public final class SearchController {
         guard let center = place?.point ?? origin() else {
             results = []
             isSearching = false
-            errorMessage = "Konumun henüz bilinmiyor."
+            errorMessage = "Konumunuz henüz bilinmiyor."
             return
         }
         isSearching = true
@@ -220,8 +226,8 @@ public final class SearchController {
     nonisolated static func message(for error: any Error) -> String {
         let offline: [URLError.Code] = [.notConnectedToInternet, .networkConnectionLost, .dataNotAllowed]
         if let url = error as? URLError, offline.contains(url.code) {
-            return "İnternet bağlantısı yok. Bağlantını kontrol et."
+            return "İnternet bağlantısı yok. Bağlantınızı kontrol edin."
         }
-        return "Arama sunucusu şu an yanıt vermiyor. Biraz sonra yeniden dene."
+        return "Arama sunucusu şu an yanıt vermiyor. Biraz sonra yeniden deneyin."
     }
 }

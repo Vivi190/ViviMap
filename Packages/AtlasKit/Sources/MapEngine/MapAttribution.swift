@@ -18,6 +18,7 @@ public struct MapAttributionView: View {
             Section("İstanbul Büyükşehir Belediyesi") {
                 link("Otoparklarda boş yer: İSPARK, İBB Açık Veri Portalı", "https://data.ibb.gov.tr/license")
                 link("Sinyalize kavşaklar: İBB Açık Veri Portalı", "https://data.ibb.gov.tr/license")
+                link("Şarj istasyonları: EPDK kayıtları, İBB Açık Veri Portalı", "https://data.ibb.gov.tr/license")
             }
             Section("Trafik") {
                 link("Canlı trafik ve trafikli süreler: © HERE", "https://legal.here.com/")
