@@ -2,7 +2,7 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
-## Build 34 (not yet uploaded)
+## Build 34 — 2026-11-17
 
 - **Stops on the way:** while guiding, a tap on the map shows "Yol üstünde ara". It lists fuel stations, chargers, markets, pharmacies, ATMs, cafés and restaurants ahead on the route, from the indexes on the device, the cheapest to turn into first, with how far ahead each is and on which side. A tap makes one a stop without ending guidance ("Ara durak eklendi."): an orange pin, its own prompts ("Ara durağa 400 metre kaldı.", "Ara durak sağda"), then guidance goes on to the destination. Reroutes and traffic rounds keep the stop; "Ara durağı kaldır" drops it. One stop at a time.
 - **Search results on the map:** "12 sonucu haritada göster" above a list of results puts them on the map as blue pins with their names, all in view, as Yandex and Apple Maps show a search. A tap on a pin opens its card; a chip under the search bar opens the list again or takes the pins off.
