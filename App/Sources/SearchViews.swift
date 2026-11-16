@@ -74,6 +74,12 @@ struct SearchSheet: View {
     @Environment(LocationProvider.self) private var location
     @State private var isSearchPresented = true
 
+    private var isDutyQuery: Bool {
+        search.query.lowercased(with: Locale(identifier: "tr")).contains("nöbetçi")
+    }
+
+    private static let dutyRoster = URL(string: "https://www.istanbuleczaciodasi.org.tr/nobetci-eczane/")!
+
     private var hasQuery: Bool {
         search.query.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2
     }
@@ -81,6 +87,16 @@ struct SearchSheet: View {
     var body: some View {
         List {
             if hasQuery {
+                if isDutyQuery {
+                    // Searched often, and no map has the duty roster: the chamber's own list is one tap away.
+                    Section {
+                        Link(destination: Self.dutyRoster) {
+                            Label("Bugünün nöbetçi eczaneleri: İstanbul Eczacı Odası", systemImage: "cross.case.fill")
+                        }
+                    } footer: {
+                        Text("Haritada nöbet çizelgesi yok. En yakın eczaneler için \"eczane\" yaz; açık olup olmadığını bu listeden kontrol et.")
+                    }
+                }
                 if let center = search.nearbyCenter {
                     Section("\(center.name) yakınında") {
                         ForEach(search.results) { place in row(place) }
@@ -181,17 +197,9 @@ struct SearchSheet: View {
                 ProgressView()
             } else if let message = search.errorMessage {
                 ContentUnavailableView("Arama yapılamadı", systemImage: "wifi.exclamationmark", description: Text(message))
-            } else if search.results.isEmpty {
-                if search.query.lowercased(with: Locale(identifier: "tr")).contains("nöbetçi") {
-                    // Searched often, and OSM has no duty roster: say so instead of a bare "no results".
-                    ContentUnavailableView(
-                        "Nöbet bilgisi yok",
-                        systemImage: "cross.case",
-                        description: Text("Haritada eczanelerin nöbet çizelgesi yok. En yakın eczaneler için \"eczane\" yaz; açık olup olmadığını gitmeden önce kontrol et.")
-                    )
-                } else {
-                    ContentUnavailableView.search(text: search.query)
-                }
+            } else if search.results.isEmpty, !isDutyQuery {
+                // A query for duty pharmacies has its own row at the top of the list instead.
+                ContentUnavailableView.search(text: search.query)
             }
         } else if search.recents.isEmpty, search.saved.isEmpty, search.home == nil, search.work == nil {
             ContentUnavailableView(
