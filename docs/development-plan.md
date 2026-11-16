@@ -23,6 +23,7 @@ Each phase starts once the previous one is verified. A phase counts as done when
 - Automatic switch to the night map after sunset.
 - Guidance on the lock screen and in the Live Activity.
 - A drive in airplane mode; a drive at rush hour with live traffic.
+- Traffic colours against another traffic map on the same roads at the same time; the timing and wording of spoken prompts on a real drive.
 - 60 FPS, battery use on a long drive, arrival-time accuracy (trip log calibration).
 
 **Decisions for the project owner:**
@@ -38,3 +39,4 @@ Each phase starts once the previous one is verified. A phase counts as done when
 - Lanes, house numbers and speed limits appear only where OpenStreetMap has them (speed limits on 9–16 % of roads around Pendik, Kartal and Tuzla); nothing is invented.
 - Offline mode covers the Istanbul area only, without traffic. Offline search finds places and streets, not house numbers.
 - Voice quality depends on the Turkish voice installed on the device; an "Enhanced" voice reads more naturally.
+- In a tunnel the position stops until the signal returns; there is no dead reckoning.

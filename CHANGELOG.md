@@ -2,6 +2,49 @@
 
 TestFlight builds of ATLAS 1.0. Dates are upload dates (UTC).
 
+## Build 29 — 2026-11-16
+
+Based on a side-by-side study of Yandex Navigator and Yandex Maps (same roads, same minute) and three code audits. Build 28 was not uploaded: its CI run never started.
+
+**Traffic**
+- Roads are coloured per HERE sub-segment, so a colour changes where the traffic does: a 12 km stretch was one colour end to end.
+- Colour bands calibrated against Yandex on the same roads: yellow from jam factor 2, red from 8, dark red from 9.5. The old bands showed 92 % green where Yandex showed 58 %.
+- Thin lines per direction with a pixel offset and a rim, in Yandex's palette, drawn straight on the map style (no longer rebuilt on every map update).
+- The traffic layer stays on during guidance, fed by the route's own traffic request (no extra requests).
+- Area score on Yandex's scale (travel time over free-flow time on main roads) with its Turkish wording.
+- Values that are not live (historical) are no longer drawn as live; closures are road events, not a colour.
+- An answer is reused for 2 minutes and covers at least 3 km around the screen, so a map following the car no longer asks once per kilometre; stale lines are removed.
+
+**Guidance screen**, laid out as drivers know it from Yandex Navigator
+- A compact blue turn panel top left (arrow, distance, road), speed and limit as two discs top right, one slim trip row at the bottom (distance, arrival, time left) with the overview and end buttons.
+- A large two-tone arrow for the car instead of the map library's small puck.
+- The route is drawn in traffic colours once it has live traffic (green where it flows); a slimmer line.
+- Side buttons appear after a tap on the map; "Rotaya devam et" returns to the car, also when the map was moved while driving.
+- The speed display stays at a stop ("0") and without a fix ("–"); a GPS chip shows weak or lost signal.
+- 24-hour clock; distances step by 50 m when far and drop ",0".
+
+**Voice and turn logic**
+- Formal Turkish, as navigation apps speak ("300 metre sonra sağa dönün").
+- Fewer prompts: no repeats seconds apart, none for road-name changes; the at-turn prompt interrupts instead of queueing, and muting stops the sentence in progress.
+- Roundabout exits by number, U-turns at roundabouts, a turn that stays on the same road said as a turn, ferry boarding, "Hedefe 400 metre kaldı".
+- The turn panel and its prompt no longer move on to the next maneuver up to 25 m before the turn.
+- Leaving the route is said and shown ("Rotadan çıktınız"), then "Rota yeniden oluşturuldu"; a failed reroute is announced once.
+- Valhalla's fallback sentence is no longer read out as a road name.
+- Speed-camera direction filter corrected (it dropped cameras facing the driver); a camera is announced even with a speed bump before it, and a run of bumps counts once.
+- Rerouting asks the on-device router first; a failing route server falls back to it for any error except "no route".
+
+**Route choice**
+- Options as tiles with label, time and distance (the chosen one filled blue); callouts with tails on the map: time and distance on the chosen route, "+2 dk" on the others.
+- Tiles keep their order when traffic times arrive; the selection only moves by itself for a gain of a minute or more, and never after a manual choice.
+
+**Map style**
+- Neutral grey-blue main roads instead of yellow (which read as slow traffic), buildings from zoom 15, more street names (abbreviated "Cd.", "Sk.", "Blv."), places from zoom 14, a navy night palette.
+
+**Fixes**
+- After arrival the arrow follows the car again and GPS and the screen lock are released.
+- The time no longer drops to the free-flow estimate at "Başlat", after a reroute or after taking a faster route; a traffic time that can no longer be refreshed is cleared.
+- Changing "Ücretli yollardan kaçın" re-plans the routes on screen; an on-device route is no longer scored as if it had live traffic.
+
 ## Build 27 — 2026-11-15
 
 - Map chrome (search bar, buttons, chips, road name, speed) uses the same opaque surface as the cards instead of glass.
