@@ -121,6 +121,9 @@ struct HomeScreen: View {
     @State private var resultPins: [Place] = []
     /// What they are, for the chip under the search bar: the query, with the place a list is around.
     @State private var resultsTitle = ""
+    /// A later start chosen on the route card: the routes' times are then the traffic expected at that time.
+    /// nil is now.
+    @State private var departure: Date?
     /// The drive to Home and Work from here with live traffic, for their chips (ShortcutTimesLoader).
     @State private var shortcutTimes: [SearchController.Slot: TimeInterval] = [:]
     /// Feeds the user puck during real guidance with the fix snapped to the route (NavigationSession.onPuck).
@@ -413,6 +416,12 @@ struct HomeScreen: View {
                 UIApplication.shared.isIdleTimerDisabled = false
             }
         }
+        .onChange(of: departure) { _, _ in
+            // The same routes, measured again for the new start; a new generation drops answers for the old one.
+            guard !routes.isEmpty, !isNavigating, let place = selectedPlace, let here = location.lastLocation else { return }
+            planGeneration += 1
+            scoreTraffic(routes, from: here, to: place, generation: planGeneration)
+        }
         .onChange(of: routeSelection) { _, index in
             if let option = routes.first(where: { $0.index == index }) { loadFlow(for: option, generation: planGeneration) }
         }
@@ -695,6 +704,7 @@ struct HomeScreen: View {
         isPlanning = false
         selectedPlace = place
         sheet = nil
+        departure = nil
         // The closed roads found on the way to the last place say nothing about the way to this one.
         planner?.closedRoads = []
         prefetchRoutes(to: place)
@@ -747,6 +757,7 @@ struct HomeScreen: View {
             // What these routes were planned with; the switch may have moved since (re-planning clears them).
             avoidsTolls: planner?.avoidsTolls == true,
             error: routeError,
+            departure: $departure,
             selection: Binding(
                 get: { routeSelection },
                 set: { index in
@@ -953,7 +964,7 @@ struct HomeScreen: View {
         }
         // What the route card showed for this route: the spoken start, the bar and the lock screen open with
         // the same time and colours instead of the free-flow ones until the first traffic round.
-        let estimate = trafficStatus == .ready ? trafficEstimates[route.index] : nil
+        let estimate = trafficStatus == .ready && departure == nil ? trafficEstimates[route.index] : nil
         do {
             navigation.hazardKinds = hazardKinds
             navigation.userHazards = userHazards.hazards
@@ -1109,6 +1120,7 @@ struct HomeScreen: View {
 
     private func clearPlace() {
         selectedPlace = nil
+        departure = nil
         routes = []
         routeError = nil
         // Routes still coming would draw lines with no card under them.
@@ -1239,13 +1251,18 @@ struct HomeScreen: View {
             return
         }
         trafficStatus = .loading
+        let departure = departure
         Task {
-            let candidates = await avoidingClosures(in: options, from: origin, to: place, traffic: traffic, generation: generation)
+            // The roads closed now, and the colours of now, say nothing about a later start.
+            var candidates = options
+            if departure == nil {
+                candidates = await avoidingClosures(in: options, from: origin, to: place, traffic: traffic, generation: generation)
+            }
             guard generation == planGeneration else { return }
             let geometries = candidates.map { ($0.index, $0.coordinates) }
             let measured = await withTaskGroup(of: (Int, TrafficEstimate?).self) { group in
                 for (index, coordinates) in geometries {
-                    group.addTask { (index, try? await traffic.estimate(coordinates)) }
+                    group.addTask { (index, try? await traffic.estimate(coordinates, departingAt: departure)) }
                 }
                 var found: [Int: TrafficEstimate] = [:]
                 for await (index, estimate) in group {
@@ -1267,7 +1284,7 @@ struct HomeScreen: View {
                let shown = measured[routeSelection],
                fastest.key != routeSelection, shown.duration - fastest.value.duration >= 60 {
                 routeSelection = fastest.key // onChange loads its colours
-            } else if let shown = candidates.first(where: { $0.index == routeSelection }) {
+            } else if departure == nil, let shown = candidates.first(where: { $0.index == routeSelection }) {
                 loadFlow(for: shown, generation: generation)
             }
         }
@@ -1342,7 +1359,7 @@ struct HomeScreen: View {
 
     /// Slow stretches of one alternative, once per route request (one paid flow request each).
     private func loadFlow(for option: RouteOption, generation: Int) {
-        guard let traffic, trafficStatus == .ready, previewTraffic[option.index] == nil else { return }
+        guard let traffic, trafficStatus == .ready, departure == nil, previewTraffic[option.index] == nil else { return }
         let coordinates = option.coordinates
         Task {
             guard let flow = try? await traffic.flow(along: coordinates), generation == planGeneration else { return }

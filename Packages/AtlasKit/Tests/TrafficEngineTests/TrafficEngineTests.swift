@@ -190,6 +190,19 @@ struct HERERequestTests {
         #expect(trace[0]["lat"] == 40.889 && trace[0]["lng"] == 29.1905)
     }
 
+    /// A later start asks for the traffic expected then; none asks for now.
+    @Test func aLaterStartIsSentWithItsTime() throws {
+        let provider = HERETrafficProvider(apiKey: "test-key", session: .shared, budget: RequestBudget(defaults: UserDefaults(suiteName: "atlas.test.\(UUID())")!))
+        let route = [CLLocationCoordinate2D(latitude: 40.889, longitude: 29.1905), CLLocationCoordinate2D(latitude: 40.905, longitude: 29.21)]
+        let morning = Date(timeIntervalSince1970: 1_794_978_000) // 2026-11-18 05:00 UTC, 08:00 in Istanbul
+        #expect(HERETrafficProvider.timestamp(morning, in: try #require(TimeZone(identifier: "Europe/Istanbul"))) == "2026-11-18T08:00:00+03:00")
+        let later = try provider.request(for: route, departure: morning)
+        let query = URLComponents(url: try #require(later.url), resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(query.contains { $0.name == "departureTime" && $0.value == HERETrafficProvider.timestamp(morning) })
+        let now = try provider.request(for: route)
+        #expect(URLComponents(url: try #require(now.url), resolvingAgainstBaseURL: false)?.queryItems?.contains { $0.name == "departureTime" } == false)
+    }
+
     @Test func keyMustBeAnExpandedNonEmptyValue() {
         #expect(HEREKey.normalized(nil) == nil)
         #expect(HEREKey.normalized("  ") == nil)

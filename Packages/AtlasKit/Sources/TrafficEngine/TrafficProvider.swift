@@ -67,7 +67,8 @@ public enum TrafficError: LocalizedError, Equatable {
 }
 
 public protocol TrafficProvider: Sendable {
-    func estimate(_ route: [CLLocationCoordinate2D]) async throws -> TrafficEstimate
+    /// - Parameter departure: when the drive starts, for the traffic expected then; nil is now.
+    func estimate(_ route: [CLLocationCoordinate2D], departingAt departure: Date?) async throws -> TrafficEstimate
     /// Live flow on the roads along the route (it also returns cross streets; see RouteTraffic.sections).
     func flow(along route: [CLLocationCoordinate2D]) async throws -> [FlowSegment]
     /// Every road in a map area, for the city traffic layer (AreaTraffic.sections).
@@ -117,5 +118,12 @@ public struct TrafficArea: Sendable, Equatable {
         let dx: Double = min(max(width * fraction, Self.minimumMargin), max(0, (0.99 - width) / 2))
         let dy: Double = min(max(height * fraction, Self.minimumMargin), max(0, (0.99 - height) / 2))
         return TrafficArea(west: west - dx, south: south - dy, east: east + dx, north: north + dy)
+    }
+}
+
+extension TrafficProvider {
+    /// The traffic now.
+    public func estimate(_ route: [CLLocationCoordinate2D]) async throws -> TrafficEstimate {
+        try await estimate(route, departingAt: nil)
     }
 }

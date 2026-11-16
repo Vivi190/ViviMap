@@ -30,16 +30,17 @@ public struct HERETrafficProvider: TrafficProvider {
         self.budget = budget
     }
 
-    public func estimate(_ route: [CLLocationCoordinate2D]) async throws -> TrafficEstimate {
+    public func estimate(_ route: [CLLocationCoordinate2D], departingAt departure: Date?) async throws -> TrafficEstimate {
         guard route.count >= 2 else { throw TrafficError.notMatched }
         guard budget.spend(.routeImport) else { throw TrafficError.budgetExhausted }
-        let (data, response) = try await session.data(for: request(for: route))
+        let (data, response) = try await session.data(for: request(for: route, departure: departure))
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200 ..< 300).contains(status) else { throw TrafficError.service(status: status) }
         return try HEREImportResponse.estimate(from: data)
     }
 
-    func request(for route: [CLLocationCoordinate2D]) throws -> URLRequest {
+    /// - Parameter departure: a later start: HERE then answers with the traffic it expects at that time.
+    func request(for route: [CLLocationCoordinate2D], departure: Date? = nil) throws -> URLRequest {
         var components = URLComponents(url: Self.importURL, resolvingAgainstBaseURL: false)!
         components.queryItems = [
             URLQueryItem(name: "transportMode", value: "car"),
@@ -50,12 +51,23 @@ public struct HERETrafficProvider: TrafficProvider {
             URLQueryItem(name: "spans", value: "maxSpeed,length,incidents"),
             URLQueryItem(name: "apiKey", value: apiKey),
         ]
+        if let departure {
+            components.queryItems?.append(URLQueryItem(name: "departureTime", value: Self.timestamp(departure)))
+        }
         var request = URLRequest(url: components.url!)
         request.httpMethod = "POST"
         request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(ImportBody(trace: HERETrace.points(route)))
         return request
+    }
+
+    /// "2026-11-18T08:00:00+03:00": RFC 3339 with the offset of `zone`, as HERE's `departureTime` takes it.
+    static func timestamp(_ date: Date, in zone: TimeZone = .current) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.timeZone = zone
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.string(from: date)
     }
 
     /// Traffic v7 flow in a 400 m corridor around the route (POST: a long corridor overflows the URL). Wide

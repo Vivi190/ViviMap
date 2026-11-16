@@ -494,6 +494,8 @@ struct RouteCard: View {
     let avoidsTolls: Bool
     /// Why "Başlat" did nothing (no position yet, guidance could not start).
     var error: String? = nil
+    /// A later start to see the times for; nil is now.
+    @Binding var departure: Date?
     @Binding var selection: Int
     /// nil when navigation could not be set up; the button is hidden rather than shown broken.
     let onStart: (() -> Void)?
@@ -558,6 +560,10 @@ struct RouteCard: View {
                 }
             }
             summary(route, showsTime: routes.count == 1)
+            // Only with traffic: without it a route takes as long at any hour.
+            if trafficStatus != .unavailable, !route.isOffline {
+                departureRow
+            }
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote)
@@ -619,6 +625,31 @@ struct RouteCard: View {
         }
     }
 
+    /// "Çıkış: Şimdi", or a later time to see the times for, as Yandex and Google offer it ("leave at").
+    private var departureRow: some View {
+        HStack(spacing: Spacing.s) {
+            Label("Çıkış", systemImage: "clock")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            DatePicker(
+                "Çıkış",
+                // Within two minutes of now is now: the live traffic, not a forecast.
+                selection: Binding(get: { departure ?? Date.now }, set: { departure = $0.timeIntervalSinceNow > 120 ? $0 : nil }),
+                in: Date.now...,
+                displayedComponents: [.date, .hourAndMinute]
+            )
+            .labelsHidden()
+            .datePickerStyle(.compact)
+            if departure != nil {
+                Button("Şimdi") { departure = nil }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.borderless)
+                    .accessibilityIdentifier("route.departNow")
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
     /// One candidate as a tile, as Yandex lays them out: what it is ("En hızlı", "+2 dk"), its time and its
     /// distance; the chosen one filled blue.
     private func optionTile(_ option: RouteOption, isSelected: Bool, fastest: TimeInterval, isFastest: Bool) -> some View {
@@ -659,7 +690,7 @@ struct RouteCard: View {
     /// traffic delay, the main roads and tolls or ferries.
     private func summary(_ option: RouteOption, showsTime: Bool) -> some View {
         let time = duration(option)
-        let arrival = Formatting.clock(Date.now.addingTimeInterval(time))
+        let arrival = Formatting.clock((departure ?? Date.now).addingTimeInterval(time))
         return VStack(alignment: .leading, spacing: Spacing.xs) {
             if showsTime {
                 // A single route has no tiles: its time and distance stand here.
@@ -715,6 +746,11 @@ struct RouteCard: View {
             .foregroundStyle(.secondary)
         case .failed:
             Label("Trafik alınamadı · trafiksiz tahmini süre", systemImage: "exclamationmark.triangle")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        case .ready where departure != nil:
+            // HERE's forecast for that hour, not what the roads are doing now.
+            Label("Beklenen trafik · © HERE", systemImage: "clock.arrow.circlepath")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         case .ready:
