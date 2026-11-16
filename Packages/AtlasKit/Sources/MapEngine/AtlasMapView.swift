@@ -352,7 +352,10 @@ public struct AtlasMapView: View {
                     // The style's own font: MapLibre's default stack is not on the tile server.
                     .textFontNames(["Noto Sans Regular"])
                     .textFontSize(12)
-                    .textAnchor("top")
+                    // A little below the point: right under it, a name touched its own pin's collision box and
+                    // was never placed (CI, 2026-11-17).
+                    .textVariableAnchor(["top"])
+                    .textRadialOffset(0.8)
                     .maximumTextWidth(8)
                     .textColor(night ? Self.resultTextNight : Self.resultTextDay)
                     .textHaloColor(night ? Self.routeCasingNight : .white)
