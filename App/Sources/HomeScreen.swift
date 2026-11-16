@@ -1270,6 +1270,8 @@ struct HomeScreen: View {
         }
         .presentationDetents(sheet == .search ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
+        // Opaque at half height too: the system's sheet lets the map show through under the settings' text.
+        .presentationBackground(Color(sheet == .search ? UIColor.systemBackground : UIColor.systemGroupedBackground))
     }
 }
 
